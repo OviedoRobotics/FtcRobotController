@@ -41,6 +41,8 @@ import java.util.concurrent.TimeUnit;
 @TeleOp(name="Teleop-Skunkworks", group="7592")
 //@Disabled
 public class TeleopSkunkworks extends LinearOpMode {
+    /* Declare OpMode members. */
+    HardwareMinibot robot = new HardwareMinibot();
     boolean gamepad1_triangle_last,   gamepad1_triangle_now   = false;  //
     boolean gamepad1_circle_last,     gamepad1_circle_now     = false;  //
     boolean gamepad1_cross_last,      gamepad1_cross_now      = false;  //
@@ -59,6 +61,19 @@ public class TeleopSkunkworks extends LinearOpMode {
     double  rearLeft, rearRight, frontLeft, frontRight, maxPower;  /* Motor power levels */
     boolean backwardDriveControl = false; // drive controls backward (other end of robot becomes "FRONT")
     boolean controlMultSegLinear = true;
+    //Files to access the algorithm constants
+    File wheelBaseSeparationFile  = AppUtil.getInstance().getSettingsFile("wheelBaseSeparation.txt");
+    File horizontalTickOffsetFile = AppUtil.getInstance().getSettingsFile("horizontalTickOffset.txt");
+
+    double robotEncoderWheelDistance            = Double.parseDouble(ReadWriteFile.readFile(wheelBaseSeparationFile).trim()) * robot.COUNTS_PER_INCH2;
+    double horizontalEncoderTickPerDegreeOffset = Double.parseDouble(ReadWriteFile.readFile(horizontalTickOffsetFile).trim());
+    double robotGlobalXCoordinatePosition       = 0.0;   // in odometer counts
+    double robotGlobalYCoordinatePosition       = 0.0;
+    double robotOrientationRadians              = 0.0;   // 0deg (straight forward)
+    double imuAngleInitial                      = 0.0;   // (for comparison purposes -- not completely accurate)
+    double imuAngleCurrent                      = 0.0;
+    double imuAngleDegrees                      = 0.0;
+    double robotEncoderWheelDistanceError;
 
     final int DRIVER_MODE_SINGLE_WHEEL = 1;
     final int DRIVER_MODE_STANDARD     = 2;
@@ -69,8 +84,6 @@ public class TeleopSkunkworks extends LinearOpMode {
     long      nanoTimeCurr=0, nanoTimePrev=0;
     double    elapsedTime, elapsedHz;
 
-    /* Declare OpMode members. */
-    HardwareMinibot robot = new HardwareMinibot();
     protected CenterstageSuperPipeline pipelineBack;
 
     // AprilTag variables
@@ -88,7 +101,10 @@ public class TeleopSkunkworks extends LinearOpMode {
 
         // Initialize robot hardware
         robot.init(hardwareMap,false);
-
+        // Adjust odometry constants based on field measurements
+        // (auto-calibration used the IMU, which isn't perfect)
+        robotEncoderWheelDistance            -= 0.000;
+        horizontalEncoderTickPerDegreeOffset += 0.000;
 //        aprilTag = new AprilTagProcessor.Builder()
 //                .setTagLibrary(AprilTagGameDatabase.getCenterStageTagLibrary())
 //                .setLensIntrinsics(904.214,904.214,696.3,362.796)
@@ -99,7 +115,7 @@ public class TeleopSkunkworks extends LinearOpMode {
                 AprilTagProcessor.TagFamily.TAG_36h11, THREADS_DEFAULT, false,
                 robotGlobalCoordinateCorrectedPosition, telemetry);
         visionPortalBack = new VisionPortal.Builder()
-                .setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"))
+                .setCamera(hardwareMap.get(WebcamName.class, "Webcam Back"))
                 .addProcessor(aprilTag)
                 .setCameraResolution(new Size(1280, 800))
                 .build();
@@ -113,6 +129,11 @@ public class TeleopSkunkworks extends LinearOpMode {
         // Wait for the game to start (driver presses PLAY)
         waitForStart();
 
+        // Bulk-query all odometry data (establish starting position)
+//      robot.resetOdometryEncoders();
+        robot.readBulkData();
+        imuAngleInitial = robot.headingIMU();
+
         // run until the end of the match (driver presses STOP)
         while (opModeIsActive())
         {
@@ -121,6 +142,21 @@ public class TeleopSkunkworks extends LinearOpMode {
 
             // Bulk-refresh the Control/Expansion Hub device status (motor status, digital I/O) -- FASTER!
             robot.readBulkData();
+
+            // Compute updated robot position/orientation
+            globalCoordinatePositionUpdate();
+            imuAngleCurrent = robot.headingIMU();
+            imuAngleDegrees = AngleWrapDegrees( imuAngleCurrent - imuAngleInitial );
+
+            processStandardDriveMode();
+
+            // NOTE: By starting the robot aligned on the corner of a field tile, and then
+            // manually rotating 10 full circles (ending up aligned with the floor tile edge)
+            // an error-factor can be computed for the current robotEncoderWheelDistance value.
+            // This value must be divided by robot.COUNTS_PER_INCH2 to view it in INCHES.
+            robotEncoderWheelDistanceError = Math.abs(robot.leftOdometerCount) + Math.abs(robot.rightOdometerCount);
+            robotEncoderWheelDistanceError /= (10 * 2*Math.PI);   // the expected value for 10 loops
+            robotEncoderWheelDistanceError -= robotEncoderWheelDistance;
 
             // Check for an OFF-to-ON toggle of the gamepad1 TRIANGLE button (toggles SINGLE-MOTOR drive control)
             if( gamepad1_triangle_now && !gamepad1_triangle_last)
@@ -199,10 +235,21 @@ public class TeleopSkunkworks extends LinearOpMode {
 
             // Update telemetry data for positioning
             telemetry.addData("Corrected Global Position", "X %.2f Y %.2f Angle %.2f", robotGlobalCoordinateCorrectedPosition.getX(),
-                    robotGlobalCoordinateCorrectedPosition.getY(),  Math.toDegrees(robotGlobalCoordinateCorrectedPosition.getAngleRadians()));
+                    robotGlobalCoordinateCorrectedPosition.getY(),  robotGlobalCoordinateCorrectedPosition.getAngleDegrees());
+            telemetry.addData("CycleTime", "%.1f msec (%.1f Hz)", elapsedTime, elapsedHz );
+
+            //Update telemetry data for odometry
+            telemetry.addData("Wheel Base Separation", (robotEncoderWheelDistance / robot.COUNTS_PER_INCH2) );
+            telemetry.addData("Wheel Base Error (10 rotations)", robotEncoderWheelDistanceError );
+            telemetry.addData("Horizontal Tick/Degree", horizontalEncoderTickPerDegreeOffset );
+            telemetry.addData("Odometry left",   "%d", robot.leftOdometerCount  );
+            telemetry.addData("Odometry right",  "%d", robot.rightOdometerCount );
+            telemetry.addData("Odometry strafe", "%d", robot.strafeOdometerCount );
+            telemetry.addData("World X",     "%.2f in", (robotGlobalYCoordinatePosition / robot.COUNTS_PER_INCH2) );
+            telemetry.addData("World Y",     "%.2f in", (robotGlobalXCoordinatePosition / robot.COUNTS_PER_INCH2) );
+            telemetry.addData("Orientation", "%.2f deg (IMU %.2f)", Math.toDegrees(robotOrientationRadians), imuAngleDegrees );
             telemetry.addData("CycleTime", "%.1f msec (%.1f Hz)", elapsedTime, elapsedHz );
             telemetry.update();
-
             // Pause for metronome tick.  40 mS each cycle = update 25 times a second.
             robot.waitForTick(40);
         } // opModeIsActive
@@ -507,4 +554,49 @@ public class TeleopSkunkworks extends LinearOpMode {
 
     } // processDriverCentricDriveMode
 
+    public double AngleWrapDegrees( double angleDegrees ){
+        while( angleDegrees < -180 ) {
+            angleDegrees += 360.0;
+        }
+        while( angleDegrees > 180 ){
+            angleDegrees -= 360.0;
+        }
+        return angleDegrees;
+    } // AngleWrapDegrees
+
+    /**
+     * Ensure angle is in the range of -PI to +PI (-180 to +180 deg)
+     * @param angleRadians
+     * @return
+     */
+    public double AngleWrapRadians( double angleRadians ){
+        while( angleRadians < -Math.PI ) {
+            angleRadians += 2.0*Math.PI;
+        }
+        while( angleRadians > Math.PI ){
+            angleRadians -= 2.0*Math.PI;
+        }
+        return angleRadians;
+    }
+
+    /**
+     * Updates the global (x, y, theta) coordinate position of the robot using the odometry encoders
+     */
+    private void globalCoordinatePositionUpdate(){
+        //Get Current Positions
+        int leftChange  = robot.leftOdometerCount  - robot.leftOdometerPrev;
+        int rightChange = robot.rightOdometerCount - robot.rightOdometerPrev;
+        //Calculate Angle
+        double changeInRobotOrientation = (leftChange - rightChange) / (robotEncoderWheelDistance);
+        robotOrientationRadians += changeInRobotOrientation;
+        robotOrientationRadians = AngleWrapRadians( robotOrientationRadians );   // Keep between -PI and +PI
+        //Get the components of the motion
+        int rawHorizontalChange = robot.strafeOdometerCount - robot.strafeOdometerPrev;
+        double horizontalChange = rawHorizontalChange - (changeInRobotOrientation*horizontalEncoderTickPerDegreeOffset);
+        double p = ((rightChange + leftChange) / 2.0);
+        double n = horizontalChange;
+        //Calculate and update the position values
+        robotGlobalXCoordinatePosition += (p*Math.sin(robotOrientationRadians) + n*Math.cos(robotOrientationRadians));
+        robotGlobalYCoordinatePosition += (p*Math.cos(robotOrientationRadians) - n*Math.sin(robotOrientationRadians));
+    } // globalCoordinatePositionUpdate
 } // TeleopSkunkworks
