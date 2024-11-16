@@ -97,7 +97,7 @@ public class AutonomousRightRed extends AutonomousBase {
         //---------------------------------------------------------------------------------
         // AUTONOMOUS ROUTINE:  The following method is our main autonomous.
         // Comment it out if running one of the unit tests above.
-        mainAutonomous();
+        mainAutonomous(5);
         //---------------------------------------------------------------------------------
 
         telemetry.addData("Program", "Complete");
@@ -133,22 +133,32 @@ public class AutonomousRightRed extends AutonomousBase {
     } // unitTestOdometryDrive
 
     /*--------------------------------------------------------------------------------------------*/
-    private void mainAutonomous() {
+    private void mainAutonomous(int scoreSpecimens) {
 
         // Do we start with an initial delay?
         if( startDelaySec > 0 ) {
             sleep( startDelaySec * 1000 );
         }
 
-        // Score the preloaded specimen
-        scoreSpecimenPreload();
+        // Score starting specimen
+        scoreSpecimen(specimensScored);
+        int specimensScored = 1;
+
+        while (specimensScored < scoreSpecimens) {
+            herdSample(specimensScored);
+            collectSpecimen();
+            scoreSpecimen(specimensScored);
+            specimensScored++;
+        } 
 
         // Score the preloaded specimen
         parkInObservation();
 
     } // mainAutonomous
 
-    private void scoreSpecimenPreload() {
+    private void scoreSpecimen(int specimensScored) {
+        // TODO: UPDATE IMPLEMENTATION TO ALLOW MULTIPLE SCORING (DIFFERENT POSITIONS)
+
         // Drive forward to submersible
         if( opModeIsActive() ) {
             telemetry.addData("Motion", "Move to submersible");
@@ -251,7 +261,15 @@ public class AutonomousRightRed extends AutonomousBase {
             } while( autoTiltMotorMoving() );
         } // opModeIsActive
 
-    } // scoreSpecimenPreload
+    } // scoreSpecimen
+
+    private void herdSample(int specimensScored) {
+        // TODO: FILL IN IMPLEMENTATION
+    }
+
+    private void collectSpecimen() {
+        // TODO: FILL IN IMPLEMENTATION
+    }
 
     private void parkInObservation() {
         // Back up from submersible
