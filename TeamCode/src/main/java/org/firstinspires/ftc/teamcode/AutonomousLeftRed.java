@@ -133,155 +133,37 @@ public class AutonomousLeftRed extends AutonomousBase {
     } // unitTestOdometryDrive
 
     /*--------------------------------------------------------------------------------------------*/
-    private void mainAutonomous() {
+    private void mainAutonomous(int scoreSamples) {
 
         // Do we start with an initial delay?
         if( startDelaySec > 0 ) {
             sleep( startDelaySec * 1000 );
         }
 
-        // Score the preloaded specimen
-        scoreSpecimenPreload();
+        // Score starting sample
+        scoreSample();
+        int samplesScored = 1;
 
-        // Score the preloaded specimen
-         parkSafeButNoPoints();
+        while (samplesScored < scoreSamples) {
+            collectSample(samplesScored);
+            scoreSample();
+            samplesScored++;
+        } 
+
+         level1Ascent();
 
     } // mainAutonomous
 
-    private void scoreSpecimenPreload() {
-        // Drive forward to submersible
-        if( opModeIsActive() ) {
-            telemetry.addData("Motion", "Move to submersible");
-            telemetry.update();
-            // Move away from field wall (viper slide motor will hit field wall if we tilt up too soon!)
-//          driveToPosition( 3.0, 0.0, 0.0, DRIVE_SPEED_20, TURN_SPEED_20, DRIVE_THRU );
-            gyroDrive(DRIVE_SPEED_20, DRIVE_Y, 3.0, 999.9, DRIVE_THRU );
-            autoTiltMotorMoveToTarget( robot.TILT_ANGLE_AUTO1);
-//          driveToPosition( 6.0, 0.0, 0.0, DRIVE_SPEED_20, TURN_SPEED_20, DRIVE_THRU );
-            gyroDrive(DRIVE_SPEED_20, DRIVE_Y, 3.0, 999.9, DRIVE_THRU );
-            robot.elbowServo.setPosition(robot.ELBOW_SERVO_BAR1);
-            robot.wristServo.setPosition(robot.WRIST_SERVO_BAR1);
-//          driveToPosition( 9.0, 0.0, 0.0, DRIVE_SPEED_20, TURN_SPEED_20, DRIVE_TO );
-            gyroDrive(DRIVE_SPEED_20, DRIVE_Y, 3.0, 999.9, DRIVE_TO );
-            robot.elbowServo.setPosition(robot.ELBOW_SERVO_BAR2);
-            robot.wristServo.setPosition(robot.WRIST_SERVO_BAR2);
-            // shift away from alliance partner
-            gyroDrive(DRIVE_SPEED_20, DRIVE_X, 3.0, 999.9, DRIVE_TO );
-            robot.driveTrainMotorsZero();
-            do {
-                if( !opModeIsActive() ) break;
-                // wait for lift/tilt to finish...
-                sleep( 150 );
-                // update all our status
-                performEveryLoop();
-            } while( autoTiltMotorMoving() );
-        } // opModeIsActive
+    private void scoreSample() {
 
-        if( opModeIsActive() ) {
-  //        driveToPosition( 22.0, 0.0, -45.0, DRIVE_SPEED_20, TURN_SPEED_20, DRIVE_TO );
-            gyroDrive(DRIVE_SPEED_20, DRIVE_Y, 23.0, 999.9, DRIVE_TO );
-            double startAngle = getAngle();
-            gyroTurn(TURN_SPEED_20, (startAngle - 45) );   // Turn CCW 45 degrees
-            robot.driveTrainMotorsZero();
-            autoViperMotorMoveToTarget( robot.VIPER_EXTEND_AUTO1);
-            do {
-                if( !opModeIsActive() ) break;
-                // wait for lift/tilt to finish...
-                sleep( 200 );
-                // update all our status
-                performEveryLoop();
-            } while( autoViperMotorMoving() );
-        } // opModeIsActive
+    } // scoreSample
 
-        // Rotate lift down to get specimen close to bar
-        if( opModeIsActive() ) {
-            robot.geckoServo.setPower(-0.50); // hold it while we clip
-            autoTiltMotorMoveToTarget( robot.TILT_ANGLE_AUTO2);
-            do {
-                if( !opModeIsActive() ) break;
-                // wait for lift/tilt to finish...
-                sleep( 150 );
-                // update all our status
-                performEveryLoop();
-            } while( autoTiltMotorMoving() );
-        } // opModeIsActive
+    private void collectSample(int samplesScored) {
+        
+    } // scoreSample
 
-        // Retract lift to clip the specimen on the bar
-        if( opModeIsActive() ) {
-            autoViperMotorMoveToTarget( robot.VIPER_EXTEND_AUTO2);
-            do {
-                if( !opModeIsActive() ) break;
-                // wait for lift/tilt to finish...
-                sleep( 200 );
-                // update all our status
-                performEveryLoop();
-            } while( autoViperMotorMoving() );
-        } // opModeIsActive
-
-        // Release the specimen once its clipped
-        if( opModeIsActive() ) {
-            robot.geckoServo.setPower(0.25); // release
-            sleep( 750 );
-            robot.geckoServo.setPower(0.0); // stop
-        } // opModeIsActive
-
-        // Retract the arm for parking
-        if( opModeIsActive() ) {
-            autoViperMotorMoveToTarget( robot.VIPER_EXTEND_ZERO);
-            do {
-                if( !opModeIsActive() ) break;
-                // wait for lift/tilt to finish...
-                sleep( 200 );
-                // update all our status
-                performEveryLoop();
-            } while( autoViperMotorMoving() );
-            robot.elbowServo.setPosition(robot.ELBOW_SERVO_INIT);
-            robot.wristServo.setPosition(robot.WRIST_SERVO_INIT);
-        } // opModeIsActive
-
-        // Lower the arm for parking
-        if( opModeIsActive() ) {
-            autoTiltMotorMoveToTarget( robot.TILT_ANGLE_ZERO);
-            do {
-                if( !opModeIsActive() ) break;
-                // wait for lift/tilt to finish...
-                sleep( 150 );
-                // update all our status
-                performEveryLoop();
-            } while( autoTiltMotorMoving() );
-        } // opModeIsActive
-
-    } // scoreSpecimenPreload
-
-    private void parkSafeButNoPoints() {
-        if( opModeIsActive() ) {
-            // Back up from submersible
-            // gyroDrive(DRIVE_SPEED_40, DRIVE_Y, -12.0, 999.9, DRIVE_TO );
-            double startAngle = getAngle();
-            gyroTurn(TURN_SPEED_40, (startAngle - 45) );   // Turn CCW 45 degrees
-            // Drive forward toward the wall
-            gyroDrive(DRIVE_SPEED_40, DRIVE_Y, 38.0, 999.9, DRIVE_THRU );
-        } // opModeIsActive
-
-        if( opModeIsActive() ) {
-            // Strafe towards submersible
-            gyroDrive(DRIVE_SPEED_40, DRIVE_X, 32.0, 999.9, DRIVE_THRU );
-            // Drive backward
-            gyroDrive(DRIVE_SPEED_20, DRIVE_Y, -19, 999.9, DRIVE_TO );
-        } // opModeIsActive
-
-        if( opModeIsActive() ) {
-            autoViperMotorMoveToTarget( robot.VIPER_EXTEND_GRAB);
-            autoTiltMotorMoveToTarget( robot.TILT_ANGLE_BASKET);
-            do {
-                if( !opModeIsActive() ) break;
-                // wait for lift/tilt to finish...
-                sleep( 150 );
-                // update all our status
-                performEveryLoop();
-            } while( autoTiltMotorMoving() || autoViperMotorMoving() );
-        } // opModeIsActive
-
-    } // parkSafeButNoPoints
+    private void level1Ascent() {
+      
+    } // level1Ascent
 
 } /* AutonomousLeftRed */
