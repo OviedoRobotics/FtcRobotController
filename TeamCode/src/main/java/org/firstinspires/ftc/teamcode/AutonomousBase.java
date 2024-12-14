@@ -332,14 +332,16 @@ public abstract class AutonomousBase extends LinearOpMode {
     }
 
     /*---------------------------------------------------------------------------------*/
-    void autoViperMotorMoveToTarget(int targetEncoderCount )
-    {
+    void autoViperMotorMoveToTarget(int targetEncoderCount ) throws TeleopInactiveException {
         autoViperMotorMoveToTarget(targetEncoderCount, 1.0);
     } // autoViperMotorMoveToTarget
 
     /*---------------------------------------------------------------------------------*/
-    void autoViperMotorMoveToTarget(int targetEncoderCount, double power)
-    {
+    void autoViperMotorMoveToTarget(int targetEncoderCount, double power) throws TeleopInactiveException {
+        if(!opModeIsActive()) {
+            throw new TeleopInactiveException();
+        }
+
         // Configure target encoder count
         robot.viperMotor.setTargetPosition( targetEncoderCount );
         // Enable RUN_TO_POSITION mode
@@ -373,13 +375,15 @@ public abstract class AutonomousBase extends LinearOpMode {
     } // autoViperMotorWaitToComplete
 
     /*---------------------------------------------------------------------------------*/
-    void autoTiltMotorMoveToTarget(double targetArmAngle )
-    {
+    void autoTiltMotorMoveToTarget(double targetArmAngle ) throws TeleopInactiveException {
         autoTiltMotorMoveToTarget( targetArmAngle, 0.80 );
     } // autoTiltMotorMoveToTarget
 
-    void autoTiltMotorMoveToTarget(double targetArmAngle, double power )
-    {
+    void autoTiltMotorMoveToTarget(double targetArmAngle, double power ) throws TeleopInactiveException {
+        if(!opModeIsActive()) {
+            throw new TeleopInactiveException();
+        }
+
         // Convert angle to encoder counts
         int targetEncoderCount = Hardware2025Bot.computeEncoderCountsFromAngle(targetArmAngle);
         // Configure target encoder count
@@ -930,7 +934,10 @@ public abstract class AutonomousBase extends LinearOpMode {
 
     //============================ ODOMETRY-BASED NAVIGATION FUNCTIONS ============================
     public void driveToPosition(double yTarget, double xTarget, double angleTarget,
-                                double speedMax, double turnMax, int driveType) {
+                                double speedMax, double turnMax, int driveType) throws TeleopInactiveException {
+        if(!opModeIsActive()) {
+            throw new TeleopInactiveException();
+        }
         // Loop until we get to destination.
         performEveryLoop();
         while(!driveToXY(yTarget, xTarget, angleTarget,

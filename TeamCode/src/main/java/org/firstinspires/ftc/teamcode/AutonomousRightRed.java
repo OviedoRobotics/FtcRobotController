@@ -124,7 +124,7 @@ public class AutonomousRightRed extends AutonomousBase {
 
     /*--------------------------------------------------------------------------------------------*/
     // TEST CODE: Verify odometry-based motion functions against a tape measure
-    private void unitTestOdometryDrive() {
+    private void unitTestOdometryDrive() throws TeleopInactiveException {
         // Drive forward 12"
         driveToPosition( 12.0, 0.0, 0.0, DRIVE_SPEED_20, TURN_SPEED_20, DRIVE_TO );
         // Strafe right 12"
@@ -162,29 +162,34 @@ public class AutonomousRightRed extends AutonomousBase {
             sleep( startDelaySec * 1000 );
         }
 
-        // Score the preloaded SPECIMEN
-        if( !onlyPark && scorePreloadSpecimen ) {
-            scoreSpecimenPreload();
-        }
+        try {
+
+            // Score the preloaded SPECIMEN
+            if( !onlyPark && scorePreloadSpecimen ) {
+                scoreSpecimenPreload();
+            }
 
 
-        if( !onlyPark && (spikeSamples > 0) ) {
-            herdSamples(spikeSamples);
-        }
-/*
-        // Score starting specimen
-        scoreSpecimen(specimensScored);
-        int specimensScored = 1;
-
-        while (specimensScored < scoreSpecimens) {
-            herdSample(specimensScored);
-            collectSpecimen();
+            if( !onlyPark && (spikeSamples > 0) ) {
+                herdSamples(spikeSamples);
+            }
+    /*
+            // Score starting specimen
             scoreSpecimen(specimensScored);
-            specimensScored++;
-        } 
-*/
-        // Park for 3pts (observation zone)
-        parkInObservation();
+            int specimensScored = 1;
+
+            while (specimensScored < scoreSpecimens) {
+                herdSample(specimensScored);
+                collectSpecimen();
+                scoreSpecimen(specimensScored);
+                specimensScored++;
+            }
+    */
+            // Park for 3pts (observation zone)
+            parkInObservation();
+
+        } catch (TeleopInactiveException e) {
+        }
         
         // ensure motors are turned off even if we run out of time
         robot.driveTrainMotorsZero();
@@ -192,74 +197,66 @@ public class AutonomousRightRed extends AutonomousBase {
     } // mainAutonomous
 
     /*--------------------------------------------------------------------------------------------*/
-    private void scoreSpecimenPreload() {
+    private void scoreSpecimenPreload() throws TeleopInactiveException {
         // Drive forward to submersible
-        if( opModeIsActive() ) {
-            telemetry.addData("Motion", "Move to submersible");
-            telemetry.update();
-            // Move away from field wall (viper slide motor will hit field wall if we tilt up too soon!)
-            pos_y=3.0; pos_x=0.0; pos_angle=0.0; // start at this absolute location
-            driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_50, TURN_SPEED_20, DRIVE_THRU );
-            autoTiltMotorMoveToTarget(Hardware2025Bot.TILT_ANGLE_AUTO1_DEG);
-            pos_y += 3.0;
-            driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_70, TURN_SPEED_20, DRIVE_THRU );
-            robot.elbowServo.setPosition(robot.ELBOW_SERVO_BAR1);
-            robot.wristServo.setPosition(robot.WRIST_SERVO_BAR1);
-            pos_y += 3.0;
-            driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_70, TURN_SPEED_20, DRIVE_THRU );
-            robot.elbowServo.setPosition(robot.ELBOW_SERVO_BAR2);
-            robot.wristServo.setPosition(robot.WRIST_SERVO_BAR2);
-            // approach submersible away from alliance partner
-            pos_y += 11.0;  pos_x -= 2.2;
-            driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_70, TURN_SPEED_20, DRIVE_TO );
-            robot.driveTrainMotorsZero();
-            do {
-                if( !opModeIsActive() ) break;
-                // wait for lift/tilt to finish...
-                sleep( 150 );
-                // update all our status
-                performEveryLoop();
-            } while( autoTiltMotorMoving() );
-        } // opModeIsActive
+        telemetry.addData("Motion", "Move to submersible");
+        telemetry.update();
+        // Move away from field wall (viper slide motor will hit field wall if we tilt up too soon!)
+        pos_y=3.0; pos_x=0.0; pos_angle=0.0; // start at this absolute location
+        driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_50, TURN_SPEED_20, DRIVE_THRU );
+        autoTiltMotorMoveToTarget(Hardware2025Bot.TILT_ANGLE_AUTO1_DEG);
+        pos_y += 3.0;
+        driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_70, TURN_SPEED_20, DRIVE_THRU );
+        robot.elbowServo.setPosition(robot.ELBOW_SERVO_BAR1);
+        robot.wristServo.setPosition(robot.WRIST_SERVO_BAR1);
+        pos_y += 3.0;
+        driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_70, TURN_SPEED_20, DRIVE_THRU );
+        robot.elbowServo.setPosition(robot.ELBOW_SERVO_BAR2);
+        robot.wristServo.setPosition(robot.WRIST_SERVO_BAR2);
+        // approach submersible away from alliance partner
+        pos_y += 11.0;  pos_x -= 2.2;
+        driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_70, TURN_SPEED_20, DRIVE_TO );
+        robot.driveTrainMotorsZero();
+        do {
+            if( !opModeIsActive() ) break;
+            // wait for lift/tilt to finish...
+            sleep( 150 );
+            // update all our status
+            performEveryLoop();
+        } while( autoTiltMotorMoving() );
 
-        if( opModeIsActive() ) {
-            pos_y += 12.0;  pos_angle = 45.0;
-            driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_70, TURN_SPEED_50, DRIVE_TO );
-            robot.driveTrainMotorsZero();
-            autoViperMotorMoveToTarget( robot.VIPER_EXTEND_AUTO1);
-            do {
-                if( !opModeIsActive() ) break;
-                // wait for lift/tilt to finish...
-                sleep( 50 );
-                // update all our status
-                performEveryLoop();
-            } while( autoViperMotorMoving() );
-        } // opModeIsActive
+        pos_y += 12.0;  pos_angle = 45.0;
+        driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_70, TURN_SPEED_50, DRIVE_TO );
+        robot.driveTrainMotorsZero();
+        autoViperMotorMoveToTarget( robot.VIPER_EXTEND_AUTO1);
+        do {
+            if( !opModeIsActive() ) break;
+            // wait for lift/tilt to finish...
+            sleep( 50 );
+            // update all our status
+            performEveryLoop();
+        } while( autoViperMotorMoving() );
 
         // Rotate lift down to get specimen close to bar
-        if( opModeIsActive() ) {
-            robot.geckoServo.setPower(-0.50); // hold it while we clip
-            autoTiltMotorMoveToTarget(Hardware2025Bot.TILT_ANGLE_AUTO2_DEG,0.80 );
-            do {
-                if( !opModeIsActive() ) break;
-                // wait for lift/tilt to finish...
-                sleep( 50 );
-                // update all our status
-                performEveryLoop();
-            } while( autoTiltMotorMoving() );
-        } // opModeIsActive
+        robot.geckoServo.setPower(-0.50); // hold it while we clip
+        autoTiltMotorMoveToTarget(Hardware2025Bot.TILT_ANGLE_AUTO2_DEG,0.80 );
+        do {
+            if( !opModeIsActive() ) break;
+            // wait for lift/tilt to finish...
+            sleep( 50 );
+            // update all our status
+            performEveryLoop();
+        } while( autoTiltMotorMoving() );
 
         // Retract lift to clip the specimen on the bar
-        if( opModeIsActive() ) {
-            autoViperMotorMoveToTarget( Hardware2025Bot.VIPER_EXTEND_AUTO2);
-            do {
-                if( !opModeIsActive() ) break;
-                // wait for lift/tilt to finish...
-                sleep( 50 );
-                // update all our status
-                performEveryLoop();
-            } while( autoViperMotorMoving() );
-        } // opModeIsActive
+        autoViperMotorMoveToTarget( Hardware2025Bot.VIPER_EXTEND_AUTO2);
+        do {
+            if( !opModeIsActive() ) break;
+            // wait for lift/tilt to finish...
+            sleep( 50 );
+            // update all our status
+            performEveryLoop();
+        } while( autoViperMotorMoving() );
 
         // Release the specimen once its clipped
         if( opModeIsActive() ) {
@@ -269,16 +266,14 @@ public class AutonomousRightRed extends AutonomousBase {
         } // opModeIsActive
 
         // Retract the arm for parking
-        if( opModeIsActive() ) {
-            autoViperMotorMoveToTarget( Hardware2025Bot.VIPER_EXTEND_ZERO);
-            do {
-                if( !opModeIsActive() ) break;
-                // wait for lift/tilt to finish...
-                sleep( 50 );
-                // update all our status
-                performEveryLoop();
-            } while( autoViperMotorMoving() );
-        } // opModeIsActive
+        autoViperMotorMoveToTarget( Hardware2025Bot.VIPER_EXTEND_ZERO);
+        do {
+            if( !opModeIsActive() ) break;
+            // wait for lift/tilt to finish...
+            sleep( 50 );
+            // update all our status
+            performEveryLoop();
+        } while( autoViperMotorMoving() );
 
         // Store the collector
         if( opModeIsActive() ) {
@@ -287,25 +282,23 @@ public class AutonomousRightRed extends AutonomousBase {
         } // opModeIsActive
 
         // Lower the arm for parking
-        if( opModeIsActive() ) {
-            autoTiltMotorMoveToTarget(Hardware2025Bot.TILT_ANGLE_ZERO_DEG);
-            do {
-                if( !opModeIsActive() ) break;
-                // wait for lift/tilt to finish...
-                sleep( 50 );
-                // update all our status
-                performEveryLoop();
-            } while( autoTiltMotorMoving() );
-            // Back up from submersible
-            pos_y -= 2.0;  pos_x += 16.2;
-            driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_70, TURN_SPEED_50, DRIVE_TO );
-        } // opModeIsActive
+        autoTiltMotorMoveToTarget(Hardware2025Bot.TILT_ANGLE_ZERO_DEG);
+        do {
+            if( !opModeIsActive() ) break;
+            // wait for lift/tilt to finish...
+            sleep( 50 );
+            // update all our status
+            performEveryLoop();
+        } while( autoTiltMotorMoving() );
+        // Back up from submersible
+        pos_y -= 2.0;  pos_x += 16.2;
+        driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_70, TURN_SPEED_50, DRIVE_TO );
 
     } // scoreSpecimenPreload
 
-    private void herdSamples(int samplesToHerd) {
+    private void herdSamples(int samplesToHerd) throws TeleopInactiveException {
         // Do we herd the first specimen?
-        if( opModeIsActive() && (samplesToHerd > 0) ) {
+        if( samplesToHerd > 0 ) {
             pos_y=30.0; pos_x=20.0; pos_angle=0.0; // start at this absolute location
             driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_90, TURN_SPEED_50, DRIVE_THRU );
             pos_y+=18.0; // 18" away from observation zone
@@ -316,7 +309,7 @@ public class AutonomousRightRed extends AutonomousBase {
             driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_90, TURN_SPEED_50, DRIVE_THRU );
         } // opModeIsActive
         // What about the 2nd?
-        if( opModeIsActive() && (samplesToHerd > 1) ) {
+        if( samplesToHerd > 1 ) {
             pos_y=48.0; pos_x=34.0; pos_angle=0.0; // start at this absolute location
             driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_90, TURN_SPEED_50, DRIVE_THRU );
             pos_x+=6.0; // 10" toward wall/samples
@@ -325,7 +318,7 @@ public class AutonomousRightRed extends AutonomousBase {
             driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_90, TURN_SPEED_50, DRIVE_THRU );
         } // opModeIsActive
         // What about the 3rd one against the wall?
-        if( opModeIsActive() && (samplesToHerd > 2) ) {
+        if( samplesToHerd > 2 ) {
             pos_y=44.0; pos_x=44.0; pos_angle=0.0; // start at this absolute location
             driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_90, TURN_SPEED_50, DRIVE_THRU );
             timeDriveStrafe(-DRIVE_SPEED_20,1250); // ensure we slowly align to the wall
@@ -360,8 +353,8 @@ public class AutonomousRightRed extends AutonomousBase {
     } // collectSpecimen
 */
 
-    private void parkInObservation() {
-        if( (spikeSamples < 1) && opModeIsActive() ) {
+    private void parkInObservation() throws TeleopInactiveException {
+        if( spikeSamples < 1 ) {
             // Rotate 90deg to face wall (protect collector from alliance partner damage)
             driveToPosition(12.0, 14.0, -91.0, DRIVE_SPEED_50, TURN_SPEED_50, DRIVE_THRU);
             // Park in far corner of observation zone
