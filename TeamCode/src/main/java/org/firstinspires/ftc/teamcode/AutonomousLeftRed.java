@@ -1,17 +1,10 @@
-/* FTC Team 7572 - Version 1.0 (11/11/2023)
+/* FTC Team 7572 - Version 1.0 (11/07/2024)
 */
 package org.firstinspires.ftc.teamcode;
 
-import android.util.Size;
+import static java.lang.Math.toDegrees;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
-import com.qualcomm.robotcore.eventloop.opmode.Disabled;
-import com.qualcomm.robotcore.util.ElapsedTime;
-
-import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
-import org.firstinspires.ftc.vision.VisionPortal;
-import org.firstinspires.ftc.vision.apriltag.AprilTagGameDatabase;
-import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
 /**
  * This program implements robot movement based on Gyro heading and encoder counts.
@@ -43,7 +36,9 @@ public class AutonomousLeftRed extends AutonomousBase {
     static final boolean DRIVE_Y = true;    // Drive forward/backward
     static final boolean DRIVE_X = false;   // Drive right/left (not DRIVE_Y)
 
-    ElapsedTime intakeTimer = new ElapsedTime();
+    boolean geckoServoCollecting = false;
+    
+    double pos_y=0, pos_x=0, pos_angle=0.0;  // Allows us to specify movement INCREMENTALLY, not ABSOLUTE
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -51,33 +46,33 @@ public class AutonomousLeftRed extends AutonomousBase {
         telemetry.addData("State", "Initializing (please wait)");
         telemetry.update();
 
-        // Initialize robot hardware
+        // Initialize robot hardware (autonomous mode)
         robot.init(hardwareMap,true);
 
         // Initialize webcams using OpenCV
-        telemetry.addData("State", "Initializing webcam (please wait)");
+        telemetry.addData("State", "Initializing (please wait)");
         telemetry.update();
-
-        // This is the line that determined what auto is run.
-        // This is left side red alliance.
-        pipelineBack = new CenterstageSuperPipeline(true, true );
-        aprilTag = new AprilTagProcessor.Builder()
-                .setTagLibrary(AprilTagGameDatabase.getCenterStageTagLibrary())
-                .setLensIntrinsics(904.214,904.214,696.3,362.796)
-                .build();
-        visionPortalBack = new VisionPortal.Builder()
-                .setCamera(hardwareMap.get(WebcamName.class, "Webcam Back"))
-                .addProcessors(pipelineBack, aprilTag)
-                .setCameraResolution(new Size(1280, 800))
-                .build();
-        //
-//     setWebcamManualExposure( 6, 250);  // Use low exposure time to reduce motion blur (screws with Prop hue-detection!!)
+        sleep( 1000 );
 
         // Wait for the game to start (driver presses PLAY).  While waiting, poll for options
-        parkLocation = PARK_NONE;  // blue-right normally stops under the truss
+        redAlliance  = true;
+        scorePreloadSpecimen = true;
+        spikeSamples =3;
+        parkLocation = PARK_SUBMERSIBLE;
+
         while (!isStarted()) {
             // Check for operator input that changes Autonomous options
             captureGamepad1Buttons();
+            // Do we need to preload a specimen?
+            if( gamepad1_r_bumper_now && !gamepad1_r_bumper_last) {
+                if (geckoServoCollecting) {
+                    //robot.geckoServo.setPower(0.00);  // toggle collect OFF
+                    geckoServoCollecting = false;
+                } else {
+                    //robot.geckoServo.setPower(-0.50); // toggle collect ON
+                    geckoServoCollecting = true;
+                }
+            }
             // Do we need to change any of the other autonomous options?
             processAutonomousInitMenu();
             // Pause briefly before looping
@@ -85,19 +80,17 @@ public class AutonomousLeftRed extends AutonomousBase {
         } // !isStarted
 
         // Ensure any movement during robot setup is reset to zero
-        setGlobalCoordinatePosition(0.0, 0.0, 0.0);
-        setCorrectedGlobalCoordinatePosition(0.0, 0.0, 0.0);
+        resetGlobalCoordinatePosition();
 
-        // Start the autonomous timer so we know how much time is remaining for cone cycling
+        // Start the autonomous timer so we know how much time is remaining when cycling samples
         autonomousTimer.reset();
 
         // Only do these steps if we didn't hit STOP
         if( opModeIsActive() ) {
-            pixelNumber = 0;
-            createAutoStorageFolder(redAlliance, pipelineBack.leftSide);
-            pipelineBack.setStorageFolder(storageDir);
-            spikeMark = pipelineBack.spikeMark;
-            pipelineBack.saveSpikeMarkAutoImage();
+//          pixelNumber = 0;
+//          createAutoStorageFolder(redAlliance, pipelineBack.leftSide);
+//          pipelineBack.setStorageFolder(storageDir);
+//          pipelineBack.saveSpikeMarkAutoImage();
         }
 
         //---------------------------------------------------------------------------------
@@ -110,197 +103,361 @@ public class AutonomousLeftRed extends AutonomousBase {
         //---------------------------------------------------------------------------------
         // AUTONOMOUS ROUTINE:  The following method is our main autonomous.
         // Comment it out if running one of the unit tests above.
-        mainAutonomous( spikeMark );
+        mainAutonomous();
         //---------------------------------------------------------------------------------
 
         telemetry.addData("Program", "Complete");
         telemetry.update();
 
-        visionPortalBack.close();
     } /* runOpMode() */
 
     /*--------------------------------------------------------------------------------------------*/
     // TEST CODE: Verify gyro/encoder-based motion functions against a tape measure
     private void testGyroDrive() {
         double startAngle;
-        gyroDrive(DRIVE_SPEED_50, DRIVE_Y, 24.0, 999.9, DRIVE_THRU ); // Drive FWD 24" along current heading
-        gyroDrive(DRIVE_SPEED_50, DRIVE_X, 24.0, 999.9, DRIVE_THRU ); // Strafe RIGHT 24" along current heading
-        gyroDrive(DRIVE_SPEED_50, DRIVE_Y, -24.0, 999.9, DRIVE_THRU);
-        gyroDrive(DRIVE_SPEED_50, DRIVE_X, -24.0, 999.9, DRIVE_THRU);
+        gyroDrive(DRIVE_SPEED_20, DRIVE_Y, 12.0, 999.9, DRIVE_THRU ); // Drive FWD 12" along current heading
+        gyroDrive(DRIVE_SPEED_20, DRIVE_X, 12.0, 999.9, DRIVE_TO  ); // Strafe RIGHT 12" along current heading
         // What is our starting angle?
         startAngle = getAngle();
-        gyroTurn(TURN_SPEED_80, (startAngle + 120.0) );   // Turn CW 120 degrees
-        gyroTurn(TURN_SPEED_80, (startAngle + 240.0) );   // Turn another 120 degrees (240 total)
-        gyroTurn(TURN_SPEED_80, startAngle );             // Turn back to starting angle (360 total)
+        gyroTurn(TURN_SPEED_20, (startAngle + 45) );   // Turn CW 45 degrees
     } // testGyroDrive
 
     /*--------------------------------------------------------------------------------------------*/
     // TEST CODE: Verify odometry-based motion functions against a tape measure
     private void unitTestOdometryDrive() {
+
+/*
         // Drive forward 12"
-        driveToPosition( 12.0, 0.0, 0.0, DRIVE_SPEED_50, TURN_SPEED_40, DRIVE_THRU );
+        driveToPosition( 12.0, 0.0, 0.0, DRIVE_SPEED_20, TURN_SPEED_20, DRIVE_TO );
         // Strafe right 12"
-        driveToPosition( 12.0, 12.0, 0.0, DRIVE_SPEED_50, TURN_SPEED_40, DRIVE_THRU );
+        driveToPosition( 12.0, 12.0, 0.0, DRIVE_SPEED_20, TURN_SPEED_20, DRIVE_TO );
         // Turn 180 deg
-        driveToPosition( 12.0, 12.0, 179.9, DRIVE_SPEED_50, TURN_SPEED_40, DRIVE_TO );
+        driveToPosition( 12.0, 12.0, 90.0, DRIVE_SPEED_20, TURN_SPEED_20, DRIVE_TO );
+        telemetry.addData("Final", "x=%.1f, y=%.1f, %.1f deg",
+                robotGlobalXCoordinatePosition, robotGlobalYCoordinatePosition, toDegrees(robotOrientationRadians) );
+ */
+        driveToPosition( 3.0, 0.0, 0.0, DRIVE_SPEED_70, TURN_SPEED_30, DRIVE_THRU );
+        driveToPosition( 32.0, 6.5, 45.0, DRIVE_SPEED_100, TURN_SPEED_30, DRIVE_TO );
+        // Report the final odometry position/orientation
+        telemetry.addData("Final", "x=%.1f, y=%.1f, %.1f deg",
+                robotGlobalXCoordinatePosition, robotGlobalYCoordinatePosition, toDegrees(robotOrientationRadians) );
+        telemetry.update();
+        sleep( 7000 );
     } // unitTestOdometryDrive
 
     /*--------------------------------------------------------------------------------------------*/
-    private void mainAutonomous( int spikemark ) {
-        double pos_y=0, pos_x=0, pos_angle=-90.0;
-        int backdropAprilTagID = 2; // default to BLUE CENTER
+    /* Autonomous Left:                                                                           */
+    /*   1 Starting point                                                                         */
+    /*   2 Place sample in upper bucket                                                           */
+    /*   3 Collect right neutral sample                                                           */
+    /*   4 Place sample in upper bucket                                                           */
+    /*   5 Collect center neutral sample                                                          */
+    /*   6 Place sample in upper bucket                                                           */
+    /*   7 Collect left neutral sample                                                            */
+    /*   8 Place sample in upper bucket                                                           */
+    /*   9 Level one ascent                                                                       */
+    /*--------------------------------------------------------------------------------------------*/
+    private void mainAutonomous() {
 
         // Do we start with an initial delay?
         if( startDelaySec > 0 ) {
             sleep( startDelaySec * 1000 );
         }
 
-     // Drive forward to spike mark
-        if( opModeIsActive() ) {
-            telemetry.addData("Motion", "Move to Spike Mark");
-            telemetry.update();
-            // This movement depends on whether it's left/center/right spike (1/2/3)
-            switch( spikemark ) {
-                case 3 : // RIGHT
-                    driveToPosition( -10.0, 0.0, 0.0, DRIVE_SPEED_30, TURN_SPEED_20, DRIVE_THRU );
-                    driveToPosition( -12.5, -0.5, -67.0, DRIVE_SPEED_30, TURN_SPEED_20, DRIVE_THRU );
-                    driveToPosition( -15.0, -1.0, -135.0, DRIVE_SPEED_30, TURN_SPEED_20, DRIVE_THRU );
-                    driveToPosition( -25.4, -11.0, -135.0, DRIVE_SPEED_30, TURN_SPEED_20, DRIVE_THRU);
-                    driveToPosition( -23.0, -9.5, -143.0, DRIVE_SPEED_30, TURN_SPEED_20, DRIVE_TO);
-                    break;
-                case 2:  // CENTER
-                    driveToPosition( -10.0, 3.0, 0.0, DRIVE_SPEED_30, TURN_SPEED_20, DRIVE_THRU );
-                    driveToPosition( -37.0, 6.0, -90.0, DRIVE_SPEED_30, TURN_SPEED_20, DRIVE_TO);
-                    break;
-                case 1:  // LEFT
-                default:
-                    driveToPosition( -9.0, 0.0, 0.0, DRIVE_SPEED_30, TURN_SPEED_20, DRIVE_THRU );
-                    driveToPosition( -16.0, 0.0, 90.0, DRIVE_SPEED_30, TURN_SPEED_20, DRIVE_THRU );
-                    driveToPosition( -30.0, 0.0, 90.0, DRIVE_SPEED_30, TURN_SPEED_20, DRIVE_THRU);
-                    driveToPosition( -25.0, 4.0, 160.0, DRIVE_SPEED_30, TURN_SPEED_20, DRIVE_TO);
-                    break;
-            } // switch
+        // Score the preloaded SPECIMEN
+        if( !onlyPark && scorePreloadSpecimen ) {
+            scoreSpecimenPreload();
         }
 
-        // Eject purple pixel
-        if( opModeIsActive()) {
-            telemetry.addData("Skill", "eject purple pixel");
-            telemetry.update();
-            // Lower the collector so the boot wheels don't touch the collector crossbar
-//            robot.collectorServo.setPosition(robot.COLLECTOR_SERVO_RAISED);
-            // Start the collector in ejecting-mode
-//            robot.collectorMotor.setPower(robot.COLLECTOR_EJECT_POWER);
-            // Back straight up for 0.85 sec to drop purple pixel on the spike mark line
-            timeDriveStraight( -0.20, 850 );
- //           robot.collectorMotor.setPower(0.0);
+        // Score the preloaded SAMPLE
+        if( !onlyPark && !scorePreloadSpecimen ) {
+            scoreSamplePreload();
         }
 
-        // Navigate back to channel 1 (avoid alliance partner's pixel in channel 2)
-        if( opModeIsActive() ) {
-            telemetry.addData("Motion", "navigate to channel 1");
-            telemetry.update();
-            switch( spikemark ) {
-                case 3 : // RIGHT
-                    driveToPosition( -20.0, -4.0, -150.0, DRIVE_SPEED_30, TURN_SPEED_20, DRIVE_THRU );
-                    driveToPosition( -19.0, -1.0, -150.0, DRIVE_SPEED_30, TURN_SPEED_20, DRIVE_THRU );
-                    driveToPosition( -15.0, -1.0, -178.0, DRIVE_SPEED_30, TURN_SPEED_20, DRIVE_THRU );
-                    driveToPosition( -13.0, -1.0, 175.0, DRIVE_SPEED_30, TURN_SPEED_20, DRIVE_THRU );
-                    driveToPosition( -8.0, -3.0, 160.0, DRIVE_SPEED_30, TURN_SPEED_20, DRIVE_THRU );
-                    driveToPosition( -6.0,  -6.0, 140.0, DRIVE_SPEED_30, TURN_SPEED_20, DRIVE_THRU);
-                    driveToPosition( -4.0, -20.0, 90.0, DRIVE_SPEED_30, TURN_SPEED_20, DRIVE_TO);
-                    pos_y = -4.0;
-                    break;
-                case 2:  // CENTER
-                    driveToPosition( -30.0, 12.0, -90.0, DRIVE_SPEED_30, TURN_SPEED_20, DRIVE_THRU);
-                    driveToPosition( -20.0, 8.0, -90.0, DRIVE_SPEED_30, TURN_SPEED_20, DRIVE_THRU);
-                    driveToPosition( -8.0, 1.0, 45.0, DRIVE_SPEED_30, TURN_SPEED_20, DRIVE_THRU);
-                    driveToPosition( -1.0, -20.0, 90.0, DRIVE_SPEED_30, TURN_SPEED_20, DRIVE_TO);
-                    pos_y = -1.0;
-                    break;
-                case 1:  // LEFT
-                default:
-                    driveToPosition( -12.0, 4.0, 150.0, DRIVE_SPEED_30, TURN_SPEED_20, DRIVE_THRU);
-                    driveToPosition( -4.0, 2.0, 135.0, DRIVE_SPEED_30, TURN_SPEED_20, DRIVE_THRU);
-                    driveToPosition( -1.0, -20.0, 90.0, DRIVE_SPEED_30, TURN_SPEED_20, DRIVE_TO);
-                    pos_y = -1.0;
-                    break;
-            } // switch
-            // Do we pause here under the truss?
-            if( trussDelaySec > 0 ) {
-                sleep( trussDelaySec * 1000 );
+        if( !onlyPark && (spikeSamples > 0) ) {
+            if( scorePreloadSpecimen ) {
+                driveToPosition(16.0, -19.0, 0.0, DRIVE_SPEED_90, TURN_SPEED_50, DRIVE_THRU);
             }
-        } // opModeIsActive
+            autoTiltMotorMoveToTarget(Hardware2025Bot.TILT_ANGLE_DRIVE_DEG, 0.80 );
+            autoViperMotorMoveToTarget( Hardware2025Bot.VIPER_EXTEND_AUTO_READY);
+            robot.elbowServo.setPosition(Hardware2025Bot.ELBOW_SERVO_GRAB);
+            robot.wristServo.setPosition(Hardware2025Bot.WRIST_SERVO_GRAB);
+            // Score starting sample
+            int samplesScored = 0;
 
-        // Drive into back stage area
-        if( opModeIsActive() ) {
-            telemetry.addData("Motion", "Drive into back stage");
-            telemetry.update();
-            if( audienceYellow || (parkLocation != PARK_NONE) ) {
-                driveToPosition( pos_y-1, -60.0, 90.0, DRIVE_SPEED_30, TURN_SPEED_20, DRIVE_THRU);
-                driveToPosition( pos_y-2, -70.0, 90.0, DRIVE_SPEED_30, TURN_SPEED_20, DRIVE_THRU);
-            } else {
-                // no yellow pixel and PARK_NONE means do nothing
+            while (samplesScored < spikeSamples) {
+                collectSample(samplesScored);
+                scoreSample();
+                samplesScored++;
             }
-        } // opModeIsActive
+        }
+        // Park for 3pts (level 1 ascent)
+//      level1Ascent();
 
-        // Align to backdrop to score yellow pixel?
-        if( opModeIsActive() && audienceYellow ) {
-            telemetry.addData("Motion", "Align to backdrop");
-            telemetry.update();
-            switch( spikemark ) {
-                // TODO: Audience side not repeatable enough to for 3" accuracy (odometry depends on starting alignment!)
-                // Once AprilTag navigation correction in place, then refine these numbers
-                case 1 : pos_y -= ((yellowOnLeft)? 27.0:27.0); pos_x = -84.0; break; // LEFT
-                case 2:  pos_y -= ((yellowOnLeft)? 23.0:23.0); pos_x = -84.0; break; // CENTER
-                case 3:  pos_y -= ((yellowOnLeft)? 22.0:22.0); pos_x = -84.0; break; // RIGHT
-                default: pos_y -= ((yellowOnLeft)? 23.0:23.0); pos_x = -84.0; break; // (CENTER)
-            } // switch
-            pos_angle = 90.0; // same for all 3 positions
-            driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_30, TURN_SPEED_20, DRIVE_THRU);
-            pos_x -= 6.0;  // we're roughly aligned; drive closer;
-            driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_20, TURN_SPEED_20, DRIVE_TO);
-        } // opModeIsActive
-
-        // Score yellow pixel
-        if( opModeIsActive() && audienceYellow ) {
-            double desiredDistanceCM;
-            double currentDistanceCM;
-            double driveOffsetInches;
-            telemetry.addData("Motion", "Score yellow pixel");
-            telemetry.update();
-            switch( spikemark ) {
-                case 3 : desiredDistanceCM = 13.0; break; // RIGHT
-                case 2:  desiredDistanceCM = 12.0; break; // CENTER
-                case 1:
-                default: desiredDistanceCM = 12.0; break; // LEFT
-            } // switch
-            currentDistanceCM = 6; // robot.getBackdropRange();
-            driveOffsetInches = (desiredDistanceCM-currentDistanceCM)/2.54;
-//          telemetry.addData("Backdrop Range", "%.1f CM", currentDistanceCM);
-//          telemetry.addData("Drive Offset", "%.1f IN", driveOffsetInches);
-//          telemetry.update();
-//          sleep(3000);
-            if( Math.abs(driveOffsetInches) < 7.0 ) {
-                pos_x += driveOffsetInches;
-                driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_20, TURN_SPEED_20, DRIVE_TO);
-            }
-            scoreYellowPixel();
-        } // opModeIsActive
-
-        // Park in back stage
-        if( opModeIsActive() && (parkLocation != PARK_NONE) ) { // Either PARK_LEFT or PARK_RIGHT does the same thing
-            telemetry.addData("Motion", "park in back stage");
-            telemetry.update();
-            // Are we parking from the backdrop or not?
-            if( audienceYellow) {
-               // Just back away from backdrop a bit
-                driveToPosition( pos_y, pos_x+2, pos_angle, DRIVE_SPEED_20, TURN_SPEED_20, DRIVE_TO);
-            }
-            else { // just finish the drive from the truss
-                driveToPosition( pos_y-1, -85.0, 90.0, DRIVE_SPEED_30, TURN_SPEED_20, DRIVE_TO);
-            }
-        } // opModeIsActive
+        // ensure motors are turned off even if we run out of time
+        robot.driveTrainMotorsZero();
 
     } // mainAutonomous
+
+    /*--------------------------------------------------------------------------------------------*/
+    private void scoreSpecimenPreload() {
+        // Drive forward to submersible
+        if( opModeIsActive() ) {
+            telemetry.addData("Motion", "Move to submersible");
+            telemetry.update();
+            // Move away from field wall (viper slide motor will hit field wall if we tilt up too soon!)
+            driveToPosition( 3.0, 0.0, 0.0, DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_THRU );
+            autoTiltMotorMoveToTarget(Hardware2025Bot.TILT_ANGLE_SPECIMEN1_DEG, 1.0 );
+            driveToPosition( 6.0, 0.0, 0.0, DRIVE_SPEED_90, TURN_SPEED_30, DRIVE_THRU );
+            robot.elbowServo.setPosition(Hardware2025Bot.ELBOW_SERVO_BAR2);
+            robot.wristServo.setPosition(Hardware2025Bot.WRIST_SERVO_BAR2);
+            autoViperMotorMoveToTarget( Hardware2025Bot.VIPER_EXTEND_AUTO1);
+            driveToPosition( 24.0, 4.0, 0.0, DRIVE_SPEED_30, TURN_SPEED_20, DRIVE_THRU );
+        } // opModeIsActive
+
+        if( opModeIsActive() ) {
+            driveToPosition( 34.8, 8.0, 45.0, DRIVE_SPEED_90, TURN_SPEED_50, DRIVE_TO );
+            do {
+                if( !opModeIsActive() ) break;
+                // wait for lift/tilt to finish...
+                sleep( 50 );
+                // update all our status
+                performEveryLoop();
+            } while( autoViperMotorMoving() || autoTiltMotorMoving());
+        } // opModeIsActive
+
+        // Rotate lift down to get specimen close to bar
+        if( opModeIsActive() ) {
+            //robot.geckoServo.setPower(-0.50); // hold it while we clip
+            autoTiltMotorMoveToTarget(Hardware2025Bot.TILT_ANGLE_SPECIMEN2_DEG,0.80 );
+            do {
+                if( !opModeIsActive() ) break;
+                // wait for lift/tilt to finish...
+                sleep( 50 );
+                // update all our status
+                performEveryLoop();
+            } while( autoTiltMotorMoving() );
+        } // opModeIsActive
+
+        // Retract lift to clip the specimen on the bar
+        if( opModeIsActive() ) {
+            autoViperMotorMoveToTarget( Hardware2025Bot.VIPER_EXTEND_AUTO2);
+            do {
+                if( !opModeIsActive() ) break;
+                // wait for lift/tilt to finish...
+                sleep( 50 );
+                // update all our status
+                performEveryLoop();
+            } while( autoViperMotorMoving() );
+        } // opModeIsActive
+
+        // Release the specimen once its clipped
+        if( opModeIsActive() ) {
+            //robot.geckoServo.setPower(0.25); // release
+            sleep( 750 );
+            //robot.geckoServo.setPower(0.0); // stop
+        } // opModeIsActive
+
+        //Prepare arm for what comes next (samples/parking)
+        if( spikeSamples > 0 ) {
+           prepareArmForSamples();
+        }
+        // Whether driving to park, or doing nothing, store the arm
+        else {
+           prepareArmForDriving();
+        }
+
+    } // scoreSpecimenPreload
+
+    /*--------------------------------------------------------------------------------------------*/
+    private void scoreSamplePreload() {
+        // Drive forward to submersible
+        if( opModeIsActive() ) {
+            telemetry.addData("Motion", "Move to submersible");
+            telemetry.update();
+            // Move away from field wall (viper slide motor will hit field wall if we tilt up too soon!)
+            driveToPosition( 3.0, 0.0, 0.0, DRIVE_SPEED_70, TURN_SPEED_30, DRIVE_THRU );
+            // Move to basket and score preloaded sample
+            scoreSample();
+        } // opModeIsActive
+
+    } // scoreSamplePreload
+
+    /*--------------------------------------------------------------------------------------------*/
+    private void prepareArmForSamples() {
+
+        // Setup the arm for scoring samples
+        if( opModeIsActive() ) {
+            autoViperMotorMoveToTarget( Hardware2025Bot.VIPER_EXTEND_SECURE);
+            do {
+                if( !opModeIsActive() ) break;
+                // wait for lift/tilt to finish...
+                sleep( 50 );
+                // update all our status
+                performEveryLoop();
+            } while( autoViperMotorMoving() );
+        } // opModeIsActive
+
+        // Position the collector
+        if( opModeIsActive() ) {
+            robot.elbowServo.setPosition(Hardware2025Bot.ELBOW_SERVO_GRAB);
+            robot.wristServo.setPosition(Hardware2025Bot.WRIST_SERVO_GRAB);
+        } // opModeIsActive
+
+    } // prepareArmForSamples
+
+    /*--------------------------------------------------------------------------------------------*/
+    private void prepareArmForDriving() {
+
+        // Retract any arm extension
+        if( opModeIsActive() ) {
+            autoViperMotorMoveToTarget( Hardware2025Bot.VIPER_EXTEND_ZERO);
+            do {
+                if( !opModeIsActive() ) break;
+                // wait for lift/tilt to finish...
+                sleep( 50 );
+                // update all our status
+                performEveryLoop();
+            } while( autoViperMotorMoving() );
+        } // opModeIsActive
+
+        // Store the collector
+        if( opModeIsActive() ) {
+            robot.elbowServo.setPosition(Hardware2025Bot.ELBOW_SERVO_INIT);
+            robot.wristServo.setPosition(Hardware2025Bot.WRIST_SERVO_INIT);
+        } // opModeIsActive
+
+        // Fully lower the arm
+        if( opModeIsActive() ) {
+            autoTiltMotorMoveToTarget(Hardware2025Bot.TILT_ANGLE_ZERO_DEG, 0.80 );
+            do {
+                if( !opModeIsActive() ) break;
+                // wait for lift/tilt to finish...
+                sleep( 50 );
+                // update all our status
+                performEveryLoop();
+            } while( autoTiltMotorMoving() );
+        } // opModeIsActive
+
+    } // prepareArmForDriving
+
+    //************************************
+    // Collect sample
+    //************************************
+    private void collectSample(int samplesScored) {
+        autoTiltMotorMoveToTarget(Hardware2025Bot.TILT_ANGLE_DRIVE_DEG, 0.80 );
+        autoViperMotorMoveToTarget( Hardware2025Bot.VIPER_EXTEND_AUTO_READY);
+        robot.elbowServo.setPosition(Hardware2025Bot.ELBOW_SERVO_GRAB);
+        robot.wristServo.setPosition(Hardware2025Bot.WRIST_SERVO_GRAB);
+
+        switch(samplesScored) {
+            case 0:
+                // Drive forward toward the wall
+                driveToPosition( 17.0, -37.25, 0.0, DRIVE_SPEED_100, TURN_SPEED_50, DRIVE_TO );
+                break;
+            case 1:
+                driveToPosition( 17.0, -47.25, 0.0, DRIVE_SPEED_100, TURN_SPEED_50, DRIVE_TO );
+                break;
+            case 2:
+                driveToPosition( 17.5, -53.0, 7.0, DRIVE_SPEED_100, TURN_SPEED_50, DRIVE_TO );
+                break;
+            default:
+        }
+        autoTiltMotorMoveToTarget(Hardware2025Bot.TILT_ANGLE_COLLECT_DEG, 0.80 );
+        do {
+            if( !opModeIsActive() ) break;
+            // wait for lift/tilt to finish...
+            sleep( 50 );
+            // update all our status
+            performEveryLoop();
+        } while( autoTiltMotorMoving() );
+        //robot.geckoServo.setPower( -1.0 );
+        autoViperMotorMoveToTarget( Hardware2025Bot.VIPER_EXTEND_AUTO_COLLECT, 0.5);
+        do {
+            if( !opModeIsActive() ) break;
+            // wait for lift/tilt to finish...
+            sleep( 50 );
+            // update all our status
+            performEveryLoop();
+        } while( autoViperMotorMoving() );
+        autoTiltMotorMoveToTarget(Hardware2025Bot.TILT_ANGLE_DRIVE_DEG, 0.80 );
+        autoViperMotorMoveToTarget( Hardware2025Bot.VIPER_EXTEND_AUTO_READY);
+    } // collectSample
+
+    //************************************
+    // Score Sample
+    //************************************
+    private void scoreSample() {
+        do {
+            if( !opModeIsActive() ) break;
+            // wait for lift/tilt to finish...
+            sleep( 50 );
+            // update all our status
+            performEveryLoop();
+        } while( autoTiltMotorMoving() );
+        autoTiltMotorMoveToTarget(Hardware2025Bot.TILT_ANGLE_AUTO_PRE_DEG, 1.0 );
+        driveToPosition( 10.0, -47.5, -32.0, DRIVE_SPEED_100, TURN_SPEED_50, DRIVE_THRU );
+        robot.startViperSlideExtension( Hardware2025Bot.VIPER_EXTEND_BASKET );
+        driveToPosition( 3.5, -47.5, -32.0, DRIVE_SPEED_100, TURN_SPEED_50, DRIVE_TO );
+        robot.elbowServo.setPosition(Hardware2025Bot.ELBOW_SERVO_SAFE);
+        robot.wristServo.setPosition(Hardware2025Bot.WRIST_SERVO_AUTO_SCORE);
+        do {
+            if( !opModeIsActive() ) break;
+            // wait for lift/tilt to finish...
+            sleep( 50 );
+            // update all our status
+            performEveryLoop();
+        } while( autoTiltMotorMoving() );
+        autoTiltMotorMoveToTarget(Hardware2025Bot.TILT_ANGLE_BASKET_DEG, 0.30 );
+        // Try swinging the intake back to see if it increases our scoring. Might move to after arm movement
+        do {
+            if( !opModeIsActive() ) break;
+            // wait for lift/tilt to finish...
+            sleep( 50 );
+            // update all our status
+            performEveryLoop();
+        } while( autoTiltMotorMoving() );
+        robot.elbowServo.setPosition(Hardware2025Bot.ELBOW_SERVO_SAFE);
+        robot.wristServo.setPosition(Hardware2025Bot.WRIST_SERVO_SAFE);
+        sleep(250);
+        //robot.geckoServo.setPower( 1.0 );
+        sleep(500);
+        robot.elbowServo.setPosition(Hardware2025Bot.ELBOW_SERVO_GRAB);
+        robot.wristServo.setPosition(Hardware2025Bot.WRIST_SERVO_GRAB);
+        sleep(100);
+        //robot.geckoServo.setPower( 0.0 );
+        autoTiltMotorMoveToTarget(Hardware2025Bot.TILT_ANGLE_DRIVE_DEG, 0.80 );
+        autoViperMotorMoveToTarget( Hardware2025Bot.VIPER_EXTEND_AUTO_READY);
+    } // scoreSample
+
+    private void level1Ascent() {
+        if( opModeIsActive() ) {
+            // Back up from submersible
+            driveToPosition( 32.0, 6.0, 90.0, DRIVE_SPEED_50, TURN_SPEED_50, DRIVE_TO );
+            // Drive forward toward the wall
+            driveToPosition( 38.0, -27.0, 90.0, DRIVE_SPEED_50, TURN_SPEED_30, DRIVE_TO );
+        } // opModeIsActive
+
+        if( opModeIsActive() ) {
+            // Strafe towards submersible
+            driveToPosition( 64.0, -27.0, 90.0, DRIVE_SPEED_70, TURN_SPEED_50, DRIVE_TO );
+            // Drive backward
+            driveToPosition( 64.0, -15.0, 90.0, DRIVE_SPEED_20, TURN_SPEED_20, DRIVE_TO );
+        } // opModeIsActive
+
+        if( opModeIsActive() ) {
+            autoViperMotorMoveToTarget( Hardware2025Bot.VIPER_EXTEND_GRAB);
+            autoTiltMotorMoveToTarget(Hardware2025Bot.TILT_ANGLE_ASCENT1_DEG, 0.80 );
+            timeDriveStraight(-DRIVE_SPEED_20,3000);
+            do {
+                if( !opModeIsActive() ) break;
+                // wait for lift/tilt to finish...
+                sleep( 150 );
+                // update all our status
+                performEveryLoop();
+            } while( autoTiltMotorMoving() || autoViperMotorMoving() );
+        } // opModeIsActive
+
+    } // level1Ascent
 
 } /* AutonomousLeftRed */
