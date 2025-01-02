@@ -113,22 +113,26 @@ public class Hardware2025Bot
     //                  94.5 deg 3896 encoder counts range
     public final static double ENCODER_COUNTS_PER_DEG  = 3896.0 / 94.5;
 
-    public final static double TILT_ANGLE_HW_MAX_DEG      = 95.00; // Arm at maximum rotation UP/BACK (horizontal = -200)
-    public final static double TILT_ANGLE_BASKET_DEG      = 95.00; // Arm at rotation back to the basket for scoring
-    public final static double TILT_ANGLE_AUTO_PRE_DEG    = 88.00; // Arm almost at  basket (start to slow; avoid wobble)
+    public final static double TILT_ANGLE_HW_MAX_DEG      = 90.00; // Arm at maximum rotation UP/BACK (horizontal = -200)
+    public final static double TILT_ANGLE_BASKET_DEG      = 90.00; // Arm at rotation back to the basket for scoring
+    public final static double TILT_ANGLE_AUTO_PRE_DEG    = 83.00; // Arm almost at  basket (start to slow; avoid wobble)
     public final static double TILT_ANGLE_ASCENT1_DEG     = 93.00; // Arm at rotation back to the low bar for ascent level 1 or 2
     public final static double TILT_ANGLE_ASCENT2_DEG     = 75.00; // Arm at rotation back to the low bar for ascent level 2
+    public final static double TILT_ANGLE_PARK_DEG        = 33.80; // Arm at rotation back to the low bar for park in auto
     public final static double TILE_ANGLE_BASKET_SAFE_DEG = 90.00; // Arm safe to rotate intake from basket
     public final static double TILT_ANGLE_VERTICAL_DEG    = 54.50; // Straight up vertical (safe to start retracting viper)
-    public final static double TILT_ANGLE_ZERO_DEG        =  7.00; // Arm for parking fully reset in auto
-    public final static double TILT_ANGLE_DRIVE_DEG       = 11.80; // Arm for parking in auto or driving around
+    public final static double TILT_ANGLE_ZERO_DEG        =  6.00; // Arm for parking fully reset in auto
+    public final static double TILT_ANGLE_DRIVE_DEG       =  6.00; // Arm for parking in auto or driving around
     public final static double TILT_ANGLE_SPECIMEN0_DEG   = 60.00; // (NEW) Angle for grabbing specimens off field wall
-    public final static double TILT_ANGLE_SPECIMEN1_DEG   = 65.00; // (NEW) Angle for scoring specimens (above bar)
-    public final static double TILT_ANGLE_SPECIMEN2_DEG   = 59.40; // (NEW) Angle for scoring specimens (clipped)
+    public final static double TILT_ANGLE_SPECIMEN1_DEG   = 65.00; // AUTO: Angle for scoring specimens (above bar)
+    public final static double TILT_ANGLE_SPECIMEN2_DEG   = 59.40; // AUTO: Angle for scoring specimens (clipped)
     public final static double TILT_ANGLE_HW_MIN_DEG      =  0.00; // Arm at maximum rotation DOWN/FWD
-    public final static double TILT_ANGLE_COLLECT_DEG     =  2.00; // Arm to collect samples at ground level
-    public final static double TILT_ANGLE_WALL_DEG        = 13.60; // Arm to where motor touches wall
-
+    public final static double TILT_ANGLE_COLLECT_DEG     =  6.00; // Arm to collect samples at ground level
+    public final static double TILT_ANGLE_SAMPLE3_DEG     =  6.00; // Arm to collect samples at ground level (3rd one against wall)
+    public final static double TILT_ANGLE_START_DEG       = 11.00; // AUTO: starting position LOW
+    public final static double TILT_ANGLE_WALL_DEG        = 13.60; // AUTO: starting position HIGH (motor tilted back & touches wall)
+    public final static double TILT_ANGLE_WALL0_DEG       = 21.50; // AUTO: grab specimen off wall (on approach)
+    public final static double TILT_ANGLE_WALL1_DEG       = 33.00; // AUTO: grab specimen off wall (lift off)
 
     //====== Viper slide MOTOR (RUN_USING_ENCODER) =====
     protected DcMotorEx viperMotor       = null;
@@ -156,18 +160,22 @@ public class Hardware2025Bot
     // Encoder counts for 223 RPM lift motors theoretical max 5.8 rev * 751.8  ticks/rev = 4360 counts
 
     public final static int    VIPER_EXTEND_ZERO  = 0;      // fully retracted (may need to be adjustable??)
-    public final static int    VIPER_EXTEND_AUTO_READY  = 1400;    // extend for collecting during auto
-    public final static int    VIPER_EXTEND_AUTO_COLLECT  = 2800;    // extend for collecting during auto
+    public final static int    VIPER_EXTEND_AUTO_READY  = 1600;    // extend for collecting during auto
+    public final static int    VIPER_EXTEND_AUTO_COLLECT = 1600;    // extend for collecting during auto
+    public final static int    VIPER_EXTEND_SAMPLE3  = 1500;  // extend for collecting during auto (3rd sample along wall)
     public final static int    VIPER_EXTEND_HANG1 = 1250;   // extend to this to prepare for level 2 ascent
+    public final static int    VIPER_EXTEND_PARK = 3410;   // extend to this to park in auto
     public final static int    VIPER_EXTEND_HANG2 =  602;   // retract to this extension during level 2 ascent
-    public final static int    VIPER_EXTEND_GRAB  = 1400;   // extend for collection from submersible
+    public final static int    VIPER_EXTEND_GRAB  = 1600;   // extend for collection from submersible
     public final static int    VIPER_EXTEND_SECURE=  490;   // Intake is tucked into robot to be safe
-    public final static int    VIPER_EXTEND_SAFE  = 1050;   // Intake is far enough out to safely rotate down
+    public final static int    VIPER_EXTEND_SAFE  = 1100;   // Intake is far enough out to safely rotate down and rotate up
     public final static int    VIPER_EXTEND_AUTO1 = 1980;   // NEW raised to where the specimen hook is above the high bar
     public final static int    VIPER_EXTEND_AUTO2 = 1200;   // NEW retract to clip the specimen to the bar
     public final static int    VIPER_EXTEND_BASKET= 4200;   // raised to basket-scoring height
     public final static int    VIPER_EXTEND_FULL1 = 2800;   // extended 36" forward (max for 20"x42" limit at horizontal)
     public final static int    VIPER_EXTEND_FULL2 = 4214;   // hardware fully extended (never exceed this count!)
+    public final static int    VIPER_EXTEND_WALL0 = 25;     // AUTO: grab specimen off wall (on approach)
+    public final static int    VIPER_EXTEND_WALL1 = 230;    // AUTO: grab specimen off wall (lift off)
 
 //  PIDControllerLift   liftPidController;           // PID parameters for the lift motors
 //  public double       liftMotorPID_p     = -0.100; //  Raise p = proportional
@@ -184,16 +192,24 @@ public class Hardware2025Bot
 
     public final static double ELBOW_SERVO_INIT = 0.500;
     public final static double ELBOW_SERVO_INIT_ANGLE = 180.0;
-    public final static double ELBOW_SERVO_SAFE = 0.370;       // Safe orientation for driving
-    public final static double ELBOW_SERVO_SAFE_ANGLE = 224.0;
-    public final static double ELBOW_SERVO_GRAB = 0.340;       // For grabbing samples from the field floor
-    public final static double ELBOW_SERVO_GRAB_ANGLE = 231.0;
+    public final static double ELBOW_SERVO_SAFE = 0.510;       // Safe orientation for driving
+    public final static double ELBOW_SERVO_SAFE_ANGLE = 180.0;
+    public final static double ELBOW_SERVO_GRAB = 0.510;       // For grabbing samples from the field floor
+    public final static double ELBOW_SERVO_GRAB_ANGLE = 180.0;
+    public final static double ELBOW_SERVO_GRAB3 = 0.580;      // For grabbing 3rd sample from field floor (against wall)
+    public final static double ELBOW_SERVO_GRAB3_ANGLE = 180.0;
     public final static double ELBOW_SERVO_BASKET = 0.500;     // For scoring samples in the basket
-    public final static double ELBOW_SERVO_BASKET_ANGLE = 100.0;
+    public final static double ELBOW_SERVO_BASKET_ANGLE = 180.0;
     public final static double ELBOW_SERVO_BAR1 = 0.520;       // NEW specimen bar (above)
     public final static double ELBOW_SERVO_BAR1_ANGLE = 174.0;
     public final static double ELBOW_SERVO_BAR2 = 0.520;       // NEW specimen bar (clipped)
     public final static double ELBOW_SERVO_BAR2_ANGLE = 174.0;
+    public final static double ELBOW_SERVO_WALL0 = 0.500;       // Grab specimen off wall in autonomous
+    public final static double ELBOW_SERVO_WALL0_ANGLE = 180.0; // Grab specimen off wall in autonomous
+    public final static double ELBOW_SERVO_WALL1 = 0.510;       // Grab specimen off wall in autonomous
+    public final static double ELBOW_SERVO_WALL1_ANGLE = 176.0; // Grab specimen off wall in autonomous
+    public final static double ELBOW_SERVO_WALL2 = 0.500;       // Grab specimen off wall in autonomous
+    public final static double ELBOW_SERVO_WALL2_ANGLE = 180.0; // Grab specimen off wall in autonomous
 
     public AnalogInput wristServoPos = null;
     public Servo  wristServo = null;
@@ -202,17 +218,22 @@ public class Hardware2025Bot
     public final static double WRIST_SERVO_INIT_ANGLE = 288.0;
     public final static double WRIST_SERVO_SAFE = 0.340;        // safe orientation for driving
     public final static double WRIST_SERVO_SAFE_ANGLE = 234.0;
-    public final static double WRIST_SERVO_GRAB = 0.710;        // grab floor sample (pointing down)
+    public final static double WRIST_SERVO_GRAB = 0.730;        // grab floor sample (pointing down)
     public final static double WRIST_SERVO_GRAB_ANGLE = 67.0;
-    public final static double WRIST_SERVO_AUTO_SCORE = 0.600;
+    public final static double WRIST_SERVO_BASKET1 = 0.600;     // AUTO/TELE: lifting arm toward basket
+    public final static double WRIST_SERVO_BASKET1_ANGLE = 157.0;
     public final static double WRIST_SERVO_RAISE = 0.570;
     public final static double WRIST_SERVO_RAISE_ANGLE = 157.0;
-    public final static double WRIST_SERVO_BASKET = 0.500;
-    public final static double WRIST_SERVO_BASKET_ANGLE = 100.0;
-    public final static double WRIST_SERVO_BAR1 = 0.640;        // NEW specimen bar (above)
+    public final static double WRIST_SERVO_BASKET2 = 0.220;     // AUTO/TELE: scoring in basket
+    public final static double WRIST_SERVO_BASKET2_ANGLE = 270.0;
+    public final static double WRIST_SERVO_BAR1 = 0.640;         // AUTO: specimen bar (when above)
     public final static double WRIST_SERVO_BAR1_ANGLE = 173.0;
-    public final static double WRIST_SERVO_BAR2 = 0.640;        // NEW specimen bar (clipped)
+    public final static double WRIST_SERVO_BAR2 = 0.640;         // AUTO: specimen bar (when clipped)
     public final static double WRIST_SERVO_BAR2_ANGLE = 173.0;
+    public final static double WRIST_SERVO_WALL0 = 0.500;        // AUTO: grab specimen off wall (on approach)
+    public final static double WRIST_SERVO_WALL0_ANGLE = 180.0;
+    public final static double WRIST_SERVO_WALL1 = 0.519;        // AUTO: grab specimen off wall (lift off)
+    public final static double WRIST_SERVO_WALL1_ANGLE = 173.0;
 
     // horizontal = 0.440
     // straight down = 0.710
@@ -225,7 +246,7 @@ public class Hardware2025Bot
     public final static double CLAW_SERVO_CLOSED  = 0.443;  // Claw closed (hold sample/specimen)
     public final static double CLAW_SERVO_INIT    = 0.500;  // Claw in init position (servo default power-on state)
     public final static double CLAW_SERVO_OPEN_N  = 0.600;  // claw opened narrow (enough to release/drop)
-    public final static double CLAW_SERVO_OPEN_W  = 0.830;  // claw opened wide (fully open and above samples on floor)
+    public final static double CLAW_SERVO_OPEN_W  = 0.850;  // claw opened wide (fully open and above samples on floor)
 
     public enum clawStateEnum {
         CLAW_INIT,
@@ -265,7 +286,9 @@ public class Hardware2025Bot
 
         // Locate the odometry controller in our hardware settings
         odom = hwMap.get(GoBildaPinpointDriver.class,"odom");      // Control Hub I2C port 3
-        odom.setOffsets(0.0, -48.0);    // odometry pod locations relative center of robot
+//      odom.setOffsets(0.0, -48.0);     // odometry pod x,y locations relative center of robot  NOW
+//      odom.setOffsets(0.0, 0.0);       // odometry pod x,y locations relative center of robot  REFERENCE
+        odom.setOffsets(-144.00, +88.00); // odometry pod x,y locations relative center of robot  2 2
         odom.setEncoderResolution( GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD ); // 4bar pods
         odom.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.REVERSED, GoBildaPinpointDriver.EncoderDirection.REVERSED);
         if( isAutonomous ) {
@@ -547,18 +570,18 @@ public class Hardware2025Bot
     /*--------------------------------------------------------------------------------------------*/
     public void updateAscendMotorAmps() {
 
-        // monitor the viper slide motor current needed to lift robot during ascent       
+        // monitor the viper slide motor current needed to lift robot during ascent
         viperMotorAmps = viperMotor.getCurrent(CurrentUnit.AMPS);
         if( viperMotorAmps > viperMotorAmpsPk ) viperMotorAmpsPk = viperMotorAmps;
 
-        // monitor the arm tilt motor current needed fold robot up from floor during ascent       
+        // monitor the arm tilt motor current needed fold robot up from floor during ascent
         wormTiltMotorAmps = wormTiltMotor.getCurrent(CurrentUnit.AMPS);
         if( wormTiltMotorAmps > wormTiltMotorAmpsPk ) wormTiltMotorAmpsPk = wormTiltMotorAmps;
 
-        // monitor the arm pan motor current needed to keep arm from rotating during ascent       
+        // monitor the arm pan motor current needed to keep arm from rotating during ascent
         wormPanMotorAmps = wormPanMotor.getCurrent(CurrentUnit.AMPS);
         if( wormPanMotorAmps > wormPanMotorAmpsPk ) wormPanMotorAmpsPk = wormPanMotorAmps;
-        
+
     } // updateAscendMotorAmps
 
     /*--------------------------------------------------------------------------------------------*/
@@ -643,7 +666,7 @@ public class Hardware2025Bot
         // Return the verified power setting
         return powerNext;
     } // restrictDeltaPower
-    
+
     /*--------------------------------------------------------------------------------------------*/
     /* setRunToPosition()                                                                         */
     /* - driveY -   true = Drive forward/back; false = Strafe right/left                          */
@@ -778,7 +801,7 @@ public class Hardware2025Bot
             }
         }
     } // processViperSlideExtension
-    
+
     public void abortViperSlideExtension()
     {
         // Have we commanded an AUTOMATIC lift movement that we need to terminate so we

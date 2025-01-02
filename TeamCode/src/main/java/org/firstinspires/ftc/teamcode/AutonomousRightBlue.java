@@ -7,25 +7,6 @@ import static java.lang.Math.toDegrees;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
 /**
- * This program implements robot movement based on Gyro heading and encoder counts.
- * It uses the Mecanumbot hardware class to define the drive on the robot.
- * The code is structured as a LinearOpMode and requires:
- * a) Drive motors with encoders
- * b) Encoder cables
- * c) Rev Robotics I2C IMU with name "imu"
- * d) Drive Motors have been configured such that a positive power command moves forward,
- *    and causes the encoders to count UP.
- * e) The robot must be stationary when the INIT button is pressed, to allow gyro calibration.
- *
- *  This code uses the RUN_TO_POSITION mode to enable the Motor controllers to generate the run profile
- *
- *  Note: in this example, all angles are referenced to the initial coordinate frame set during the
- *  the Gyro Calibration process, or whenever the program issues a resetZAxisIntegrator() call on the Gyro.
- *
- *  The angle of movement/rotation is assumed to be a standardized rotation around the robot Z axis,
- *  which means that a Positive rotation is Counter Clock Wise, looking down on the field.
- *  This is consistent with the FTC field coordinate conventions set out in the document:
- *  ftc_app\doc\tutorial\FTC_FieldCoordinateSystemDefinition.pdf
  */
 @Autonomous(name="Autonomous Right-Blue", group="7592", preselectTeleOp = "Teleop-Blue")
 //@Disabled
@@ -36,8 +17,6 @@ public class AutonomousRightBlue extends AutonomousBase {
     static final boolean DRIVE_Y = true;    // Drive forward/backward
     static final boolean DRIVE_X = false;   // Drive right/left (not DRIVE_Y)
 
-    boolean clawOpen = false;
-    
     double pos_y=0, pos_x=0, pos_angle=0.0;  // Allows us to specify movement INCREMENTALLY, not ABSOLUTE
 
     @Override
@@ -87,7 +66,6 @@ public class AutonomousRightBlue extends AutonomousBase {
 
         // Only do these steps if we didn't hit STOP
         if( opModeIsActive() ) {
-//          pixelNumber = 0;
 //          createAutoStorageFolder(redAlliance, pipelineBack.leftSide);
 //          pipelineBack.setStorageFolder(storageDir);
 //          pipelineBack.saveSpikeMarkAutoImage();
@@ -149,7 +127,7 @@ public class AutonomousRightBlue extends AutonomousBase {
        // reset our timer
        autonomousTimer.reset();
        // start both movements
-       autoTiltMotorMoveToTarget(Hardware2025Bot.TILT_ANGLE_SPECIMEN1_DEG, 100.0);
+       autoTiltMotorMoveToTarget(Hardware2025Bot.TILT_ANGLE_SPECIMEN1_DEG, 1.0);
        autoViperMotorMoveToTarget(Hardware2025Bot.VIPER_EXTEND_AUTO1);
        // wait for both to finish
        do {
@@ -178,20 +156,14 @@ public class AutonomousRightBlue extends AutonomousBase {
     /* Autonomous Right:                                                                          */
     /*   1 Starting Point                                                                         */
     /*   2 Hang pre-load specimen at submersible                                                  */
-    /*   3 Herd left team sample                                                                  */
-    /*   4 Collect specimen from observation zone (2nd preload specimen)                          */
-    /*   5 Hang specimen on high rung                                                             */
-    /*   6 Herd center team sample                                                                */
-    /*   7 Collect specimen from observation zone (from left herd)                                */
-    /*   8 Hang specimen on high rung                                                             */
-    /*   9 Herd right team sample                                                                 */
-    /*   10 Collect specimen form observaiton zone (from center herd)                             */
-    /*   11 Hang specimen on high rung                                                            */
-    /*   12 Collect specimen from observation zone (from right herd)                              */
-    /*   13 Hang specimen on high rung                                                            */
-    /*   14 Park in observation zone	                                                          */
+    /*   3 Herd samples from spike marks (left/center/wall)                                       */
+    /*   4 Grab clipped specimen from observation zone wall                                       */
+    /*   5 Hang specimen on high rung (repeat steps 4 & 5)                                        */
+    /*   6 Park in observation zone                                                              */
     /*--------------------------------------------------------------------------------------------*/
     private void mainAutonomous() {
+        int specimensHooked  = 0;
+        int specimensGrabbed = 0;
 
         // Do we start with an initial delay?
         if( startDelaySec > 0 ) {
@@ -200,24 +172,23 @@ public class AutonomousRightBlue extends AutonomousBase {
 
         // Score the preloaded SPECIMEN
         if( !onlyPark && scorePreloadSpecimen ) {
-            scoreSpecimenPreload();
+            hookSpecimenOnBar( specimensHooked++ );
         }
 
         if( !onlyPark && (spikeSamples > 0) ) {
             herdSamples(spikeSamples);
         }
-/*
-        // Score starting specimen
-        scoreSpecimen(specimensScored);
-        int specimensScored = 1;
 
-        while (specimensScored < scoreSpecimens) {
-            herdSample(specimensScored);
-            collectSpecimen();
-            scoreSpecimen(specimensScored);
-            specimensScored++;
-        } 
-*/
+        if( !onlyPark && (spikeSamples > 0) ) {
+            grabSpecimenFromWall( specimensGrabbed++ );
+            hookSpecimenOnBar( specimensHooked++ );
+        }
+
+        if( !onlyPark && (spikeSamples > 1) ) {
+            grabSpecimenFromWall( specimensGrabbed++ );
+            hookSpecimenOnBar( specimensHooked++ );
+        }
+
         // Park for 3pts (observation zone)
         parkInObservation();
         
@@ -227,30 +198,37 @@ public class AutonomousRightBlue extends AutonomousBase {
     } // mainAutonomous
 
     /*--------------------------------------------------------------------------------------------*/
-    private void scoreSpecimenPreload() {
-        // Drive forward to submersible
+    private void hookSpecimenOnBar( int specimenNumber ) {
+
+        telemetry.addData("Motion", "Move to submersible");
+        telemetry.update();
+
+        // If this is the initial preloaded specimen, inch forward away from the wall
+        // (raising the lift while against the wall will cause lift motor to hit rear wall)
         if( opModeIsActive() ) {
-            telemetry.addData("Motion", "Move to submersible");
-            telemetry.update();
-            // Move away from field wall (viper slide motor will hit field wall if we tilt up too soon!)
-            driveToPosition( 3.00, 0.00, 0.00, DRIVE_SPEED_30, TURN_SPEED_20, DRIVE_THRU );
+            if( specimenNumber == 0 ) {
+              // Move away from field wall (viper slide motor will hit field wall if we tilt up too soon!)
+              driveToPosition( 3.00, 0.00, 0.00, DRIVE_SPEED_30, TURN_SPEED_20, DRIVE_THRU );
+              pos_x = -6.80; // hang initial specimen 6.8 inches to the left of starting position
+            }
+            else {
+              pos_x = -6.80 - (3.0 * specimenNumber); // shift left 3" each time
+            }
+        } // opModeIsActive
+
+        // Drive toward submersible
+        if( opModeIsActive() ) {
             // Start tilting and extending the arm, and positioning the specimen
-            autoTiltMotorMoveToTarget(Hardware2025Bot.TILT_ANGLE_SPECIMEN1_DEG, 100.0);
+            autoTiltMotorMoveToTarget(Hardware2025Bot.TILT_ANGLE_SPECIMEN1_DEG, 1.0);
             autoViperMotorMoveToTarget(Hardware2025Bot.VIPER_EXTEND_AUTO1);
             // Drive to the scoring position next to the submersible
-            driveToPosition( 22.20, -5.90, 0.00, DRIVE_SPEED_60, TURN_SPEED_20, DRIVE_THRU );
+            driveToPosition( 22.30, (pos_x+1.0), 0.00, DRIVE_SPEED_80, TURN_SPEED_40, DRIVE_THRU );
             robot.wristServo.setPosition(Hardware2025Bot.WRIST_SERVO_BAR1);
             robot.elbowServo.setPosition(Hardware2025Bot.ELBOW_SERVO_BAR1);
-            driveToPosition( 28.90, -7.20, 0.00, DRIVE_SPEED_60, TURN_SPEED_20, DRIVE_TO );
-            robot.driveTrainMotorsZero();
+            driveToPosition( 28.30, pos_x, 0.00, DRIVE_SPEED_80, TURN_SPEED_40, DRIVE_TO );
+            robot.driveTrainMotorsZero();  // make double sure we're stopped
             // If we drive to the submersible faster than the arm moves, wait for the arm
-            do {
-                if( !opModeIsActive() ) break;
-                // only check every 100 msec
-                sleep( 100 );
-                // update all our status
-                performEveryLoop();
-            } while( autoTiltMotorMoving() || autoViperMotorMoving());
+            sleep(100);
         } // opModeIsActive
 
         // Rotate arm, viper slide, and claw down to clip the specimen
@@ -261,51 +239,61 @@ public class AutonomousRightBlue extends AutonomousBase {
             robot.elbowServo.setPosition(Hardware2025Bot.ELBOW_SERVO_BAR2);
             sleep( 1200 ); //while( autoTiltMotorMoving() || autoViperMotorMoving());
             // release the specimen
-            robot.clawStateSet( HardwareMinibot.clawStateEnum.CLAW_OPEN );
+            robot.clawStateSet( HardwareMinibot.clawStateEnum.CLAW_OPEN_WIDE );
         } // opModeIsActive
 
-        // Retract the arm for parking
+        // Retract the arm for driving as we pivot away from the submersible
         if( opModeIsActive() ) {
             autoViperMotorMoveToTarget( Hardware2025Bot.VIPER_EXTEND_ZERO);
-            driveToPosition( 32.60, 2.70, 52.20, DRIVE_SPEED_80, TURN_SPEED_20, DRIVE_THRU );
+            if( specimenNumber == 0 ) {
+                driveToPosition(26.5, 0.0, 90.0, DRIVE_SPEED_90, TURN_SPEED_50, DRIVE_THRU);
+            } else {
+                driveToPosition(16.0, 3.0, 90.0, DRIVE_SPEED_100, TURN_SPEED_60, DRIVE_THRU);
+            }
         } // opModeIsActivee
 
         // Now that we're clear from the submersible, rotate arm down and store claw
         if( opModeIsActive() ) {
             robot.elbowServo.setPosition(Hardware2025Bot.ELBOW_SERVO_INIT);
             robot.wristServo.setPosition(Hardware2025Bot.WRIST_SERVO_INIT);
-            autoTiltMotorMoveToTarget(Hardware2025Bot.TILT_ANGLE_WALL_DEG);
-            driveToPosition( 38.40, 17.50, 90.00, DRIVE_SPEED_80, TURN_SPEED_20, DRIVE_THRU );
-            driveToPosition( 47.40, 10.00, 180.00, DRIVE_SPEED_80, TURN_SPEED_20,
-                                                                         ((spikeSamples > 0)? DRIVE_THRU : DRIVE_TO) );
+            autoTiltMotorMoveToTarget(Hardware2025Bot.TILT_ANGLE_WALL_DEG, 0.80);
         } // opModeIsActive
 
-    }  // scoreSpecimenPreload
+    }  // hookSpecimenOnBar
 
     private void herdSamples(int samplesToHerd) {
-        // Do we herd the first specimen?
+        // Do we herd the first sample on the spike marks?
         if( opModeIsActive() && (samplesToHerd > 0) ) {
-            pos_y=61.0; pos_x=10.0; pos_angle=180.0; // start at this absolute location
+            // Navigate around the corner of the submersible
+            driveToPosition( 26.7, 7.5, 112.0, DRIVE_SPEED_100, TURN_SPEED_40, DRIVE_THRU );
+            driveToPosition( 30.3, 15.4, 137.0, DRIVE_SPEED_100, TURN_SPEED_40, DRIVE_THRU );
+            driveToPosition( 34.0, 20.0, 180.00, DRIVE_SPEED_100, TURN_SPEED_40, DRIVE_THRU );
+            // Align for the first sample
+            pos_y=47.5; pos_x=23.7; pos_angle=180.0; // start at this absolute location
+            driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_100, TURN_SPEED_50, DRIVE_THRU );
+            pos_x+=7.0; // 7" toward wall/samples
+            driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_100, TURN_SPEED_50, DRIVE_THRU );
+            pos_y-=34.0; // 34" back toward observation zone
             driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_90, TURN_SPEED_50, DRIVE_THRU );
-            pos_x+=10.0; // 10" toward wall/samples
-            driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_90, TURN_SPEED_50, DRIVE_THRU );
-            pos_y-=38.0; // 38" back toward observation zone
-            driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_90, TURN_SPEED_50, ((samplesToHerd == 1)? DRIVE_TO : DRIVE_THRU) );
+            if( samplesToHerd == 1 ) { robot.driveTrainMotorsZero(); } // go there fast, but stop
         } // opModeIsActive
-        // What about the 2nd?
+        // What about the 2nd sample?
         if( opModeIsActive() && (samplesToHerd > 1) ) {
-            pos_y=61.0; pos_x=24.0; pos_angle=180.0; // start at this absolute location
-            driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_90, TURN_SPEED_50, DRIVE_THRU );
-            pos_x+=6.0; // 10" toward wall/samples
-            driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_90, TURN_SPEED_50, DRIVE_THRU );
-            pos_y-=38.0; // 38" back toward observation zone
-            driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_90, TURN_SPEED_50, ((samplesToHerd == 2)? DRIVE_TO : DRIVE_THRU) );
+            pos_y=45.5; pos_x=32.5; pos_angle=180.0; // start at this absolute location
+            driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_100, TURN_SPEED_50, DRIVE_THRU );
+            pos_x+=7.0; // 7" toward wall/samples
+            driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_100, TURN_SPEED_50, DRIVE_THRU );
+            pos_y-=35.0; // 35" back toward observation zone
+            driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_100, TURN_SPEED_50, DRIVE_THRU );
+            if( samplesToHerd == 2 ) { robot.driveTrainMotorsZero(); } // go there fast, but stop
         } // opModeIsActive
         // What about the 3rd one against the wall?
         if( opModeIsActive() && (samplesToHerd > 2) ) {
-            pos_y=54.0; pos_x=32.0; pos_angle=180.0; // start at this absolute location
-            driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_90, TURN_SPEED_50, DRIVE_THRU );
-            timeDriveStrafe(DRIVE_SPEED_20,1250); // ensure we slowly align to the wall
+            pos_y=46.0; pos_x=43.0; pos_angle=180.0; // start at this absolute location
+            driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_100, TURN_SPEED_50, DRIVE_THRU );
+            pos_x+=1.5; // 1.5" toward wall/samples
+            driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_100, TURN_SPEED_50, DRIVE_THRU );
+            timeDriveStrafe(DRIVE_SPEED_20,1000); // ensure we slowly align to the wall
             // What does odometry report as our new X,Y location? (we're aligned to wall, so by
             // definition we're at 180deg, even if the initial alignment was off a degree or two
             pos_y=robotGlobalYCoordinatePosition;
@@ -316,29 +304,67 @@ public class AutonomousRightBlue extends AutonomousBase {
             pos_y -= 5.0;
             pos_x -= 1.0;
             pos_angle=175.0;  // angle the bot away from the wall as we herd the final sample
-            driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_60, TURN_SPEED_20, DRIVE_THRU );
+            driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_100, TURN_SPEED_20, DRIVE_THRU );
             // Go fast to the edge of the observation zone
-            pos_y =  31.0;
-            pos_x -= 4.0;  // end 5" away from the wall
-            driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_80, TURN_SPEED_40, DRIVE_THRU );
+            pos_y =  17.0;
+            pos_x -= 2.0;  // end 2" away from the wall
+            driveToPosition( pos_y, pos_x, pos_angle, DRIVE_SPEED_100, TURN_SPEED_40, DRIVE_THRU );
             // ease into the observation zone (in case we hit the wall, or another robot)
             timeDriveStraight(DRIVE_SPEED_20,1000);  // this stops all motors
+            // NOTE: this ending position also counts as PARKED
         } // opModeIsActive
 
     } //herdSample
 
-/*
-    private void collectSpecimen() {
-        // TODO: FILL IN IMPLEMENTATION
-    } // collectSpecimen
-*/
+    /*--------------------------------------------------------------------------------------------*/
+    private void grabSpecimenFromWall( int specimenNumber ) {
 
+        // Prepare arm for grabbing specimens from wall, and move to initial wall-collect position (quickly)
+        if( opModeIsActive() ) {
+            autoTiltMotorMoveToTarget(Hardware2025Bot.TILT_ANGLE_WALL0_DEG, 1.0);
+            autoViperMotorMoveToTarget(Hardware2025Bot.VIPER_EXTEND_WALL0);
+            robot.wristServo.setPosition(Hardware2025Bot.WRIST_SERVO_WALL0);
+            robot.elbowServo.setPosition(Hardware2025Bot.ELBOW_SERVO_WALL0);
+            robot.clawStateSet( HardwareMinibot.clawStateEnum.CLAW_OPEN_WIDE );
+            if( specimenNumber == 0 ) {
+               // Approach along x-axis from herding spike marks...
+               driveToPosition( 8.0, 23.5, 180, DRIVE_SPEED_100, TURN_SPEED_60, DRIVE_THRU );
+            } else {
+               // Approach along y-axis from hooking at submersible...
+               driveToPosition( 8.0, 17.2, 180, DRIVE_SPEED_100, TURN_SPEED_60, DRIVE_THRU );
+            }
+        } // opModeIsActive
+
+        // Drive to the final wall-collect position (slowly)
+        if( opModeIsActive() ) {
+            driveToPosition( 5.0, 18.6, 180, DRIVE_SPEED_100, TURN_SPEED_30, DRIVE_TO );
+            robot.clawStateSet( HardwareMinibot.clawStateEnum.CLAW_CLOSED );
+            sleep(400); // allow claw to close (400msec)
+        } // opModeIsActive
+
+        // Lift the specimen off the field wall
+        if( opModeIsActive() ) {
+            autoTiltMotorMoveToTarget(Hardware2025Bot.TILT_ANGLE_WALL1_DEG, 1.0);
+            autoViperMotorMoveToTarget(Hardware2025Bot.VIPER_EXTEND_WALL1);
+            robot.wristServo.setPosition(Hardware2025Bot.WRIST_SERVO_WALL1);
+            robot.elbowServo.setPosition(Hardware2025Bot.ELBOW_SERVO_WALL1);
+            sleep(750); // allow arm to lift above the wall (750 msec)
+        } // opModeIsActive
+
+        // Rotate toward submersible
+        if( opModeIsActive() ) {
+           driveToPosition( 10.0, 6.0, 90.0, DRIVE_SPEED_100, TURN_SPEED_80, DRIVE_THRU );
+        } // opModeIsActive
+
+    } // grabSpecimenFromWall
+
+    /*--------------------------------------------------------------------------------------------*/
     private void parkInObservation() {
         if( (spikeSamples < 1) && opModeIsActive() ) {
             // Rotate 90deg to face wall (protect collector from alliance partner damage)
-            driveToPosition(12.0, 14.0, -91.0, DRIVE_SPEED_50, TURN_SPEED_50, DRIVE_THRU);
+            driveToPosition(11.0, 23.0, -90.0, DRIVE_SPEED_50, TURN_SPEED_50, DRIVE_THRU);
             // Park in far corner of observation zone
-            driveToPosition(6.0, 32.0, -91.0, DRIVE_SPEED_50, TURN_SPEED_30, DRIVE_TO);
+            driveToPosition(8.0, 30.0, -90.0, DRIVE_SPEED_50, TURN_SPEED_30, DRIVE_TO);
         }
     } // parkInObservation
 

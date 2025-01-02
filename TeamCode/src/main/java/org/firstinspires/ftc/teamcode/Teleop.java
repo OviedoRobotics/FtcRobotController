@@ -98,7 +98,7 @@ public abstract class Teleop extends LinearOpMode {
 	
     Gamepad.RumbleEffect visibleAprilTagRumble1;    // Use to build a custom rumble sequence.
     Gamepad.RumbleEffect rumblePixelBinSingle;
-    Gamepad.RumbleEffect rumblePixelBinDouble;
+    Gamepad.RumbleEffect rumbleAscentReady;
 
     // sets unique behavior based on alliance
     public abstract void setAllianceSpecificBehavior();
@@ -116,7 +116,7 @@ public abstract class Teleop extends LinearOpMode {
                 .addStep(1.0, 0.0, 250)  //  Rumble LEFT motor 100% for 250 mSec
                 .build();   // use different sides for SINGLE and DOUBLE in case they're signalled back-to-back
 
-        rumblePixelBinDouble = new Gamepad.RumbleEffect.Builder()
+        rumbleAscentReady = new Gamepad.RumbleEffect.Builder()
                 .addStep(0.0, 1.0, 250)  //  Rumble RIGHT motor 100% for 250 mSec
                 .addStep(0.0, 0.0, 250)  //  Pause for 250 mSec
                 .addStep(0.0, 1.0, 250)  //  Rumble RIGHT motor 100% for 250 mSec
@@ -159,13 +159,19 @@ public abstract class Teleop extends LinearOpMode {
             if( enableOdometry ) {
                 robot.odom.update();
                 Pose2D pos = robot.odom.getPosition();  // x,y pos in inch; heading in degrees
-                curX     = pos.getX(DistanceUnit.INCH);  if(curX<minX){minX=curX;} if(curX>maxX){maxX=curX;}
-                curY     = pos.getY(DistanceUnit.INCH);  if(curY<minY){minY=curY;} if(curY>maxY){maxY=curY;}
+                curX     = pos.getX(DistanceUnit.INCH);
+                curY     = pos.getY(DistanceUnit.INCH);
                 curAngle = pos.getHeading(AngleUnit.DEGREES);
                 String posStr = String.format(Locale.US, "{X,Y: %.1f, %.1f in  H: %.1f deg}", curX, curY, curAngle);
                 telemetry.addData("Position", posStr);
-                telemetry.addData("Odo Circle", "x=%.1f, y=%.1f inches", (maxX-minX), (maxY-minY) );
+                //==== TEMPORARY ODOMETRY CALIBRATION CODE ============================================================
+                if(curX<minX){minX=curX;} if(curX>maxX){maxX=curX;}
+                if(curY<minY){minY=curY;} if(curY>maxY){maxY=curY;}
+                double x_radius_mm = 25.4 * (maxX-minX)/2.0;  // rotate 180deg; max-min is the diameter of the circle
+                double y_radius_mm = 25.4 * (maxY-minY)/2.0;  // of error relative to the true center of the robot
+                telemetry.addData("Odo Circle", "x=%.2f, y=%.2f mm", x_radius_mm, y_radius_mm );
                 Pose2D vel = robot.odom.getVelocity(); // x,y velocities in inch/sec; heading in deg/sec
+                //=====================================================================================================
                 String velStr = String.format(Locale.US,"{X,Y: %.1f, %.1f in/sec, HVel: %.2f deg/sec}",
                      vel.getX(DistanceUnit.INCH), vel.getY(DistanceUnit.INCH), vel.getHeading(AngleUnit.DEGREES));
                 telemetry.addData("Velocity", velStr);
@@ -777,6 +783,7 @@ public abstract class Teleop extends LinearOpMode {
             case ASCENT_STATE_MOVING :
                 if( !robot.viperMotorBusy && !robot.wormTiltMotorBusy ) {
                     // Ready for phase 2
+                    gamepad2.runRumbleEffect(rumbleAscentReady);
                     ascent2state = ASCENT_STATE_READY;
                 }
                 break;
@@ -990,7 +997,7 @@ public abstract class Teleop extends LinearOpMode {
                 // Start a timer (used to reset back to IDLE state)
                 if(!robot.viperMotorBusy) {
                     robot.elbowServo.setPosition(Hardware2025Bot.ELBOW_SERVO_BASKET);
-                    robot.wristServo.setPosition(Hardware2025Bot.WRIST_SERVO_BASKET);
+                    robot.wristServo.setPosition(Hardware2025Bot.WRIST_SERVO_BASKET2);
                     scoreTimer.reset();
                     scoreArmState = Score_Arm_Steps.POSITION_INTAKE;
                 }
