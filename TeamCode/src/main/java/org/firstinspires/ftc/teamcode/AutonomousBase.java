@@ -30,10 +30,11 @@ public abstract class AutonomousBase extends LinearOpMode {
     static final double  P_DRIVE_COEFF        = 0.005;   // Larger is more responsive, but also less stable
     static final double  HEADING_THRESHOLD    = 2.0;     // Minimum of 1 degree for an integer gyro
     static final double  P_TURN_COEFF         = 0.050;   // Larger is more responsive, but also less stable
-    static final double  DRIVE_SPEED_10       = 0.10;    // Lower speed for moving from a standstill
+    static final double  DRIVE_SPEED_10       = 0.10;    // 
     static final double  DRIVE_SPEED_20       = 0.20;    // Lower speed for moving from a standstill
     static final double  DRIVE_SPEED_30       = 0.30;    // Lower speed for fine control going sideways
     static final double  DRIVE_SPEED_40       = 0.40;    // Normally go slower to achieve better accuracy
+    static final double  DRIVE_SPEED_45       = 0.45;    // 
     static final double  DRIVE_SPEED_50       = 0.50;    //
     static final double  DRIVE_SPEED_55       = 0.55;    //
     static final double  DRIVE_SPEED_60       = 0.60;    //
@@ -54,8 +55,8 @@ public abstract class AutonomousBase extends LinearOpMode {
     static final double  TURN_SPEED_90        = 0.90;    //
     static final double  TURN_SPEED_100       = 1.00;    //
     static final double STRAFE_MULTIPLIER = 1.5;
-    static final double MIN_SPIN_RATE      = 0.05;    // Minimum power to turn the robot
-    static final double MIN_DRIVE_POW      = 0.05;    // Minimum speed to move the robot
+    static final double MIN_SPIN_RATE      = 0.06;    // Minimum power to turn the robot
+    static final double MIN_DRIVE_POW      = 0.06;    // Minimum speed to move the robot
     static final double MIN_DRIVE_MAGNITUDE = Math.sqrt(MIN_DRIVE_POW*MIN_DRIVE_POW+MIN_DRIVE_POW*MIN_DRIVE_POW);
 
     // NOTE: Initializing the odometry global X-Y and ANGLE to 0-0 and 0deg means the frame of reference for all movements is
@@ -138,28 +139,16 @@ public abstract class AutonomousBase extends LinearOpMode {
         boolean nextValue = (gamepad1_dpad_right_now && !gamepad1_dpad_right_last);
         boolean prevValue = (gamepad1_dpad_left_now  && !gamepad1_dpad_left_last);
         double  startTiltAngle = robot.armTiltAngle;
-        boolean startTiltOkay, okayToTiltLower, okayToTiltHigher;
-        double  gamepad1_right_stick = gamepad1.right_stick_y;
+        boolean needToTiltLower, needToTiltHigher;
 
-        // Is the starting tilt angle HIGH enough to minimize the lift time, but
-        // LOW enough for tilt motor to not rotate back into the field wall?
-        if( (startTiltAngle >= Hardware2025Bot.TILT_ANGLE_START_DEG) &&
-            (startTiltAngle <= Hardware2025Bot.TILT_ANGLE_WALL_DEG) ) {
-            startTiltOkay = true;
-        } else {
-            startTiltOkay = false;
-        }
-
-        // Even if we're in range, is there room to still tweak to 12deg?
-        okayToTiltLower  = (startTiltAngle > Hardware2025Bot.TILT_ANGLE_START_DEG);
-        okayToTiltHigher = (startTiltAngle < Hardware2025Bot.TILT_ANGLE_WALL_DEG);
-
-        // Look for input to tilt turret higher/lower to the proper 12deg start angle
-        if( okayToTiltLower && (gamepad1_right_stick < -0.15) ) {
-            robot.wormTiltMotor.setPower( -0.10 );   // LOWER tilt angle
+        // Automatically position the tilt angle during INIT for autonomous
+        needToTiltLower  = (startTiltAngle > Hardware2025Bot.TILT_ANGLE_WALL_DEG);
+        needToTiltHigher = (startTiltAngle < Hardware2025Bot.TILT_ANGLE_START_DEG);
+        if( needToTiltLower ) {
+            robot.wormTiltMotor.setPower( -0.08 );   // LOWER tilt angle
             tiltAdjusted = true;
-        } else if( okayToTiltHigher && (gamepad1_right_stick > 0.15) ) {
-            robot.wormTiltMotor.setPower( +0.10 );   // RAISE tilt angle
+        } else if( needToTiltHigher ) {
+            robot.wormTiltMotor.setPower( +0.08 );   // RAISE tilt angle
             tiltAdjusted = true;
         } else if( tiltAdjusted ) {
             robot.wormTiltMotor.setPower( 0.0 );     // stop tilt movement
@@ -280,14 +269,38 @@ public abstract class AutonomousBase extends LinearOpMode {
         telemetry.addData("Park Location","%s %s", parkLocationStr[parkLocation],
                 ((initMenuSelected==5)? "<-":"  "));
         telemetry.addData("spike specimens", "%d  %s",spikeSamples,((initMenuSelected==6)? "<-":"  ") );
-        telemetry.addData("Odometry","x=%.2f y=%.2f angle=%.2f",
-                robotGlobalXCoordinatePosition, robotGlobalYCoordinatePosition, robotOrientationRadians );
-        telemetry.addData("Lift Angle","x=%.1f deg (%s)", startTiltAngle, ((startTiltOkay)? "GOOD":"** BAD **") );
-        telemetry.addLine("Right joystick slowly raises/lowers to 12deg.");
+        telemetry.addData("Odometry","x=%.2f y=%.2f  %.2f deg",
+                robotGlobalXCoordinatePosition, robotGlobalYCoordinatePosition, Math.toDegrees(robotOrientationRadians) );
+        telemetry.addData("Lift Angle","x=%.1f deg", startTiltAngle );
         telemetry.addLine("Right bumper open/close claw to load specimen.");
         telemetry.addData(">","version 100" );
         telemetry.update();
     } // processAutonomousInitMenu
+
+    /*--------------------------------------------------------------------------------------------*/
+    // All our autonomous requires the viper arm is fully retracted at the start
+    public void ensureViperArmFullyRetracted(){
+        int startViperMotorPos, endViperMotorPos, deltaViperMotorPos;
+        for( int i=0; i<10; i++) {
+            // Retract viper arm at low power for 1 second
+            startViperMotorPos = robot.viperMotorPos;
+            robot.viperMotor.setPower(-0.10);
+            sleep(1000);
+            robot.viperMotor.setPower(0.0);
+            sleep(100); //give motor time to stop
+            // update our encoder readings
+            performEveryLoop();
+            // Did anything change??
+            endViperMotorPos = robot.viperMotorPos;
+            deltaViperMotorPos = Math.abs(endViperMotorPos - startViperMotorPos);
+            telemetry.addData("deltaViperMotorPos", "%d counts", deltaViperMotorPos);
+            telemetry.update();
+            // Check if the count has decreased more than a bit then we need to check again
+            if (deltaViperMotorPos < 10) break;
+        }
+        // ensure viper encoder is reset after motion
+        robot.resetEncoders();
+    } // ensureViperArmFullyRetracted
 
     /*--------------------------------------------------------------------------------------------*/
     // Resets odometry starting position and angle to zero accumulated encoder counts
@@ -944,7 +957,7 @@ public abstract class AutonomousBase extends LinearOpMode {
                 && opModeIsActive()) {
             performEveryLoop();
             telemetry.addData("Drive", "x=%.1f, y=%.1f, %.1f deg",
-                    robotGlobalXCoordinatePosition, robotGlobalYCoordinatePosition, toDegrees(robotOrientationRadians) );
+                    robotGlobalXCoordinatePosition, robotGlobalYCoordinatePosition, Math.toDegrees(robotOrientationRadians) );
             telemetry.update();
         }
 
@@ -989,8 +1002,8 @@ public abstract class AutonomousBase extends LinearOpMode {
             lastDriveAngle = deltaAngle;
         }
 
-        // We are done if we are within 1.8 degrees
-        if(Math.abs(Math.toDegrees(deltaAngle)) < 1.8) {
+        // We are done if we are within 2.0 degrees
+        if(Math.abs(Math.toDegrees(deltaAngle)) < 2.0) {
             // We have reached our destination if the angle is close enough
             robot.stopMotion();
             reachedDestination = true;
@@ -1117,18 +1130,18 @@ public abstract class AutonomousBase extends LinearOpMode {
         return reachedDestination;
     }
     /**
-     * @param yTarget           - The Y field coordinate to go to.
-     * @param xTarget           - The X field coordinate to go to.
-     * @param angleTarget   - The angle the robot should try to face when reaching destination in degrees.
+     * @param yTarget     - The Y field coordinate to go to.
+     * @param xTarget     - The X field coordinate to go to.
+     * @param angleTarget - The angle the robot should try to face when reaching destination in degrees.
      * @param speedMax    - Sets the speed when we are driving through the point.
-     * @param driveType     - Slows the robot down to stop at destination coordinate.
+     * @param driveType   - Slows the robot down to stop at destination coordinate.
      * @return - Boolean true we have reached destination, false we have not
      */
     protected boolean driveToXY(double yTarget, double xTarget, double angleTarget,
                                 double speedMax, int driveType) {
 
         // Convert from cm to inches
-        double errorMultiplier = 0.033;
+        double errorMultiplier = 0.037;
         double speedMin = MIN_DRIVE_MAGNITUDE;
         double allowedError = (driveType == DRIVE_THRU) ? 2.50 : 0.5;
 
