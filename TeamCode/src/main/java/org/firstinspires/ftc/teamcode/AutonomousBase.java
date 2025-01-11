@@ -1,7 +1,5 @@
 package org.firstinspires.ftc.teamcode;
 
-import static java.lang.Math.abs;
-import static java.lang.Math.toDegrees;
 import static java.lang.Math.toRadians;
 
 import android.os.Environment;
@@ -110,6 +108,9 @@ public abstract class AutonomousBase extends LinearOpMode {
     ElapsedTime autoViperMotorTimer = new ElapsedTime();
     ElapsedTime autoTiltMotorTimer  = new ElapsedTime();
     ElapsedTime autoPanMotorTimer   = new ElapsedTime();
+    ElapsedTime autoElbowServoTimer = new ElapsedTime();
+    ElapsedTime autoWristServoTimer = new ElapsedTime();
+    ElapsedTime autoClawServoTimer  = new ElapsedTime();
 
     // gamepad controls for changing autonomous options
     boolean gamepad1_circle_last,   gamepad1_circle_now  =false;
@@ -351,6 +352,105 @@ public abstract class AutonomousBase extends LinearOpMode {
     }
 
     /*---------------------------------------------------------------------------------*/
+    // Auto Elbow Movements
+    void autoElbowMoveToPosition(double targetElbowPosition){
+       robot.elbowServo.setPosition(targetElbowPosition);
+       autoElbowServoTimer.reset();
+    }
+    boolean elbowReachedDestination(double targetElbowPosition){
+        boolean reachedDestination = false;
+        if(Math.abs(robot.elbowServo.getPosition() - targetElbowPosition) < 0.01) reachedDestination = true;
+        return reachedDestination;
+    }
+    boolean autoElbowMoving(double targetElbowPosition, double timeout){
+        boolean elbowMoving = false;
+        if( elbowReachedDestination(targetElbowPosition)) {
+            elbowMoving = false;
+        }
+        // Did we timeout?
+        else if( autoElbowServoTimer.milliseconds() > timeout ) {
+            elbowMoving = false;
+        }
+        return elbowMoving;
+    }
+    boolean autoElbowMoving(double targetElbowPosition){
+        boolean elbowMoving = false;
+        if( elbowReachedDestination(targetElbowPosition)) {
+            elbowMoving = false;
+        }
+        // Did we timeout?
+        else if( autoElbowServoTimer.milliseconds() > 2000 ) {
+            elbowMoving = false;
+        }
+        return elbowMoving;
+    }
+
+    // Auto Wrist Movements
+    void autoWristMoveToPosition(double targetWristPosition){
+        robot.wristServo.setPosition(targetWristPosition);
+        autoWristServoTimer.reset();
+    }
+    boolean wristReachedDestination(double targetWristPosition){
+        boolean reachedDestination = false;
+        if(Math.abs(robot.wristServo.getPosition() - targetWristPosition) < 0.01) reachedDestination = true;
+        return reachedDestination;
+    }
+    boolean autoWristMoving(double targetWristPosition, double timeout){
+        boolean wristMoving = false;
+        if( wristReachedDestination(targetWristPosition)) {
+            wristMoving = false;
+        }
+        // Did we timeout?
+        else if( autoWristServoTimer.milliseconds() > timeout ) {
+            wristMoving = false;
+        }
+        return wristMoving;
+    }
+    boolean autoWristMoving(double targetWristPosition){
+        boolean wristMoving = false;
+        if( wristReachedDestination(targetWristPosition)) {
+            wristMoving = false;
+        }
+        // Did we timeout?
+        else if( autoWristServoTimer.milliseconds() > 2000 ) {
+            wristMoving = false;
+        }
+        return wristMoving;
+    }
+    // Auto Claw Movements
+    void autoClawMoveToPosition(double targetClawPosition){
+        robot.clawServo.setPosition(targetClawPosition);
+        autoClawServoTimer.reset();
+    }
+    boolean clawReachedDestination(double targetClawPosition){
+        boolean reachedDestination = false;
+        if(Math.abs(robot.clawServo.getPosition() - targetClawPosition) < 0.01) reachedDestination = true;
+        return reachedDestination;
+    }
+    boolean autoClawMoving(double targetClawPosition, double timeout){
+        boolean clawMoving = false;
+        if( clawReachedDestination(targetClawPosition)) {
+            clawMoving = false;
+        }
+        // Did we timeout?
+        else if( autoClawServoTimer.milliseconds() > timeout ) {
+            clawMoving = false;
+        }
+        return clawMoving;
+    }
+    boolean autoClawMoving(double targetClawPosition){
+        boolean clawMoving = false;
+        if( clawReachedDestination(targetClawPosition)) {
+            clawMoving = false;
+        }
+        // Did we timeout?
+        else if( autoClawServoTimer.milliseconds() > 2000 ) {
+            clawMoving = false;
+        }
+        return clawMoving;
+    }
+
+    /*---------------------------------------------------------------------------------*/
     void autoViperMotorMoveToTarget(int targetEncoderCount )
     {
         autoViperMotorMoveToTarget(targetEncoderCount, 1.0);
@@ -373,15 +473,22 @@ public abstract class AutonomousBase extends LinearOpMode {
         robot.viperMotor.setPower( motorPower );
     } // autoViperMotorMoveToTarget
 
-    boolean autoViperMotorMoving() {
+    // Replace with autoViperMotorMoving to allow for tolerance
+    boolean viperReachedDestination( int targetExtension ){
+        boolean reachedDestination = false;
+        if(Math.abs(robot.viperMotor.getCurrentPosition() - targetExtension) < 10.0) reachedDestination = true;
+        return reachedDestination;
+    }
+
+    boolean autoViperMotorMoving(int targetEncoderCount, double timeout) {
         boolean viperMoving = true;
         // Did the movement finish?
-        if( !robot.viperMotor.isBusy() ) {
+        if( !robot.viperMotor.isBusy() || viperReachedDestination(targetEncoderCount)) {
             viperMoving = false;
            robot.viperMotor.setPower( 0.001 );   // hold
         }
         // Did we timeout?
-        else if( autoViperMotorTimer.milliseconds() > 3000 ) {
+        else if( autoViperMotorTimer.milliseconds() > timeout ) { // timeout was 3000
             viperMoving = false;
            robot.viperMotor.setPower( 0.001 );   // hold
         }
@@ -391,8 +498,44 @@ public abstract class AutonomousBase extends LinearOpMode {
         return viperMoving;
     } // autoViperMotorMoving
 
+    boolean autoViperMotorMoving(int targetEncoderCount) {
+        boolean viperMoving = true;
+        // Did the movement finish?
+        if( !robot.viperMotor.isBusy() || viperReachedDestination(targetEncoderCount)) {
+            viperMoving = false;
+            robot.viperMotor.setPower( 0.001 );   // hold
+        }
+        // Did we timeout?
+        else if( autoViperMotorTimer.milliseconds() > 3000 ) {
+            viperMoving = false;
+            robot.viperMotor.setPower( 0.001 );   // hold
+        }
+        else {
+            // wait a little longer
+        }
+        return viperMoving;
+    } // autoViperMotorMoving
+
+    boolean autoViperMotorMoving() {
+        boolean viperMoving = true;
+        // Did the movement finish?
+        if( !robot.viperMotor.isBusy() ) {
+            viperMoving = false;
+            robot.viperMotor.setPower( 0.001 );   // hold
+        }
+        // Did we timeout?
+        else if( autoViperMotorTimer.milliseconds() > 3000 ) {
+            viperMoving = false;
+            robot.viperMotor.setPower( 0.001 );   // hold
+        }
+        else {
+            // wait a little longer
+        }
+        return viperMoving;
+    } // autoViperMotorMoving
+
     /*---------------------------------------------------------------------------------*/
-    void autoTiltMotorMoveToTarget(double targetArmAngle )
+    void autoTiltMotorMoveToTarget( double targetArmAngle )
     {
         autoTiltMotorMoveToTarget( targetArmAngle, 0.80 );
     } // autoTiltMotorMoveToTarget
@@ -409,6 +552,48 @@ public abstract class AutonomousBase extends LinearOpMode {
         autoTiltMotorTimer.reset();
         robot.wormTiltMotor.setPower( power );
     } // autoTiltMotorMoveToTarget
+
+    boolean tiltReachedDestination( double targetAngle){
+        boolean reachedDestination = false;
+        if(Math.abs(robot.armTiltAngle - targetAngle) < 1.5) reachedDestination = true;
+        return reachedDestination;
+    }
+
+    boolean autoTiltMotorMoving(double targetTiltAngle, double timeout) {
+        boolean tiltMoving = true;
+        // Did the movement finish?
+        if( !robot.wormTiltMotor.isBusy() || tiltReachedDestination(targetTiltAngle)) {
+            tiltMoving = false;
+            robot.wormTiltMotor.setPower( 0.0 );
+        }
+        // Did we timeout?
+        else if( autoTiltMotorTimer.milliseconds() > timeout ) { // timeout was 4000
+            tiltMoving = false;
+            robot.wormTiltMotor.setPower( 0.0 );
+        }
+        else {
+            // wait a little longer
+        }
+        return tiltMoving;
+    } // autoTiltMotorMoving
+
+    boolean autoTiltMotorMoving(double targetTiltAngle) {
+        boolean tiltMoving = true;
+        // Did the movement finish?
+        if( !robot.wormTiltMotor.isBusy() || tiltReachedDestination(targetTiltAngle)) {
+            tiltMoving = false;
+            robot.wormTiltMotor.setPower( 0.0 );
+        }
+        // Did we timeout?
+        else if( autoTiltMotorTimer.milliseconds() > 4000 ) {
+            tiltMoving = false;
+            robot.wormTiltMotor.setPower( 0.0 );
+        }
+        else {
+            // wait a little longer
+        }
+        return tiltMoving;
+    } // autoTiltMotorMoving
 
     boolean autoTiltMotorMoving() {
         boolean tiltMoving = true;

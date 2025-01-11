@@ -10,7 +10,6 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
-//import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
@@ -76,6 +75,9 @@ public class Hardware2025Bot
     // The math above assumes motor encoders.  For REV odometry pods, the counts per inch is different
     protected double COUNTS_PER_INCH2      = 1738.4;  // 8192 counts-per-rev / (1.5" omni wheel * PI)
 
+    protected AnalogInput distSensor       = null;
+    public double SENSOR_OFFSETCM = 5.0; // TODO Fix later
+
     //====== Worm gear pan and tilt MOTORS (RUN_USING_ENCODER) =====
     protected DcMotorEx wormPanMotor       = null;
     public int          wormPanMotorTgt    = 0;       // RUN_TO_POSITION target encoder count
@@ -111,7 +113,7 @@ public class Hardware2025Bot
     // Delta math from -0.1 deg -3891 encoder counts
     //                  94.4 deg 5 encoder counts
     //                  94.5 deg 3896 encoder counts range
-    public final static double ENCODER_COUNTS_PER_DEG  = 3896.0 / 94.5;
+    public final static double ENCODER_COUNTS_PER_DEG  = 2785.96 / 94.5;
 
     public final static double TILT_ANGLE_HW_MAX_DEG      = 94.00; // Arm at maximum rotation UP/BACK (horizontal = -200)
     public final static double TILT_ANGLE_BASKET_DEG      = 90.00; // Arm at rotation back to the basket for scoring
@@ -294,6 +296,8 @@ public class Hardware2025Bot
             }
             module.setBulkCachingMode(LynxModule.BulkCachingMode.MANUAL);
         }
+
+        distSensor = hwMap.get(AnalogInput.class, "dSensor");
 
         // Locate the odometry controller in our hardware settings
         odom = hwMap.get(GoBildaPinpointDriver.class,"odom");      // Control Hub I2C port 3
@@ -721,6 +725,14 @@ public class Hardware2025Bot
     /* startViperSlideExtension()                                                                 */
     /* NOTE: Comments online say the firmware that executes the motor RUN_TO_POSITION logic want  */
     /* the setup commands in this order: setTargetPosition(), setMode(), setPower().              */
+
+    public double getDistanceFromWall() {
+        double Max_Distance = 30;
+        double Min_Distance = 4;
+        // if we are in range return distance else return -1 (indicating we are too far away)
+        double value = (distSensor.getVoltage() > 0.1)? ((distSensor.getVoltage() * ( Max_Distance - Min_Distance)) / 3.3) + Min_Distance : -1;
+        return value - SENSOR_OFFSETCM;
+    }
 
     public void startWormTilt(double targetArmAngle)
     {   // Convert angle to encoder counts
