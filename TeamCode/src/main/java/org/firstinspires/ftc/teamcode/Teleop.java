@@ -182,10 +182,10 @@ public abstract class Teleop extends LinearOpMode {
             if( gamepad1_triangle_now && !gamepad1_triangle_last)
             {
                 //if(Math.abs(180-robot.imuHeadingAngle) > 8.0) driveToPosition(curY, curX, 180.0, 0, AutonomousBase.TURN_SPEED_20, AutonomousBase.DRIVE_THRU);
-                double distance = robot.getDistanceFromWall();
-                telemetry.addData("Distance from wall: " , distance);
+                double distance = robot.getDistanceFromSpecimenOnWall(); // get distance from specimen on wall
+                telemetry.addData("Distance from specimen on wall: " , distance); // telemetry
                 telemetry.update();
-                sleep(30000);
+                sleep(5000); // allow enough time to read distance
                 /*if(distance > 0.15){
                     driveToPosition(curY-distance, curX, 180.0, AutonomousBase.DRIVE_SPEED_40, 0, AutonomousBase.DRIVE_TO);
                 }*/
@@ -683,6 +683,7 @@ public abstract class Teleop extends LinearOpMode {
             startHoverArm();
             grabLState = 2;
             grabRState = 2;
+            submersibleCollectState = 2; // forgot to update this state
         }
         // Check for an OFF-to-ON toggle of the gamepad2 DPAD LEFT
         else if( gamepad2_dpad_left_now && !gamepad2_dpad_left_last)

@@ -17,8 +17,11 @@ public class AutonomousLeftBlue extends AutonomousBase {
     static final boolean DRIVE_Y = true;    // Drive forward/backward
     static final boolean DRIVE_X = false;   // Drive right/left (not DRIVE_Y)
 
-    int vipPos  = 0;
-    double tiltAngle = robot.armTiltAngle;
+    // our current or last target positions for viper and tilt.
+    // Allows to know what our current or previous target position is at all times.
+    // Every time we set a new target position for viper or tilt we must update these variables.
+    int targetVipPos = 0; // target viper motor position
+    double targetTiltAngle = robot.armTiltAngle; // target tilt angle
 
     double pos_y=0, pos_x=0, pos_angle=0.0;  // Allows us to specify movement INCREMENTALLY, not ABSOLUTE
 
@@ -191,10 +194,11 @@ public class AutonomousLeftBlue extends AutonomousBase {
                 driveToPosition(18.5, 0.0, 0.0, DRIVE_SPEED_100, TURN_SPEED_30, DRIVE_THRU);
                 driveToPosition(14.0, -25.0, 0.0, DRIVE_SPEED_100, TURN_SPEED_30, DRIVE_THRU);
             }
-            tiltAngle = Hardware2025Bot.TILT_ANGLE_DRIVE_DEG; autoTiltMotorMoveToTarget(tiltAngle, 0.80 );
-            vipPos = Hardware2025Bot.VIPER_EXTEND_AUTO_READY; autoViperMotorMoveToTarget(vipPos);
-            autoElbowMoveToPosition(Hardware2025Bot.ELBOW_SERVO_GRAB);
-            autoWristMoveToPosition(Hardware2025Bot.WRIST_SERVO_GRAB);
+            // Notice how we update targetTiltAngle and targetVipPos before calling MoveToTarget
+            targetTiltAngle = Hardware2025Bot.TILT_ANGLE_DRIVE_DEG; autoTiltMotorMoveToTarget(targetTiltAngle, 0.80 ); // update tilt
+            targetVipPos = Hardware2025Bot.VIPER_EXTEND_AUTO_READY; autoViperMotorMoveToTarget(targetVipPos); // update viper
+            autoElbowMoveToPosition(Hardware2025Bot.ELBOW_SERVO_GRAB); // Notice how we call this new function to set elbow position
+            autoWristMoveToPosition(Hardware2025Bot.WRIST_SERVO_GRAB); // Notice how we call this new function to set wrist position
             // Score starting sample
             int samplesScored = 1;
 
@@ -220,8 +224,8 @@ public class AutonomousLeftBlue extends AutonomousBase {
             // Move away from field wall (viper slide motor will hit field wall if we tilt up too soon!)
             driveToPosition( 3.00, 0.00, 0.00, DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_THRU );
             // Start tilting and extending the arm, and positioning the specimen
-            tiltAngle = Hardware2025Bot.TILT_ANGLE_SPECIMEN1_DEG; autoTiltMotorMoveToTarget(tiltAngle, 1.0);
-            vipPos    = Hardware2025Bot.VIPER_EXTEND_AUTO1; autoViperMotorMoveToTarget(vipPos);
+            targetTiltAngle = Hardware2025Bot.TILT_ANGLE_SPECIMEN1_DEG; autoTiltMotorMoveToTarget(targetTiltAngle, 1.0); // update tilt
+            targetVipPos = Hardware2025Bot.VIPER_EXTEND_AUTO1; autoViperMotorMoveToTarget(targetVipPos); // update viper
             // Drive to the scoring position next to the submersible
             driveToPosition( 18.20, 7.20, 0.00, DRIVE_SPEED_40, TURN_SPEED_20, DRIVE_THRU );
             autoWristMoveToPosition(Hardware2025Bot.WRIST_SERVO_BAR1);
@@ -229,32 +233,36 @@ public class AutonomousLeftBlue extends AutonomousBase {
             driveToPosition( 27.80, 7.20, 0.00, DRIVE_SPEED_40, TURN_SPEED_20, DRIVE_TO );
             robot.driveTrainMotorsZero();  // make double sure we're stopped
             // If we drive to the submersible faster than the arm moves, wait for the arm
+            // Call new methods to check if viper and tilt finished.
+            // Notice how we don't have to use sleeps and instead pass the sleep in as the timeout parameter.
+            // This means that in the worst case scenario, the lift movement will execute in the same time as our autonomous prior to these changes.
             do {
                 if( !opModeIsActive() ) break;
                 // wait for lift/tilt to finish...
                 sleep( 50 );
                 // update all our status
                 performEveryLoop();
-            } while( autoViperMotorMoving(vipPos, 100) || autoTiltMotorMoving(tiltAngle, 100) );
+            } while( autoViperMotorMoving(targetVipPos, 100) || autoTiltMotorMoving(targetTiltAngle, 100) );
             // sleep(100); old
         } // opModeIsActive
 
         // Rotate arm, viper slide, and claw down to clip the specimen
         if( opModeIsActive() ) {
-            tiltAngle = Hardware2025Bot.TILT_ANGLE_SPECIMEN2_DEG; autoTiltMotorMoveToTarget(tiltAngle,0.80 );
-            vipPos = Hardware2025Bot.VIPER_EXTEND_AUTO2; autoViperMotorMoveToTarget(vipPos);
+            targetTiltAngle = Hardware2025Bot.TILT_ANGLE_SPECIMEN2_DEG; autoTiltMotorMoveToTarget(targetTiltAngle,0.80 ); // update tilt
+            targetVipPos = Hardware2025Bot.VIPER_EXTEND_AUTO2; autoViperMotorMoveToTarget(targetVipPos); // update viper
             autoWristMoveToPosition(Hardware2025Bot.WRIST_SERVO_BAR2);
             autoElbowMoveToPosition(Hardware2025Bot.ELBOW_SERVO_BAR2);
+            // Call new methods to check if viper and tilt finished.
             do {
                 if( !opModeIsActive() ) break;
                 // wait for lift/tilt to finish...
                 sleep( 50 );
                 // update all our status
                 performEveryLoop();
-            } while( autoViperMotorMoving(vipPos, 1000) || autoTiltMotorMoving(tiltAngle, 1000) );
+            } while( autoViperMotorMoving(targetVipPos, 1000) || autoTiltMotorMoving(targetTiltAngle, 1000) );
             //sleep( 1000 ); //while( autoTiltMotorMoving() || autoViperMotorMoving());
             // release the specimen
-            autoClawMoveToPosition(Hardware2025Bot.CLAW_SERVO_OPEN_W);
+            autoClawMoveToPosition(Hardware2025Bot.CLAW_SERVO_OPEN_W); // Notice how we call this function instead of changing the clawState
             //robot.clawStateSet( Hardware2025Bot.clawStateEnum.CLAW_OPEN_WIDE ); //old
         } // opModeIsActive
 
@@ -288,8 +296,8 @@ public class AutonomousLeftBlue extends AutonomousBase {
 
         // Setup the arm for scoring samples
         if( opModeIsActive() ) {
-            vipPos = Hardware2025Bot.VIPER_EXTEND_AUTO_COLLECT; autoViperMotorMoveToTarget( vipPos );
-            tiltAngle = Hardware2025Bot.TILT_ANGLE_COLLECT1_DEG; autoTiltMotorMoveToTarget(tiltAngle, 1.0 );
+            targetVipPos = Hardware2025Bot.VIPER_EXTEND_AUTO_COLLECT; autoViperMotorMoveToTarget(targetVipPos); // update viper
+            targetTiltAngle = Hardware2025Bot.TILT_ANGLE_COLLECT1_DEG; autoTiltMotorMoveToTarget(targetTiltAngle, 1.0 ); // update tilt
             autoElbowMoveToPosition(Hardware2025Bot.ELBOW_SERVO_GRAB);
             autoWristMoveToPosition(Hardware2025Bot.WRIST_SERVO_GRAB);
             autoClawMoveToPosition( Hardware2025Bot.CLAW_SERVO_OPEN_W);
@@ -302,7 +310,7 @@ public class AutonomousLeftBlue extends AutonomousBase {
 
         // Retract any arm extension
         if( opModeIsActive() ) {
-            vipPos = Hardware2025Bot.VIPER_EXTEND_ZERO; autoViperMotorMoveToTarget( vipPos );
+            targetVipPos = Hardware2025Bot.VIPER_EXTEND_ZERO; autoViperMotorMoveToTarget(targetVipPos); // update viper
 //          driveToPosition( 32.60, 2.70, 52.20, DRIVE_SPEED_80, TURN_SPEED_20, DRIVE_THRU );
         } // opModeIsActivee
 
@@ -311,7 +319,7 @@ public class AutonomousLeftBlue extends AutonomousBase {
             autoClawMoveToPosition(Hardware2025Bot.CLAW_SERVO_CLOSED);
             autoElbowMoveToPosition(Hardware2025Bot.ELBOW_SERVO_INIT);
             autoWristMoveToPosition(Hardware2025Bot.WRIST_SERVO_INIT);
-            tiltAngle = Hardware2025Bot.TILT_ANGLE_WALL_DEG; autoTiltMotorMoveToTarget(tiltAngle, 0.80);
+            targetTiltAngle = Hardware2025Bot.TILT_ANGLE_WALL_DEG; autoTiltMotorMoveToTarget(targetTiltAngle, 0.80); // update tilt
 //          driveToPosition( 38.40, 17.50, 90.00, DRIVE_SPEED_80, TURN_SPEED_20, DRIVE_THRU );
 //          driveToPosition( 47.40, 10.00, 180.00, DRIVE_SPEED_80, TURN_SPEED_20,
 //                                             ((spikeSamples > 0)? DRIVE_THRU : DRIVE_TO) );
@@ -328,39 +336,42 @@ public class AutonomousLeftBlue extends AutonomousBase {
             case 1:
                 // Drive forward toward the wall
                 driveToPosition( 20.9, -32.7, 0.0, DRIVE_SPEED_100, TURN_SPEED_20, DRIVE_TO );
+                // Call new methods to check if viper and tilt finished.
                 do {
                     if( !opModeIsActive() ) break;
                     // wait for lift/tilt to finish...
                     sleep( 50 );
                     // update all our status
                     performEveryLoop();
-                } while( autoViperMotorMoving(vipPos, 1500) || autoTiltMotorMoving(tiltAngle, 1500) );
+                } while( autoViperMotorMoving(targetVipPos, 1500) || autoTiltMotorMoving(targetTiltAngle, 1500) );
                 //sleep(1500);  // old: viper should already be in position
                 break;
             case 2:
                 driveToPosition( 20.9, -43.1, 0.0, DRIVE_SPEED_100, TURN_SPEED_20, DRIVE_TO );
+                // Call new methods to check if viper and tilt finished.
                 do {
                     if( !opModeIsActive() ) break;
                     // wait for lift/tilt to finish...
                     sleep( 50 );
                     // update all our status
                     performEveryLoop();
-                } while( autoViperMotorMoving(vipPos, 1300) || autoTiltMotorMoving(tiltAngle, 1300) );
+                } while( autoViperMotorMoving(targetVipPos, 1300) || autoTiltMotorMoving(targetTiltAngle, 1300) );
                 //sleep(1300);  // old: wait for viper to fully retract
                 break;
             case 3:
-                autoViperMotorMoveToTarget( Hardware2025Bot.VIPER_EXTEND_SAMPLE3);
-                autoTiltMotorMoveToTarget(Hardware2025Bot.TILT_ANGLE_SAMPLE3_DEG, 1.0 );
+                targetVipPos = Hardware2025Bot.VIPER_EXTEND_SAMPLE3; autoViperMotorMoveToTarget(targetVipPos); // update viper
+                targetTiltAngle = Hardware2025Bot.TILT_ANGLE_SAMPLE3_DEG; autoTiltMotorMoveToTarget(targetTiltAngle, 1.0 ); // update tilt
                 autoElbowMoveToPosition(Hardware2025Bot.ELBOW_SERVO_GRAB3);
                 // drive slow because waiting for arm to lower
                 driveToPosition( 24.4, -43.8, 5.0, DRIVE_SPEED_40, TURN_SPEED_30, DRIVE_TO );
+                // Call new methods to check if viper and tilt finished.
                 do {
                     if( !opModeIsActive() ) break;
                     // wait for lift/tilt to finish...
                     sleep( 50 );
                     // update all our status
                     performEveryLoop();
-                } while( autoViperMotorMoving(vipPos, 1000) || autoTiltMotorMoving(tiltAngle, 1000) );
+                } while( autoViperMotorMoving(targetVipPos, 1000) || autoTiltMotorMoving(targetTiltAngle, 1000) );
                 //sleep(1000); // old: while( autoViperMotorMoving() || autoTiltMotorMoving() )
                 driveToPosition( 24.4, -43.8, 32.1, DRIVE_SPEED_40, TURN_SPEED_30, DRIVE_TO );
                 break;
@@ -369,6 +380,7 @@ public class AutonomousLeftBlue extends AutonomousBase {
 
         // Close the claw on this sample
         autoClawMoveToPosition( Hardware2025Bot.CLAW_SERVO_CLOSED );
+        // Call new methods to check if claw finished
         do {
             if( !opModeIsActive() ) break;
             // wait for servo to finish...
@@ -383,13 +395,13 @@ public class AutonomousLeftBlue extends AutonomousBase {
     // Score Sample
     //************************************
     private void scoreSample(int samplesScored) {
-        tiltAngle = Hardware2025Bot.TILT_ANGLE_BASKET_DEG; autoTiltMotorMoveToTarget(tiltAngle, 1.0 );
+        targetTiltAngle = Hardware2025Bot.TILT_ANGLE_BASKET_DEG; autoTiltMotorMoveToTarget(targetTiltAngle, 1.0 ); // update tilt
         // drive partway there while we wait for arm to lift (before extending viper)
         if( scorePreloadSpecimen || (samplesScored > 0) ){
             driveToPosition( 11.0, -33.5, -46.6, DRIVE_SPEED_100, TURN_SPEED_30, DRIVE_THRU );
-            vipPos = Hardware2025Bot.VIPER_EXTEND_BASKET; robot.startViperSlideExtension( vipPos );
+            targetVipPos = Hardware2025Bot.VIPER_EXTEND_BASKET; robot.startViperSlideExtension(targetVipPos); // update viper
         } else {
-            vipPos = Hardware2025Bot.VIPER_EXTEND_BASKET; robot.startViperSlideExtension( vipPos );
+            targetVipPos = Hardware2025Bot.VIPER_EXTEND_BASKET; robot.startViperSlideExtension(targetVipPos); // update viepr
             driveToPosition( 9.5, -20.0, -23.0, DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_THRU );
             autoElbowMoveToPosition(Hardware2025Bot.ELBOW_SERVO_GRAB);
             autoWristMoveToPosition(Hardware2025Bot.WRIST_SERVO_GRAB);
@@ -398,15 +410,17 @@ public class AutonomousLeftBlue extends AutonomousBase {
         driveToPosition( 6.0, -38.5, -46.6, DRIVE_SPEED_40, TURN_SPEED_20, DRIVE_TO );
         autoElbowMoveToPosition(Hardware2025Bot.ELBOW_SERVO_BASKET);
         autoWristMoveToPosition(Hardware2025Bot.WRIST_SERVO_BASKET1);
+        // Call new methods to check if viper and tilt finished.
         do {
             if( !opModeIsActive() ) break;
             // wait for lift/tilt to finish...
             sleep( 50 );
             // update all our status
             performEveryLoop();
-        } while( autoViperMotorMoving(vipPos) || autoTiltMotorMoving(tiltAngle) );
+        } while( autoViperMotorMoving(targetVipPos) || autoTiltMotorMoving(targetTiltAngle) );
         autoElbowMoveToPosition(Hardware2025Bot.ELBOW_SERVO_BASKET);
         autoWristMoveToPosition(Hardware2025Bot.WRIST_SERVO_BASKET2);
+        // Call new methods to check if elbow and wrist finished
         do {
             if( !opModeIsActive() ) break;
             // wait for servo to finish...
@@ -416,25 +430,26 @@ public class AutonomousLeftBlue extends AutonomousBase {
         } while( autoElbowMoving(Hardware2025Bot.ELBOW_SERVO_BASKET, 250) || autoWristMoving(Hardware2025Bot.WRIST_SERVO_BASKET2, 250));
         //sleep(250); // Old: wait for wrist/elbow to move
         autoClawMoveToPosition( Hardware2025Bot.CLAW_SERVO_OPEN_W );
+        // Call new methods to check if claw finished
         do {
             if( !opModeIsActive() ) break;
             // wait for servo to finish...
             sleep( 50 );
             // update all our status
             performEveryLoop();
-        } while( autoElbowMoving(Hardware2025Bot.CLAW_SERVO_OPEN_W, 250));
+        } while( autoClawMoving(Hardware2025Bot.CLAW_SERVO_OPEN_W, 250));
         //sleep(250); // Old: wait for claw to drop sample
         autoElbowMoveToPosition(Hardware2025Bot.ELBOW_SERVO_GRAB);
         autoWristMoveToPosition(Hardware2025Bot.WRIST_SERVO_GRAB);
         sleep(100); // wait for claw to start moving up/back before lowering arm
         // Don't retract arm if we are going to park
         if(samplesScored < spikeSamples) {
-            tiltAngle = Hardware2025Bot.TILT_ANGLE_COLLECT1_DEG; autoTiltMotorMoveToTarget(tiltAngle, 1.0);
-            vipPos = Hardware2025Bot.VIPER_EXTEND_AUTO_COLLECT; autoViperMotorMoveToTarget(vipPos);
+            targetTiltAngle = Hardware2025Bot.TILT_ANGLE_COLLECT1_DEG; autoTiltMotorMoveToTarget(targetTiltAngle, 1.0); // update tilt
+            targetVipPos = Hardware2025Bot.VIPER_EXTEND_AUTO_COLLECT; autoViperMotorMoveToTarget(targetVipPos); // update viper
         }
         else{
-            tiltAngle = Hardware2025Bot.TILT_ANGLE_ASCENT2_DEG; autoTiltMotorMoveToTarget(tiltAngle, 1.0);
-            vipPos = Hardware2025Bot.VIPER_EXTEND_SAFE; autoViperMotorMoveToTarget(vipPos);
+            targetTiltAngle = Hardware2025Bot.TILT_ANGLE_ASCENT2_DEG; autoTiltMotorMoveToTarget(targetTiltAngle, 1.0); // update tilt
+            targetVipPos = Hardware2025Bot.VIPER_EXTEND_SAFE; autoViperMotorMoveToTarget(targetVipPos); // update viper
         }
     } // scoreSample
 
@@ -450,8 +465,8 @@ public class AutonomousLeftBlue extends AutonomousBase {
             // Drive towards submersible
             driveToPosition(44.0, -20.00, -70.0, DRIVE_SPEED_70, TURN_SPEED_50, DRIVE_THRU);
             // Extend to level1 ascent position
-            tiltAngle = Hardware2025Bot.TILT_ANGLE_PARK_DEG; autoTiltMotorMoveToTarget(tiltAngle, 1.0);
-            vipPos    = Hardware2025Bot.VIPER_EXTEND_PARK; autoViperMotorMoveToTarget(vipPos);
+            targetTiltAngle = Hardware2025Bot.TILT_ANGLE_PARK_DEG; autoTiltMotorMoveToTarget(targetTiltAngle, 1.0); // update tilt
+            targetVipPos = Hardware2025Bot.VIPER_EXTEND_PARK; autoViperMotorMoveToTarget(targetVipPos); // update viper
             // Drive forward into rung
             driveToPosition(50.0, -17.00, -70.0, DRIVE_SPEED_70, TURN_SPEED_50, DRIVE_TO);
         } // opModeIsActive

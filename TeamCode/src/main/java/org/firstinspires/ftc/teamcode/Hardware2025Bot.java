@@ -75,8 +75,8 @@ public class Hardware2025Bot
     // The math above assumes motor encoders.  For REV odometry pods, the counts per inch is different
     protected double COUNTS_PER_INCH2      = 1738.4;  // 8192 counts-per-rev / (1.5" omni wheel * PI)
 
-    protected AnalogInput distSensor       = null;
-    public double SENSOR_OFFSETCM = 5.0; // TODO Fix later
+    protected AnalogInput distSensor       = null; // we will be using an analog distance sensor (don't know which one yet)
+    public double SENSOR_OFFSETCM = 5.0; // this offset is the distance from the sensor to the grabbing point of the claw (about 5cm in CAD) TODO Fix later
 
     //====== Worm gear pan and tilt MOTORS (RUN_USING_ENCODER) =====
     protected DcMotorEx wormPanMotor       = null;
@@ -113,7 +113,10 @@ public class Hardware2025Bot
     // Delta math from -0.1 deg -3891 encoder counts
     //                  94.4 deg 5 encoder counts
     //                  94.5 deg 3896 encoder counts range
-    public final static double ENCODER_COUNTS_PER_DEG  = 2785.96 / 94.5;
+    public final static double GOBILDA_435_MOTOR_REV = 384.5; // Ticks per revolution for a GOBILDA 435 RPM motor
+    public final static double SUPER_DUTY_WORM_GEAR_REDUCTION = 28.0; // Gear reduction for the super duty worm gear from ardufruit
+    public final static double ENCODER_COUNTS_PER_REV  = (GOBILDA_435_MOTOR_REV * SUPER_DUTY_WORM_GEAR_REDUCTION); // The number of counts it takes to complete one revolution
+    public final static double ENCODER_COUNTS_PER_DEG = ENCODER_COUNTS_PER_REV / 360.0; // The number of counts it takes to tilt one degree
 
     public final static double TILT_ANGLE_HW_MAX_DEG      = 94.00; // Arm at maximum rotation UP/BACK (horizontal = -200)
     public final static double TILT_ANGLE_BASKET_DEG      = 90.00; // Arm at rotation back to the basket for scoring
@@ -297,7 +300,7 @@ public class Hardware2025Bot
             module.setBulkCachingMode(LynxModule.BulkCachingMode.MANUAL);
         }
 
-        distSensor = hwMap.get(AnalogInput.class, "dSensor");
+        distSensor = hwMap.get(AnalogInput.class, "dSensor"); // Most likely will be on the expansion hub
 
         // Locate the odometry controller in our hardware settings
         odom = hwMap.get(GoBildaPinpointDriver.class,"odom");      // Control Hub I2C port 3
@@ -726,13 +729,14 @@ public class Hardware2025Bot
     /* NOTE: Comments online say the firmware that executes the motor RUN_TO_POSITION logic want  */
     /* the setup commands in this order: setTargetPosition(), setMode(), setPower().              */
 
-    public double getDistanceFromWall() {
-        double Max_Distance = 30;
-        double Min_Distance = 4;
+    public double getDistanceFromSpecimenOnWall() {
+        double Max_Distance = 30; // Maximum distance in range (temporary may change later depending on sensor)
+        double Min_Distance = 4; //  Minimum distance in range (temporary may change later depending on sensor)
         // if we are in range return distance else return -1 (indicating we are too far away)
-        double value = (distSensor.getVoltage() > 0.1)? ((distSensor.getVoltage() * ( Max_Distance - Min_Distance)) / 3.3) + Min_Distance : -1;
+        // higher voltage values means that we are at a closer distance so we subtract from the Max_Distance
+        double value = (distSensor.getVoltage() > 0.1)? Max_Distance - ((distSensor.getVoltage() * ( Max_Distance - Min_Distance)) / 3.3) : -1;
         return value - SENSOR_OFFSETCM;
-    }
+    } // getDistanceFromSpecimenOnWall
 
     public void startWormTilt(double targetArmAngle)
     {   // Convert angle to encoder counts

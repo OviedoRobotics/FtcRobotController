@@ -353,15 +353,18 @@ public abstract class AutonomousBase extends LinearOpMode {
 
     /*---------------------------------------------------------------------------------*/
     // Auto Elbow Movements
+    // Call this function instead of simply setting position. Resets the servo timer.
     void autoElbowMoveToPosition(double targetElbowPosition){
        robot.elbowServo.setPosition(targetElbowPosition);
        autoElbowServoTimer.reset();
     }
+    // Checks to see if servo reached its destination with a ±0.01 position tolerance
     boolean elbowReachedDestination(double targetElbowPosition){
         boolean reachedDestination = false;
         if(Math.abs(robot.elbowServo.getPosition() - targetElbowPosition) < 0.01) reachedDestination = true;
         return reachedDestination;
     }
+    // Returns true if servo is moving. Passes in targetPosition and a specified timeout.
     boolean autoElbowMoving(double targetElbowPosition, double timeout){
         boolean elbowMoving = false;
         if( elbowReachedDestination(targetElbowPosition)) {
@@ -373,6 +376,7 @@ public abstract class AutonomousBase extends LinearOpMode {
         }
         return elbowMoving;
     }
+    // Returns true if servo is moving. Passes in targetPosition with a predefined timeout of 2000.
     boolean autoElbowMoving(double targetElbowPosition){
         boolean elbowMoving = false;
         if( elbowReachedDestination(targetElbowPosition)) {
@@ -386,15 +390,18 @@ public abstract class AutonomousBase extends LinearOpMode {
     }
 
     // Auto Wrist Movements
+    // Call this function instead of simply setting position. Resets the servo timer.
     void autoWristMoveToPosition(double targetWristPosition){
         robot.wristServo.setPosition(targetWristPosition);
         autoWristServoTimer.reset();
     }
+    // Checks to see if servo reached its destination with a ±0.01 position tolerance
     boolean wristReachedDestination(double targetWristPosition){
         boolean reachedDestination = false;
         if(Math.abs(robot.wristServo.getPosition() - targetWristPosition) < 0.01) reachedDestination = true;
         return reachedDestination;
     }
+    // Returns true if servo is moving. Passes in targetPosition and a specified timeout.
     boolean autoWristMoving(double targetWristPosition, double timeout){
         boolean wristMoving = false;
         if( wristReachedDestination(targetWristPosition)) {
@@ -406,6 +413,7 @@ public abstract class AutonomousBase extends LinearOpMode {
         }
         return wristMoving;
     }
+    // Returns true if servo is moving. Passes in targetPosition with a predefined timeout of 2000.
     boolean autoWristMoving(double targetWristPosition){
         boolean wristMoving = false;
         if( wristReachedDestination(targetWristPosition)) {
@@ -418,15 +426,18 @@ public abstract class AutonomousBase extends LinearOpMode {
         return wristMoving;
     }
     // Auto Claw Movements
+    // Call this function instead of simply setting position. Resets the servo timer.
     void autoClawMoveToPosition(double targetClawPosition){
         robot.clawServo.setPosition(targetClawPosition);
         autoClawServoTimer.reset();
     }
+    // Checks to see if servo reached its destination with a ±0.01 position tolerance
     boolean clawReachedDestination(double targetClawPosition){
         boolean reachedDestination = false;
         if(Math.abs(robot.clawServo.getPosition() - targetClawPosition) < 0.01) reachedDestination = true;
         return reachedDestination;
     }
+    // Returns true if servo is moving. Passes in targetPosition and a specified timeout.
     boolean autoClawMoving(double targetClawPosition, double timeout){
         boolean clawMoving = false;
         if( clawReachedDestination(targetClawPosition)) {
@@ -438,6 +449,7 @@ public abstract class AutonomousBase extends LinearOpMode {
         }
         return clawMoving;
     }
+    // Returns true if servo is moving. Passes in targetPosition with a predefined timeout of 2000.
     boolean autoClawMoving(double targetClawPosition){
         boolean clawMoving = false;
         if( clawReachedDestination(targetClawPosition)) {
@@ -473,13 +485,14 @@ public abstract class AutonomousBase extends LinearOpMode {
         robot.viperMotor.setPower( motorPower );
     } // autoViperMotorMoveToTarget
 
-    // Replace with autoViperMotorMoving to allow for tolerance
+    // Checks to see if viper reached its destination with a ±10.0 encoder count tolerance
     boolean viperReachedDestination( int targetExtension ){
         boolean reachedDestination = false;
+        // if within tolerance set reachedDestination to true
         if(Math.abs(robot.viperMotor.getCurrentPosition() - targetExtension) < 10.0) reachedDestination = true;
         return reachedDestination;
     }
-
+    // Returns true if the viper motor is moving. Passes in the targetEncoderCount and specified timeout
     boolean autoViperMotorMoving(int targetEncoderCount, double timeout) {
         boolean viperMoving = true;
         // Did the movement finish?
@@ -488,7 +501,7 @@ public abstract class AutonomousBase extends LinearOpMode {
            robot.viperMotor.setPower( 0.001 );   // hold
         }
         // Did we timeout?
-        else if( autoViperMotorTimer.milliseconds() > timeout ) { // timeout was 3000
+        else if( autoViperMotorTimer.milliseconds() > timeout ) {
             viperMoving = false;
            robot.viperMotor.setPower( 0.001 );   // hold
         }
@@ -498,6 +511,7 @@ public abstract class AutonomousBase extends LinearOpMode {
         return viperMoving;
     } // autoViperMotorMoving
 
+    // Returns true if the viper motor is moving. Passes in the targetEncoderCount and sets the timeout to 3000
     boolean autoViperMotorMoving(int targetEncoderCount) {
         boolean viperMoving = true;
         // Did the movement finish?
@@ -516,6 +530,8 @@ public abstract class AutonomousBase extends LinearOpMode {
         return viperMoving;
     } // autoViperMotorMoving
 
+    // (OLD) Returns true if the viper motor is moving.
+    // No parameters (meaning it does not call viperReachedDestination and sets the timeout to 3000)
     boolean autoViperMotorMoving() {
         boolean viperMoving = true;
         // Did the movement finish?
@@ -553,12 +569,15 @@ public abstract class AutonomousBase extends LinearOpMode {
         robot.wormTiltMotor.setPower( power );
     } // autoTiltMotorMoveToTarget
 
+    // Checks to see if tilt reached its destination with a ±1.5 degree tolerance
     boolean tiltReachedDestination( double targetAngle){
         boolean reachedDestination = false;
+        // if within tolerance we set reachedDestination to true
         if(Math.abs(robot.armTiltAngle - targetAngle) < 1.5) reachedDestination = true;
         return reachedDestination;
     }
 
+    // Returns true if the tilt motor is moving. Passes in the targetTiltAngle and a specified timeout
     boolean autoTiltMotorMoving(double targetTiltAngle, double timeout) {
         boolean tiltMoving = true;
         // Did the movement finish?
@@ -567,7 +586,7 @@ public abstract class AutonomousBase extends LinearOpMode {
             robot.wormTiltMotor.setPower( 0.0 );
         }
         // Did we timeout?
-        else if( autoTiltMotorTimer.milliseconds() > timeout ) { // timeout was 4000
+        else if( autoTiltMotorTimer.milliseconds() > timeout ) {
             tiltMoving = false;
             robot.wormTiltMotor.setPower( 0.0 );
         }
@@ -577,6 +596,7 @@ public abstract class AutonomousBase extends LinearOpMode {
         return tiltMoving;
     } // autoTiltMotorMoving
 
+    // Returns true if the tilt motor is moving. Passes in the targetEncoderCount and sets the timeout to 4000
     boolean autoTiltMotorMoving(double targetTiltAngle) {
         boolean tiltMoving = true;
         // Did the movement finish?
@@ -595,6 +615,8 @@ public abstract class AutonomousBase extends LinearOpMode {
         return tiltMoving;
     } // autoTiltMotorMoving
 
+    // (OLD) Returns true if the tilt motor is moving.
+    // No parameters (meaning it does not call tiltReachedDestination and sets the timeout to 4000)
     boolean autoTiltMotorMoving() {
         boolean tiltMoving = true;
         // Did the movement finish?
