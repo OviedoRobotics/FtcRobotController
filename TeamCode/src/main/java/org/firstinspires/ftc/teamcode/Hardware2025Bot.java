@@ -124,7 +124,10 @@ public class Hardware2025Bot
     // Delta math from -0.1 deg -3891 encoder counts
     //                  94.4 deg 5 encoder counts
     //                  94.5 deg 3896 encoder counts range
-    public final static double ENCODER_COUNTS_PER_DEG  = 3896.0 / 94.5;
+    public final static double GOBILDA_435_MOTOR_REV = 384.5; // Ticks per revolution for a GOBILDA 435 RPM motor
+    public final static double SUPER_DUTY_WORM_GEAR_REDUCTION = 28.0; // Gear reduction for the super duty worm gear from ardufruit
+    public final static double ENCODER_COUNTS_PER_REV  = (GOBILDA_435_MOTOR_REV * SUPER_DUTY_WORM_GEAR_REDUCTION); // The number of counts it takes to complete one revolution
+    public final static double ENCODER_COUNTS_PER_DEG = ENCODER_COUNTS_PER_REV / 360.0; // The number of counts it takes to tilt one degree
 
     public final static double TILT_ANGLE_HW_MAX_DEG      = 94.00; // Arm at maximum rotation UP/BACK (horizontal = -200)
     public final static double TILT_ANGLE_BASKET_DEG      = 90.00; // Arm at rotation back to the basket for scoring

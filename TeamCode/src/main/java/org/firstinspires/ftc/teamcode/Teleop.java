@@ -674,6 +674,7 @@ public abstract class Teleop extends LinearOpMode {
             startHoverArm();
             grabLState = 2;
             grabRState = 2;
+            submersibleCollectState = 2; // forgot to update this state
         }
         // Check for an OFF-to-ON toggle of the gamepad2 DPAD LEFT
         else if( gamepad2_dpad_left_now && !gamepad2_dpad_left_last)
