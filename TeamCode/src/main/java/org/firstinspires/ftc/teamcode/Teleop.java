@@ -179,18 +179,6 @@ public abstract class Teleop extends LinearOpMode {
                 telemetry.addData("Status", robot.odom.getDeviceStatus());
             }
 
-            if( gamepad1_triangle_now && !gamepad1_triangle_last)
-            {
-                //if(Math.abs(180-robot.imuHeadingAngle) > 8.0) driveToPosition(curY, curX, 180.0, 0, AutonomousBase.TURN_SPEED_20, AutonomousBase.DRIVE_THRU);
-                double distance = robot.getDistanceFromSpecimenOnWall(); // get distance from specimen on wall
-                telemetry.addData("Distance from specimen on wall: " , distance); // telemetry
-                telemetry.update();
-                sleep(5000); // allow enough time to read distance
-                /*if(distance > 0.15){
-                    driveToPosition(curY-distance, curX, 180.0, AutonomousBase.DRIVE_SPEED_40, 0, AutonomousBase.DRIVE_TO);
-                }*/
-            }
-
             // Check for an OFF-to-ON toggle of the gamepad1 SQUARE button (toggles DRIVER-CENTRIC drive control)
             if( gamepad1_square_now && !gamepad1_square_last)
             {
