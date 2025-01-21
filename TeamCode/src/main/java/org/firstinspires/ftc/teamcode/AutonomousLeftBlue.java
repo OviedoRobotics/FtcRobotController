@@ -399,9 +399,9 @@ public class AutonomousLeftBlue extends AutonomousBase {
         // drive partway there while we wait for arm to lift (before extending viper)
         if( scorePreloadSpecimen || (samplesScored > 0) ){
             driveToPosition( 11.0, -33.5, -46.6, DRIVE_SPEED_100, TURN_SPEED_30, DRIVE_THRU );
-            targetVipPos = Hardware2025Bot.VIPER_EXTEND_BASKET; robot.startViperSlideExtension(targetVipPos); // update viper
+            targetVipPos = Hardware2025Bot.VIPER_EXTEND_BASKET; autoViperMotorMoveToTarget(targetVipPos); // update viper
         } else {
-            targetVipPos = Hardware2025Bot.VIPER_EXTEND_BASKET; robot.startViperSlideExtension(targetVipPos); // update viepr
+            targetVipPos = Hardware2025Bot.VIPER_EXTEND_BASKET; autoViperMotorMoveToTarget(targetVipPos); // update viper
             driveToPosition( 9.5, -20.0, -23.0, DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_THRU );
             autoElbowMoveToPosition(Hardware2025Bot.ELBOW_SERVO_GRAB);
             autoWristMoveToPosition(Hardware2025Bot.WRIST_SERVO_GRAB);
@@ -427,7 +427,7 @@ public class AutonomousLeftBlue extends AutonomousBase {
             sleep( 50 );
             // update all our status
             performEveryLoop();
-        } while( autoElbowMoving(Hardware2025Bot.ELBOW_SERVO_BASKET, 250) || autoWristMoving(Hardware2025Bot.WRIST_SERVO_BASKET2, 250));
+        } while( autoElbowMoving(Hardware2025Bot.ELBOW_SERVO_BASKET, 1000) || autoWristMoving(Hardware2025Bot.WRIST_SERVO_BASKET2, 1000));
         //sleep(250); // Old: wait for wrist/elbow to move
         autoClawMoveToPosition( Hardware2025Bot.CLAW_SERVO_OPEN_W );
         // Call new methods to check if claw finished

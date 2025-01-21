@@ -1,7 +1,5 @@
 package org.firstinspires.ftc.teamcode;
 
-import static java.lang.Math.abs;
-import static java.lang.Math.toDegrees;
 import static java.lang.Math.toRadians;
 
 import android.os.Environment;
@@ -491,7 +489,9 @@ public abstract class AutonomousBase extends LinearOpMode {
     boolean viperReachedDestination( int targetExtension ){
         boolean reachedDestination = false;
         // if within tolerance set reachedDestination to true
-        if(Math.abs(robot.viperMotor.getCurrentPosition() - targetExtension) < 10.0) reachedDestination = true;
+        if(Math.abs(robot.viperMotor.getCurrentPosition() - targetExtension) < 10.0) {
+            reachedDestination = true;
+        }
         return reachedDestination;
     }
     // Returns true if the viper motor is moving. Passes in the targetEncoderCount and specified timeout
@@ -575,7 +575,9 @@ public abstract class AutonomousBase extends LinearOpMode {
     boolean tiltReachedDestination( double targetAngle){
         boolean reachedDestination = false;
         // if within tolerance we set reachedDestination to true
-        if(Math.abs(robot.armTiltAngle - targetAngle) < 1.5) reachedDestination = true;
+        if(Math.abs(robot.armTiltAngle - targetAngle) < 1.5) {
+            reachedDestination = true;
+        }
         return reachedDestination;
     }
 
