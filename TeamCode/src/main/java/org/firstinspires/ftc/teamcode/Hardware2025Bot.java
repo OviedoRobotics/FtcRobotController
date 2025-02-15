@@ -141,7 +141,7 @@ public class Hardware2025Bot
     public final static double TILT_ANGLE_AUTO_PRE_DEG      = 83.00; // Arm almost at  basket (start to slow; avoid wobble)
     public final static double TILT_ANGLE_SUBMERSIBLE_DEG   = 10.00; // Arm at rotation back to the submersible for collecting
     public final static double TILT_ANGLE_SWEEPER_DEG       = 8.00; // Arm at rotation to get into position to sweep TODO: tweak value
-    public final static double TILT_ANGLE_SWEEPER_LOWER_DEG = 6.00; // Arm at rotation to actually sweep TODO: tweak value
+    public final static double TILT_ANGLE_SWEEPER_LOWER_DEG = 6.00; // Arm rotated to actually sweep TODO: tweak value
     public final static double TILT_ANGLE_ASCENT1_DEG       = 58.00; // Arm at rotation back to the low bar for ascent level 1 or 2
     public final static double TILT_ANGLE_ASCENT2_DEG     = 64.25; // Arm at rotation back to the low bar for ascent level 2
     public final static double TILT_ANGLE_ASCENT3_DEG     = 56.50; // Arm at rotation back to the low bar for ascent level 2

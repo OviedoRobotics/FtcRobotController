@@ -1159,7 +1159,7 @@ public abstract class Teleop extends LinearOpMode {
         }
     }
     //**************************
-    // Sweeper Arm
+    // Sweeper Arm Score
     //**************************
     public enum Sweeper_Steps {
         IDLE,
