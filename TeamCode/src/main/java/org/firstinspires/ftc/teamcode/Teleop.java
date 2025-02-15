@@ -1159,8 +1159,7 @@ public abstract class Teleop extends LinearOpMode {
         }
     }
     //**************************
-    // Score Arm Specimen - This should have the robot ready to score on the top bar,
-    //    arm up, rotated back, and intake in the clip position.
+    // Sweeper Arm
     //**************************
     public enum Sweeper_Steps {
         IDLE,
