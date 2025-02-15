@@ -273,6 +273,7 @@ public abstract class Teleop extends LinearOpMode {
         processSecureArm();
         processScoreArm();
         processScoreArmSpec();
+        processSweeper();
     } // performEveryLoopTeleop
 
     /*---------------------------------------------------------------------------------*/
@@ -714,6 +715,11 @@ public abstract class Teleop extends LinearOpMode {
             }
             //robot.clawStateSet( Hardware2025Bot.clawStateEnum.CLAW_OPEN_WIDE );
         }
+        // Check for ON-to-OFF toggle of the gamepad2 CROSS
+        else if( gamepad2_cross_now && !gamepad2_cross_last )
+        {
+            startSweeper();
+        }
         //===================================================================
         else if( manual_lift_control || liftTweaked ) {
             // Does user want to manually EXTEND the lift?
@@ -880,7 +886,7 @@ public abstract class Teleop extends LinearOpMode {
         if(ascent2telem) {
             // Monitor motor currents
             robot.updateAscendMotorAmps();
-            telemetry.addData("Viper Motor", "%.1f Amp (%.1f peak)", 
+            telemetry.addData("Viper Motor", "%.1f Amp (%.1f peak)",
                robot.viperMotorAmps, robot.viperMotorAmpsPk );
             telemetry.addData("Tilt Motor", "%.1f Amp (%.1f peak)",
                robot.wormTiltMotorAmps, robot.wormTiltMotorAmpsPk );
@@ -899,6 +905,7 @@ public abstract class Teleop extends LinearOpMode {
         abortHoverArm();
         abortScoreArm();
         abortScoreArmSpec();
+        abortSweeper();
     }
     //**************************
     // Hover Arm - This should have the robot ready to collect, except above the level of
@@ -1149,6 +1156,66 @@ public abstract class Teleop extends LinearOpMode {
             robot.abortWormTilt();
             robot.abortViperSlideExtension();
             scoreArmSpecState = Score_Arm_Spec_Steps.IDLE;
+        }
+    }
+    //**************************
+    // Score Arm Specimen - This should have the robot ready to score on the top bar,
+    //    arm up, rotated back, and intake in the clip position.
+    //**************************
+    public enum Sweeper_Steps {
+        IDLE,
+        SWEEPING,
+        LIFT_ARM,
+        CLOSE_CLAW_LOWER_ARM,
+        WIGGLE_CLAW;
+    };
+    public Sweeper_Steps sweeperState = Sweeper_Steps.IDLE;
+    protected ElapsedTime sweeperTimer = new ElapsedTime();
+    public void startSweeper(){
+        if(sweeperState == Sweeper_Steps.IDLE) {
+            //Set robot into position to sweep
+            terminateAutoArmMovements();
+            robot.clawStateSet(Hardware2025Bot.clawStateEnum.CLAW_OPEN_SWEEPER);
+            robot.startWormTilt(Hardware2025Bot.TILT_ANGLE_SWEEPER_DEG);
+            sweeperState = Sweeper_Steps.SWEEPING;
+        }
+    }
+    public void processSweeper() {
+        switch(sweeperState) {
+            case SWEEPING:
+                //Bring arm down and open claw to clear samples
+                robot.startWormTilt(Hardware2025Bot.TILT_ANGLE_SWEEPER_LOWER_DEG);
+                robot.clawStateSet(Hardware2025Bot.clawStateEnum.CLAW_OPEN_WIDE);
+                sweeperState = Sweeper_Steps.LIFT_ARM;
+                break;
+            case LIFT_ARM:
+                //Lift arm up then close claw to get ready to collect
+                robot.startWormTilt(Hardware2025Bot.TILT_ANGLE_SUBMERSIBLE_DEG);
+                sweeperState = Sweeper_Steps.CLOSE_CLAW_LOWER_ARM;
+                break;
+            case CLOSE_CLAW_LOWER_ARM:
+                //Close claw to narrow position and lower arm to collect position and wiggle claw
+                robot.clawStateSet(Hardware2025Bot.clawStateEnum.CLAW_OPEN_NARROW);
+                robot.startWormTilt(Hardware2025Bot.TILT_ANGLE_COLLECT_DEG);
+                sweeperState = Sweeper_Steps.WIGGLE_CLAW;
+                break;
+            case WIGGLE_CLAW:
+                //Wiggle claw to clear unwanted samples
+                //robot.elbowServo.setPosition(Hardware2025Bot.ELBOW_SERVO_GRABL2);
+                //robot.elbowServo.setPosition(Hardware2025Bot.ELBOW_SERVO_GRABR2);
+                robot.clawStateSet(Hardware2025Bot.clawStateEnum.CLAW_OPEN_WIDE);
+                robot.clawStateSet(Hardware2025Bot.clawStateEnum.CLAW_CLOSED);
+                sweeperState = Sweeper_Steps.IDLE;
+                break;
+            case IDLE:
+            default:
+        }
+    }
+    public void abortSweeper() {
+        if(sweeperState != Sweeper_Steps.IDLE) {
+            robot.abortWormTilt();
+            robot.abortViperSlideExtension();
+            sweeperState = Sweeper_Steps.IDLE;
         }
     }
 } // Teleop

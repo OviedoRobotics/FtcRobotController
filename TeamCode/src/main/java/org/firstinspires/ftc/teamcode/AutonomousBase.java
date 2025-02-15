@@ -1,6 +1,5 @@
 package org.firstinspires.ftc.teamcode;
 
-import static java.lang.Math.abs;
 import static java.lang.Math.toRadians;
 
 import android.os.Environment;
@@ -30,11 +29,11 @@ public abstract class AutonomousBase extends LinearOpMode {
     static final double  P_DRIVE_COEFF        = 0.005;   // Larger is more responsive, but also less stable
     static final double  HEADING_THRESHOLD    = 2.0;     // Minimum of 1 degree for an integer gyro
     static final double  P_TURN_COEFF         = 0.050;   // Larger is more responsive, but also less stable
-    static final double  DRIVE_SPEED_10       = 0.10;    // 
+    static final double  DRIVE_SPEED_10       = 0.10;    //
     static final double  DRIVE_SPEED_20       = 0.20;    // Lower speed for moving from a standstill
     static final double  DRIVE_SPEED_30       = 0.30;    // Lower speed for fine control going sideways
     static final double  DRIVE_SPEED_40       = 0.40;    // Normally go slower to achieve better accuracy
-    static final double  DRIVE_SPEED_45       = 0.45;    // 
+    static final double  DRIVE_SPEED_45       = 0.45;    //
     static final double  DRIVE_SPEED_50       = 0.50;    //
     static final double  DRIVE_SPEED_55       = 0.55;    //
     static final double  DRIVE_SPEED_60       = 0.60;    //

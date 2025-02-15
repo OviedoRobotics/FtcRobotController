@@ -136,11 +136,13 @@ public class Hardware2025Bot
 //  public final static double ENCODER_COUNTS_PER_REV  = (GOBILDA_435_MOTOR_REV * SUPER_DUTY_WORM_GEAR_REDUCTION); // The number of counts it takes to complete one revolution
 //  public final static double ENCODER_COUNTS_PER_DEG = ENCODER_COUNTS_PER_REV / 360.0;  // The number of counts it takes to tilt one degree
 
-    public final static double TILT_ANGLE_HW_MAX_DEG      = 94.00; // Arm at maximum rotation UP/BACK (horizontal = -200)
-    public final static double TILT_ANGLE_BASKET_DEG      = 90.00; // Arm at rotation back to the basket for scoring
-    public final static double TILT_ANGLE_AUTO_PRE_DEG    = 83.00; // Arm almost at  basket (start to slow; avoid wobble)
-    public final static double TILT_ANGLE_SUBMERSIBLE_DEG = 10.00; // Arm at rotation back to the submersible for collecting
-    public final static double TILT_ANGLE_ASCENT1_DEG     = 58.00; // Arm at rotation back to the low bar for ascent level 1 or 2
+    public final static double TILT_ANGLE_HW_MAX_DEG        = 94.00; // Arm at maximum rotation UP/BACK (horizontal = -200)
+    public final static double TILT_ANGLE_BASKET_DEG        = 90.00; // Arm at rotation back to the basket for scoring
+    public final static double TILT_ANGLE_AUTO_PRE_DEG      = 83.00; // Arm almost at  basket (start to slow; avoid wobble)
+    public final static double TILT_ANGLE_SUBMERSIBLE_DEG   = 10.00; // Arm at rotation back to the submersible for collecting
+    public final static double TILT_ANGLE_SWEEPER_DEG       = 8.00; // Arm at rotation to get into position to sweep TODO: tweak value
+    public final static double TILT_ANGLE_SWEEPER_LOWER_DEG = 6.00; // Arm at rotation to actually sweep TODO: tweak value
+    public final static double TILT_ANGLE_ASCENT1_DEG       = 58.00; // Arm at rotation back to the low bar for ascent level 1 or 2
     public final static double TILT_ANGLE_ASCENT2_DEG     = 64.25; // Arm at rotation back to the low bar for ascent level 2
     public final static double TILT_ANGLE_ASCENT3_DEG     = 56.50; // Arm at rotation back to the low bar for ascent level 2
     public final static double TILT_ANGLE_PARK_DEG        = 33.80; // Arm at rotation back to the low bar for park in auto
@@ -290,11 +292,13 @@ public class Hardware2025Bot
     public final static double CLAW_SERVO_CLOSED  = 0.443;  // Claw closed (hold sample/specimen)
     public final static double CLAW_SERVO_INIT    = 0.500;  // Claw in init position (servo default power-on state)
     public final static double CLAW_SERVO_OPEN_N  = 0.600;  // claw opened narrow (enough to release/drop)
+    public final static double CLAW_SERVO_OPEN_S  = 0.500;  // claw opened narrow (enough to clear neighboring samples) TODO: Change Value
     public final static double CLAW_SERVO_OPEN_W  = 0.900;  // claw opened wide (fully open and above samples on floor)
 
     public enum clawStateEnum {
         CLAW_INIT,
         CLAW_OPEN_NARROW,
+        CLAW_OPEN_SWEEPER,
         CLAW_OPEN_WIDE,
         CLAW_OPEN,       /* used to toggle between OPEN_NARROW and OPEN_WIDE */
         CLAW_CLOSED
@@ -477,6 +481,10 @@ public class Hardware2025Bot
                 break;
             case CLAW_OPEN_NARROW :
                 clawServo.setPosition( CLAW_SERVO_OPEN_N );
+                clawState = newClawState;
+                break;
+            case CLAW_OPEN_SWEEPER :
+                clawServo.setPosition( CLAW_SERVO_OPEN_S );
                 clawState = newClawState;
                 break;
             case CLAW_OPEN_WIDE :
