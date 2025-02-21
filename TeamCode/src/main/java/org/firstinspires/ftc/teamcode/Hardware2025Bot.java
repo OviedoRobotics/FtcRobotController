@@ -187,32 +187,30 @@ public class Hardware2025Bot
     public double       VIPER_HOLD_POWER   =  0.001; // Motor power used to HOLD viper slide at current extension
     public double       VIPER_LOWER_POWER  = -0.500; // Motor power used to RETRACT viper slide
 
-    // Encoder counts for 435 RPM lift motors theoretical max 5.80 rev * 384.54 ticks/rev = 2230 counts
-    // Encoder counts for 312 RPM lift motors theoretical max 5.76 rev * 537.7  ticks/rev = 3100 counts
-    // Encoder counts for 223 RPM lift motors theoretical max 5.60 rev * 751.8  ticks/rev = 4214 counts
+    // Encoder counts for 435 RPM lift motors theoretical max 5.8 rev * 384.54 ticks/rev = 2230 counts
+    // Encoder counts for 312 RPM lift motors theoretical max 5.8 rev * 537.7  ticks/rev = 3118 counts
+    // Encoder counts for 223 RPM lift motors theoretical max 5.8 rev * 751.8  ticks/rev = 4360 counts
 
-    public final static int    VIPER_EXTEND_ZERO         = 0;     // fully retracted (may need to be adjustable??)
-    public final static int    VIPER_EXTEND_AUTO_READY   = 1177;  // extend for collecting during auto
-    public final static int    VIPER_EXTEND_AUTO_COLLECT = 1177;  // extend for collecting during auto
-    public final static int    VIPER_EXTEND_SAMPLE3 = 1103;   // extend for collecting during auto (3rd sample along wall)
-    public final static int    VIPER_EXTEND_HANG1   = 2207;   // extend to this to prepare for level 2 ascent
-    public final static int    VIPER_EXTEND_PARK2   = 2508;   // extend to this to park in auto
-    public final static int    VIPER_EXTEND_PARK1   = 1618;   // extend to this to park in auto
-    public final static int    VIPER_EXTEND_HANG2   = 2942;   // retract to this extension during level 2 ascent
-    public final static int    VIPER_EXTEND_HANG3   = 2501;   // retract to this extension during level 2 ascent
-    public final static int    VIPER_EXTEND_GRAB    = 1177;   // extend for collection from submersible
-    public final static int    VIPER_EXTEND_SECURE  =  360;   // Intake is tucked into robot to be safe
-    public final static int    VIPER_EXTEND_SAFE    =  809;   // Intake is far enough out to safely rotate down and rotate up
-    public final static int    VIPER_EXTEND_AUTO1   = 1420;   // raised to where the specimen hook is above the high bar
-    public final static int    VIPER_EXTEND_AUTO2   =  810;   // retract to clip the specimen to the bar
-    public final static int    VIPER_EXTEND_AUTO3   = 1037;   // raised to where the specimen hook is above the high bar
-    public final static int    VIPER_EXTEND_CLIP    = 1162;   // AUTO: clip specimen on bar by just driving forward
-    public final static int    VIPER_EXTEND_BASKET  = 2980;   // raised to basket-scoring height
-    public final static int    VIPER_EXTEND_42      = 2501;   // max forward extension for 42" limit
-    public final static int    VIPER_EXTEND_FULL2   = 2975;   // hardware fully extended (never exceed this count!)
-    public final static int    VIPER_EXTEND_WALL0   = 19;     // AUTO: grab specimen off wall (on approach)
-    public final static int    VIPER_EXTEND_WALL1   = 170;    // AUTO: grab specimen off wall (lift off)
-    public final static double TILT_ANGLE_42  = Math.toDegrees(Math.acos((double)Hardware2025Bot.VIPER_EXTEND_42/(double)Hardware2025Bot.VIPER_EXTEND_BASKET)); // Minimum tilt angle needed to fully extend viper
+    public final static int    VIPER_EXTEND_ZERO  = 0;      // fully retracted (may need to be adjustable??)
+    public final static int    VIPER_EXTEND_AUTO_READY  = 1600;    // extend for collecting during auto
+    public final static int    VIPER_EXTEND_AUTO_COLLECT = 1600;    // extend for collecting during auto
+    public final static int    VIPER_EXTEND_SAMPLE3  = 1500;  // extend for collecting during auto (3rd sample along wall)
+    public final static int    VIPER_EXTEND_HANG1 = 1250;   // extend to this to prepare for level 2 ascent
+    public final static int    VIPER_EXTEND_PARK = 3410;   // extend to this to park in auto
+    public final static int    VIPER_EXTEND_HANG2 =  640;   // retract to this extension during level 2 ascent
+    public final static int    VIPER_EXTEND_GRAB  = 1600;   // extend for collection from submersible
+    public final static int    VIPER_EXTEND_SECURE=  490;   // Intake is tucked into robot to be safe
+    public final static int    VIPER_EXTEND_SAFE  = 1100;   // Intake is far enough out to safely rotate down and rotate up
+    public final static int    VIPER_EXTEND_AUTO1 = 1980;   // NEW raised to where the specimen hook is above the high bar
+    public final static int    VIPER_EXTEND_AUTO2 = 1200;   // NEW retract to clip the specimen to the bar
+    public final static int    VIPER_EXTEND_CLIP  = 1580;   // AUTO: clip specimen on bar by just driving forward
+    public final static int    VIPER_EXTEND_BASKET= 4200;   // raised to basket-scoring height
+    public final static int    VIPER_EXTEND_42    = 3400;   // max forward extension for 42" limit
+    public final static int    VIPER_EXTEND_FULL1 = 2800;   // extended 36" forward (max for 20"x42" limit at horizontal)
+    public final static int    VIPER_EXTEND_FULL2 = 4214;   // hardware fully extended (never exceed this count!)
+    public final static int    VIPER_EXTEND_WALL0 = 25;     // AUTO: grab specimen off wall (on approach)
+    public final static int    VIPER_EXTEND_WALL1 = 230;    // AUTO: grab specimen off wall (lift off)
+    public final static double TILT_ANGLE_42      = Math.toDegrees(Math.acos((double)Hardware2025Bot.VIPER_EXTEND_42/(double)Hardware2025Bot.VIPER_EXTEND_BASKET)); // Minimum tilt angle needed to fully extend viper
 //  PIDControllerLift   liftPidController;           // PID parameters for the lift motors
 //  public double       liftMotorPID_p     = -0.100; //  Raise p = proportional
 //  public double       liftMotorPID_i     =  0.000; //  Raise i = integral
@@ -247,13 +245,10 @@ public class Hardware2025Bot
     public final static double ELBOW_SERVO_WALL2 = 0.500;       // Grab specimen off wall in autonomous
     public final static double ELBOW_SERVO_WALL2_ANGLE = 180.0; // Grab specimen off wall in autonomous
     public final static double ELBOW_SERVO_CLIP = 0.510;        // AUTO: clip specimen on bar by just driving forward
-    //public final static double ELBOW_SERVO_GRABR1 = 0.580;       // TELE: grab at right 45deg angle
-    //public final static double ELBOW_SERVO_GRABR2 = 0.650;       // TELE: grab at right 45deg angle
-    public final static double ELBOW_SERVO_GRABR1 = 0.650;       // TELE: grab at right 45deg angle
-    public final static double ELBOW_SERVO_GRABR2 = 0.790;
+    public final static double ELBOW_SERVO_GRABR1 = 0.580;       // TELE: grab at right 45deg angle
+    public final static double ELBOW_SERVO_GRABR2 = 0.650;       // TELE: grab at right 45deg angle
     public final static double ELBOW_SERVO_GRABL1 = 0.440;       // TELE: grab at left  22deg angle
     public final static double ELBOW_SERVO_GRABL2 = 0.370;       // TELE: grab at left  22deg angle
-    public final static double ELBOW_SERVO_BAR3   = 1.000;       // For backward arm scoring
 
     public AnalogInput wristServoPos = null;
     public Servo  wristServo = null;
@@ -274,13 +269,12 @@ public class Hardware2025Bot
     public final static double WRIST_SERVO_BAR1_ANGLE = 173.0;
     public final static double WRIST_SERVO_BAR2 = 0.640;         // AUTO: specimen bar (when clipped)
     public final static double WRIST_SERVO_BAR2_ANGLE = 173.0;
-    public final static double WRIST_SERVO_BAR3 = 0.170;
     public final static double WRIST_SERVO_WALL0 = 0.500;        // AUTO: grab specimen off wall (on approach)
     public final static double WRIST_SERVO_WALL0_ANGLE = 180.0;
     public final static double WRIST_SERVO_WALL1 = 0.519;        // AUTO: grab specimen off wall (lift off)
     public final static double WRIST_SERVO_WALL1_ANGLE = 173.0;
     public final static double WRIST_SERVO_CLIP = 0.350;        // AAUTO: clip specimen on bar by just driving forward
-    public final static double WRIST_SERVO_ASCENT = 0.620;        // TELE: ascend level 2 position
+
     // horizontal = 0.440
     // straight down = 0.710
 
@@ -292,13 +286,11 @@ public class Hardware2025Bot
     public final static double CLAW_SERVO_CLOSED  = 0.443;  // Claw closed (hold sample/specimen)
     public final static double CLAW_SERVO_INIT    = 0.500;  // Claw in init position (servo default power-on state)
     public final static double CLAW_SERVO_OPEN_N  = 0.600;  // claw opened narrow (enough to release/drop)
-    public final static double CLAW_SERVO_OPEN_S  = 0.500;  // claw opened narrow (enough to clear neighboring samples) TODO: Change Value
     public final static double CLAW_SERVO_OPEN_W  = 0.900;  // claw opened wide (fully open and above samples on floor)
 
     public enum clawStateEnum {
         CLAW_INIT,
         CLAW_OPEN_NARROW,
-        CLAW_OPEN_SWEEPER,
         CLAW_OPEN_WIDE,
         CLAW_OPEN,       /* used to toggle between OPEN_NARROW and OPEN_WIDE */
         CLAW_CLOSED
@@ -380,7 +372,6 @@ public class Hardware2025Bot
         startingArmTiltAngle = computeAbsoluteAngle( armTiltEncoder.getVoltage(), armTiltAngleOffset);
         wormTiltMotor.setDirection(DcMotor.Direction.FORWARD);
         wormTiltMotor.setPower( 0.0 );
-        wormTiltMotor.setTargetPositionTolerance( 20 );
 
         // Define and initialize the two snorkle motors
         snorkleLMotor = hwMap.get(DcMotorEx.class,"SnorkleL");   // Control Hub port 0
@@ -408,7 +399,6 @@ public class Hardware2025Bot
         viperMotor = hwMap.get(DcMotorEx.class,"viperMotor");  // Expansion Hub port 2
         viperMotor.setDirection(DcMotor.Direction.REVERSE);   // positive motor power extends
         viperMotor.setPower( 0.0 );
-        viperMotor.setTargetPositionTolerance( 10 );
         if( isAutonomous ) {
             viperMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
             viperMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
@@ -481,10 +471,6 @@ public class Hardware2025Bot
                 break;
             case CLAW_OPEN_NARROW :
                 clawServo.setPosition( CLAW_SERVO_OPEN_N );
-                clawState = newClawState;
-                break;
-            case CLAW_OPEN_SWEEPER :
-                clawServo.setPosition( CLAW_SERVO_OPEN_S );
                 clawState = newClawState;
                 break;
             case CLAW_OPEN_WIDE :
@@ -626,8 +612,7 @@ public class Hardware2025Bot
 //      rearRightMotorAmps  = rearRightMotor.getCurrent(MILLIAMPS);
 //      rearLeftMotorAmps   = rearLeftMotor.getCurrent(MILLIAMPS);
 //      viperMotorAmps      = viperMotor.getCurrent(MILLIAMPS);
-//      snorkleLMotorAmps   = snorkleLMotor.getCurrent(MILLIAMPS);
-//      snorkleRMotorAmps   = snorkleRMotor.getCurrent(MILLIAMPS);
+//      snorkleLMotorAmps    = snorkleLMotor.getCurrent(MILLIAMPS);
 //      wormTiltMotorAmps   = wormTiltMotor.getCurrent(MILLIAMPS);
     } // readBulkData
 
@@ -646,8 +631,6 @@ public class Hardware2025Bot
         snorkleLMotorAmps = snorkleLMotor.getCurrent(CurrentUnit.AMPS);
         if( snorkleLMotorAmps > snorkleLMotorAmpsPk ) snorkleLMotorAmpsPk = snorkleLMotorAmps;
 
-        snorkleRMotorAmps = snorkleRMotor.getCurrent(CurrentUnit.AMPS);
-        if( snorkleRMotorAmps > snorkleRMotorAmpsPk ) snorkleRMotorAmpsPk = snorkleRMotorAmps;
     } // updateAscendMotorAmps
 
     /*--------------------------------------------------------------------------------------------*/
@@ -884,54 +867,6 @@ public class Hardware2025Bot
            viperMotorBusy = false;
         }
     } // abortViperSlideExtension
-
-    public void startSnorkleExtension(int targetEncoderCount, double motorPower )
-    {
-        // Range-check the target
-        if( targetEncoderCount < SNORKLE_HW_MIN ) targetEncoderCount = SNORKLE_HW_MIN;
-        if( targetEncoderCount > SNORKLE_HW_MAX ) targetEncoderCount = SNORKLE_HW_MAX;
-        // Configure target encoder count
-        snorkleLMotor.setTargetPosition( targetEncoderCount );
-        snorkleRMotor.setTargetPosition( targetEncoderCount );
-        // Enable RUN_TO_POSITION mode
-        snorkleLMotor.setMode(  DcMotor.RunMode.RUN_TO_POSITION );
-        snorkleRMotor.setMode(  DcMotor.RunMode.RUN_TO_POSITION );
-
-        snorkleLMotor.setPower( motorPower );
-        snorkleRMotor.setPower( motorPower );
-        // Note that we've started a RUN_TO_POSITION and need to reset to RUN_USING_ENCODER
-        snorkleLMotorBusy = true;
-        snorkleRMotorBusy = true;
-        snorkleTimer.reset();
-    } // startSnorkleExtension
-
-    public void processSnorkleExtension()
-    {
-        if (!snorkleLMotor.isBusy() && !snorkleRMotor.isBusy()) {
-            snorkleLMotorBusy = false;
-            snorkleRMotorBusy = false;
-            // Timeout reaching destination.
-        } else if (snorkleTimer.milliseconds() > 5000) {
-            snorkleLMotorBusy = false;
-            snorkleRMotorBusy = false;
-            //telemetry.addData("processViperSlideExtension", "Movement timed out.");
-            //telemetry.addData("processViperSlideExtension", "Position: %d", viperMotor.getCurrentPosition());
-            //telemetry.update();
-            //telemetrySleep();
-        }
-    } // processSnorkleExtension
-
-    public void abortSnorkleExtension()
-    {
-        // turn off the auto-movement power, but don't go to ZERO POWER or
-        // the weight of the lift will immediately drop it back down.
-        snorkleLMotor.setMode(  DcMotor.RunMode.RUN_USING_ENCODER );
-        snorkleRMotor.setPower( 0.0 );
-//         liftMoveState = LiftMoveActivity.IDLE;
-//         liftStoreState = LiftStoreActivity.IDLE;
-        snorkleLMotorBusy = false;
-        snorkleRMotorBusy = false;
-    } // abortSnorkleExtension
 
     /*--------------------------------------------------------------------------------------------*/
 
