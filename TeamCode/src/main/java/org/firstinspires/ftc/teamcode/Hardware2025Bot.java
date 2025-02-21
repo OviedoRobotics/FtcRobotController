@@ -249,6 +249,7 @@ public class Hardware2025Bot
     public final static double ELBOW_SERVO_GRABR2 = 0.650;       // TELE: grab at right 45deg angle
     public final static double ELBOW_SERVO_GRABL1 = 0.440;       // TELE: grab at left  22deg angle
     public final static double ELBOW_SERVO_GRABL2 = 0.370;       // TELE: grab at left  22deg angle
+    public final static double ELBOW_SERVO_BAR3   = 1.000;       // For backward arm scoring
 
     public AnalogInput wristServoPos = null;
     public Servo  wristServo = null;
@@ -269,12 +270,13 @@ public class Hardware2025Bot
     public final static double WRIST_SERVO_BAR1_ANGLE = 173.0;
     public final static double WRIST_SERVO_BAR2 = 0.640;         // AUTO: specimen bar (when clipped)
     public final static double WRIST_SERVO_BAR2_ANGLE = 173.0;
+    public final static double WRIST_SERVO_BAR3 = 0.170;
     public final static double WRIST_SERVO_WALL0 = 0.500;        // AUTO: grab specimen off wall (on approach)
     public final static double WRIST_SERVO_WALL0_ANGLE = 180.0;
     public final static double WRIST_SERVO_WALL1 = 0.519;        // AUTO: grab specimen off wall (lift off)
     public final static double WRIST_SERVO_WALL1_ANGLE = 173.0;
     public final static double WRIST_SERVO_CLIP = 0.350;        // AAUTO: clip specimen on bar by just driving forward
-
+    public final static double WRIST_SERVO_ASCENT = 0.620;        // TELE: ascend level 2 position
     // horizontal = 0.440
     // straight down = 0.710
 
@@ -372,6 +374,7 @@ public class Hardware2025Bot
         startingArmTiltAngle = computeAbsoluteAngle( armTiltEncoder.getVoltage(), armTiltAngleOffset);
         wormTiltMotor.setDirection(DcMotor.Direction.FORWARD);
         wormTiltMotor.setPower( 0.0 );
+        wormTiltMotor.setTargetPositionTolerance( 20 );
 
         // Define and initialize the two snorkle motors
         snorkleLMotor = hwMap.get(DcMotorEx.class,"SnorkleL");   // Control Hub port 0
@@ -399,6 +402,7 @@ public class Hardware2025Bot
         viperMotor = hwMap.get(DcMotorEx.class,"viperMotor");  // Expansion Hub port 2
         viperMotor.setDirection(DcMotor.Direction.REVERSE);   // positive motor power extends
         viperMotor.setPower( 0.0 );
+        viperMotor.setTargetPositionTolerance( 10 );
         if( isAutonomous ) {
             viperMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
             viperMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
@@ -612,7 +616,8 @@ public class Hardware2025Bot
 //      rearRightMotorAmps  = rearRightMotor.getCurrent(MILLIAMPS);
 //      rearLeftMotorAmps   = rearLeftMotor.getCurrent(MILLIAMPS);
 //      viperMotorAmps      = viperMotor.getCurrent(MILLIAMPS);
-//      snorkleLMotorAmps    = snorkleLMotor.getCurrent(MILLIAMPS);
+//      snorkleLMotorAmps   = snorkleLMotor.getCurrent(MILLIAMPS);
+//      snorkleRMotorAmps   = snorkleRMotor.getCurrent(MILLIAMPS);
 //      wormTiltMotorAmps   = wormTiltMotor.getCurrent(MILLIAMPS);
     } // readBulkData
 
@@ -631,6 +636,8 @@ public class Hardware2025Bot
         snorkleLMotorAmps = snorkleLMotor.getCurrent(CurrentUnit.AMPS);
         if( snorkleLMotorAmps > snorkleLMotorAmpsPk ) snorkleLMotorAmpsPk = snorkleLMotorAmps;
 
+        snorkleRMotorAmps = snorkleRMotor.getCurrent(CurrentUnit.AMPS);
+        if( snorkleRMotorAmps > snorkleRMotorAmpsPk ) snorkleRMotorAmpsPk = snorkleRMotorAmps;
     } // updateAscendMotorAmps
 
     /*--------------------------------------------------------------------------------------------*/
@@ -867,6 +874,54 @@ public class Hardware2025Bot
            viperMotorBusy = false;
         }
     } // abortViperSlideExtension
+
+    public void startSnorkleExtension(int targetEncoderCount, double motorPower )
+    {
+        // Range-check the target
+        if( targetEncoderCount < SNORKLE_HW_MIN ) targetEncoderCount = SNORKLE_HW_MIN;
+        if( targetEncoderCount > SNORKLE_HW_MAX ) targetEncoderCount = SNORKLE_HW_MAX;
+        // Configure target encoder count
+        snorkleLMotor.setTargetPosition( targetEncoderCount );
+        snorkleRMotor.setTargetPosition( targetEncoderCount );
+        // Enable RUN_TO_POSITION mode
+        snorkleLMotor.setMode(  DcMotor.RunMode.RUN_TO_POSITION );
+        snorkleRMotor.setMode(  DcMotor.RunMode.RUN_TO_POSITION );
+
+        snorkleLMotor.setPower( motorPower );
+        snorkleRMotor.setPower( motorPower );
+        // Note that we've started a RUN_TO_POSITION and need to reset to RUN_USING_ENCODER
+        snorkleLMotorBusy = true;
+        snorkleRMotorBusy = true;
+        snorkleTimer.reset();
+    } // startSnorkleExtension
+
+    public void processSnorkleExtension()
+    {
+        if (!snorkleLMotor.isBusy() && !snorkleRMotor.isBusy()) {
+            snorkleLMotorBusy = false;
+            snorkleRMotorBusy = false;
+            // Timeout reaching destination.
+        } else if (snorkleTimer.milliseconds() > 5000) {
+            snorkleLMotorBusy = false;
+            snorkleRMotorBusy = false;
+            //telemetry.addData("processViperSlideExtension", "Movement timed out.");
+            //telemetry.addData("processViperSlideExtension", "Position: %d", viperMotor.getCurrentPosition());
+            //telemetry.update();
+            //telemetrySleep();
+        }
+    } // processSnorkleExtension
+
+    public void abortSnorkleExtension()
+    {
+        // turn off the auto-movement power, but don't go to ZERO POWER or
+        // the weight of the lift will immediately drop it back down.
+        snorkleLMotor.setMode(  DcMotor.RunMode.RUN_USING_ENCODER );
+        snorkleRMotor.setPower( 0.0 );
+//         liftMoveState = LiftMoveActivity.IDLE;
+//         liftStoreState = LiftStoreActivity.IDLE;
+        snorkleLMotorBusy = false;
+        snorkleRMotorBusy = false;
+    } // abortSnorkleExtension
 
     /*--------------------------------------------------------------------------------------------*/
 

@@ -59,7 +59,7 @@ public abstract class Teleop extends LinearOpMode {
 
     double    viperPower = 0.0;
     long      nanoTimeCurr=0, nanoTimePrev=0;
-    double    elapsedTime, elapsedHz;
+    double    cycleTimeElapsed, cycleTimeHz;
 
     /* Declare OpMode members. */
     Hardware2025Bot robot = new Hardware2025Bot();
@@ -98,8 +98,8 @@ public abstract class Teleop extends LinearOpMode {
     int         ascent2state = ASCENT_STATE_IDLE;
 	boolean     ascent2telem = false;
 
-    int geckoWheelState = 0;
-	
+    protected ElapsedTime ascent2Timer = new ElapsedTime();
+
     Gamepad.RumbleEffect visibleAprilTagRumble1;    // Use to build a custom rumble sequence.
     Gamepad.RumbleEffect rumblePixelBinSingle;
     Gamepad.RumbleEffect rumbleAscentReady;
@@ -240,8 +240,8 @@ public abstract class Teleop extends LinearOpMode {
             // Compute current cycle time
             nanoTimePrev = nanoTimeCurr;
             nanoTimeCurr = System.nanoTime();
-            elapsedTime  = (nanoTimeCurr - nanoTimePrev)/ 1000000.0;   // msec
-            elapsedHz    =  1000.0 / elapsedTime;
+            cycleTimeElapsed = (nanoTimeCurr - nanoTimePrev)/ 1000000.0;   // msec
+            cycleTimeHz =  1000.0 / cycleTimeElapsed;
 
             // Update telemetry data
 //          telemetry.addData("Front", "%.2f (%.0f cts/sec) %.2f (%.0f cts/sec)",
@@ -256,7 +256,7 @@ public abstract class Teleop extends LinearOpMode {
             telemetry.addData("Elbow", "%.2f (%.1f deg)", robot.getElbowServoPos(), robot.getElbowServoAngle() );
             telemetry.addData("Wrist", "%.2f (%.1f deg)", robot.getWristServoPos(), robot.getElbowServoAngle() );
             telemetry.addData("Snorkle Ascent State", ascent2state);
-            telemetry.addData("CycleTime", "%.1f msec (%.1f Hz)", elapsedTime, elapsedHz );
+            telemetry.addData("CycleTime", "%.1f msec (%.1f Hz)", cycleTimeElapsed, cycleTimeHz);
             telemetry.update();
 
             // Pause for metronome tick.  40 mS each cycle = update 25 times a second.
@@ -440,7 +440,7 @@ public abstract class Teleop extends LinearOpMode {
     /*---------------------------------------------------------------------------------*/
     void processStandardDriveMode() {
         // Retrieve X/Y and ROTATION joystick input
-        if( controlMultSegLinear ) {
+        if( controlMultSegLinear ) {  // robot centric results in 1.0 max power
             yTranslation = multSegLinearXY( -gamepad1.left_stick_y );
             xTranslation = multSegLinearXY(  gamepad1.left_stick_x );
             rotation     = multSegLinearRot( -gamepad1.right_stick_x );
@@ -487,10 +487,10 @@ public abstract class Teleop extends LinearOpMode {
         double gyroAngle;
 
         // Retrieve X/Y and ROTATION joystick input
-        if( controlMultSegLinear ) {
-            yTranslation = multSegLinearXY( -gamepad1.left_stick_y );
-            xTranslation = multSegLinearXY(  gamepad1.left_stick_x );
-            rotation     = multSegLinearRot( -gamepad1.right_stick_x );
+        if( controlMultSegLinear ) { // // driver centric results in 0.6 max??
+            yTranslation = 1.66 * multSegLinearXY( -gamepad1.left_stick_y );
+            xTranslation = 1.66 * multSegLinearXY(  gamepad1.left_stick_x );
+            rotation     = 1.66 * multSegLinearRot( -gamepad1.right_stick_x );
         }
         else {
             yTranslation = -gamepad1.left_stick_y;
@@ -694,12 +694,9 @@ public abstract class Teleop extends LinearOpMode {
         }
         // Check for ON-to-OFF toggle of the gamepad2 TRIANGLE
         else if( gamepad2_triangle_now && !gamepad2_triangle_last )
-        {   // clip specimen on high bar
-            robot.startWormTilt(Hardware2025Bot.TILT_ANGLE_SPECIMEN2_DEG);
-            robot.startViperSlideExtension(Hardware2025Bot.VIPER_EXTEND_AUTO2);
-            robot.wristServo.setPosition(Hardware2025Bot.WRIST_SERVO_BAR2);
-            robot.elbowServo.setPosition(Hardware2025Bot.ELBOW_SERVO_BAR2);
-            sleep( 1200 ); //while( autoTiltMotorMoving() || autoViperMotorMoving());
+        {   // clip specimen on high bar REVERSE-SCORE!
+            robot.startViperSlideExtension(Hardware2025Bot.VIPER_EXTEND_AUTO4);
+            sleep( 900 ); //while( autoViperMotorMoving() );
             // release the specimen
             robot.clawStateSet( Hardware2025Bot.clawStateEnum.CLAW_OPEN_WIDE );
         }
@@ -792,6 +789,7 @@ public abstract class Teleop extends LinearOpMode {
 
     /*---------------------------------------------------------------------------------*/
     void processLevel2Ascent() {
+        boolean motorsFinished;
 
         // DRIVER 1 controls position the arm for hanging
         // DRIVER 2 controls initiate the actual hang
@@ -845,20 +843,24 @@ public abstract class Teleop extends LinearOpMode {
                     robot.clawStateSet( Hardware2025Bot.clawStateEnum.CLAW_OPEN_WIDE );  // we accidentally open the claw
                     robot.startViperSlideExtension( Hardware2025Bot.VIPER_EXTEND_HANG2, 1.0, 1.0 );
                     ascent2state = ASCENT_STATE_LEVEL2;
+                    ascent2Timer.reset();
                 }
                 break;
 
             case ASCENT_STATE_LEVEL2 :
                 robot.processSnorkleExtension();
-                if( !robot.viperMotorBusy && !robot.snorkleLMotorBusy && !robot.snorkleRMotorBusy ) {
+                motorsFinished = !robot.viperMotorBusy && !robot.snorkleLMotorBusy && !robot.snorkleRMotorBusy;
+                if( motorsFinished || (ascent2Timer.milliseconds() > 3000.0) ) {
                     // Once viper is extended and snorkle has lifted us, rotate up to bar
                     robot.startWormTilt(Hardware2025Bot.TILT_ANGLE_ASCENT2_DEG);
                     ascent2state = ASCENT_STATE_RETRACT;
+                    ascent2Timer.reset();
                 }
                 break;
 
             case ASCENT_STATE_RETRACT :
-                if( !robot.wormTiltMotorBusy) {
+                motorsFinished = !robot.wormTiltMotorBusy;
+                if( motorsFinished || (ascent2Timer.milliseconds() > 3000.0) ) {
                     // Once arm is up against the bar, retract the hook
                     robot.startViperSlideExtension(Hardware2025Bot.VIPER_EXTEND_HANG3, 1.0, 1.0);
                     ascent2state = ASCENT_STATE_LIFT;
@@ -866,10 +868,12 @@ public abstract class Teleop extends LinearOpMode {
                 break;
 
             case ASCENT_STATE_LIFT :
-                if( !robot.viperMotorBusy) {
+                motorsFinished = !robot.viperMotorBusy;
+                if( motorsFinished || (ascent2Timer.milliseconds() > 3000.0) ) {
                     // Once hooked, tilt down to reduce stress on tilt-angle worm gear
                     robot.startWormTilt(Hardware2025Bot.TILT_ANGLE_ASCENT3_DEG);
-                    robot.startSnorkleExtension(Hardware2025Bot.SNORKLE_LEVEL3C, 0.7 );
+                    robot.startSnorkleExtension(Hardware2025Bot.SNORKLE_LEVEL3C, 0.8 );
+//                  robot.startViperSlideExtension(Hardware2025Bot.VIPER_EXTEND_HANG4, 1.0, 1.0);
                     ascent2state = ASCENT_STATE_MOVING2;
                 }
                 break;
@@ -1116,27 +1120,27 @@ public abstract class Teleop extends LinearOpMode {
     public void startScoreArmSpec(){
         if(scoreArmSpecState == Score_Arm_Spec_Steps.IDLE) {
             terminateAutoArmMovements();
-            robot.startWormTilt(Hardware2025Bot.TILT_ANGLE_SPECIMEN1_DEG);
+            robot.startWormTilt(Hardware2025Bot.TILT_ANGLE_SPECIMEN3_DEG);
             scoreArmSpecState = Score_Arm_Spec_Steps.ROTATING_ARM;
             //robot.geckoServo.setPower(-0.3);
         }
     }
-    public void processScoreArmSpec() {
+    public void processScoreArmSpec() { // REVERSE SCORING!
         switch(scoreArmSpecState) {
             case ROTATING_ARM:
                 // Check to see if arm is in the range to start changing the viper length
                 // and the intake will be ok
                 if((robot.armTiltAngle > Hardware2025Bot.TILT_ANGLE_ZERO_DEG) &&
-                        (robot.armTiltAngle < Hardware2025Bot.TILE_ANGLE_BASKET_SAFE_DEG)) {
-                    robot.startViperSlideExtension(Hardware2025Bot.VIPER_EXTEND_AUTO1);
+                   (robot.armTiltAngle < Hardware2025Bot.TILE_ANGLE_BASKET_SAFE_DEG)) {
+                    robot.startViperSlideExtension(Hardware2025Bot.VIPER_EXTEND_AUTO3);
                     scoreArmSpecState = Score_Arm_Spec_Steps.EXTENDING_ARM;
                 }
                 break;
             case EXTENDING_ARM:
                 // Check to see if the arm is out far enough to swing the intake
                 if(robot.viperMotorPos > Hardware2025Bot.VIPER_EXTEND_SAFE) {
-                    robot.elbowServo.setPosition(Hardware2025Bot.ELBOW_SERVO_BAR1);
-                    robot.wristServo.setPosition(Hardware2025Bot.WRIST_SERVO_BAR1);
+                    robot.elbowServo.setPosition(Hardware2025Bot.ELBOW_SERVO_BAR3);
+                    robot.wristServo.setPosition(Hardware2025Bot.WRIST_SERVO_BAR3);
                     scoreSpecTimer.reset();
                     scoreArmSpecState = Score_Arm_Spec_Steps.POSITION_INTAKE;
                 }
