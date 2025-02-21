@@ -136,11 +136,13 @@ public class Hardware2025Bot
 //  public final static double ENCODER_COUNTS_PER_REV  = (GOBILDA_435_MOTOR_REV * SUPER_DUTY_WORM_GEAR_REDUCTION); // The number of counts it takes to complete one revolution
 //  public final static double ENCODER_COUNTS_PER_DEG = ENCODER_COUNTS_PER_REV / 360.0;  // The number of counts it takes to tilt one degree
 
-    public final static double TILT_ANGLE_HW_MAX_DEG      = 94.00; // Arm at maximum rotation UP/BACK (horizontal = -200)
-    public final static double TILT_ANGLE_BASKET_DEG      = 90.00; // Arm at rotation back to the basket for scoring
-    public final static double TILT_ANGLE_AUTO_PRE_DEG    = 83.00; // Arm almost at  basket (start to slow; avoid wobble)
-    public final static double TILT_ANGLE_SUBMERSIBLE_DEG = 10.00; // Arm at rotation back to the submersible for collecting
-    public final static double TILT_ANGLE_ASCENT1_DEG     = 58.00; // Arm at rotation back to the low bar for ascent level 1 or 2
+    public final static double TILT_ANGLE_HW_MAX_DEG        = 94.00; // Arm at maximum rotation UP/BACK (horizontal = -200)
+    public final static double TILT_ANGLE_BASKET_DEG        = 90.00; // Arm at rotation back to the basket for scoring
+    public final static double TILT_ANGLE_AUTO_PRE_DEG      = 83.00; // Arm almost at  basket (start to slow; avoid wobble)
+    public final static double TILT_ANGLE_SUBMERSIBLE_DEG   = 10.00; // Arm at rotation back to the submersible for collecting
+    public final static double TILT_ANGLE_SWEEPER_DEG       = 8.00; // Arm at rotation to get into position to sweep TODO: tweak value
+    public final static double TILT_ANGLE_SWEEPER_LOWER_DEG = 6.00; // Arm rotated to actually sweep TODO: tweak value
+    public final static double TILT_ANGLE_ASCENT1_DEG       = 58.00; // Arm at rotation back to the low bar for ascent level 1 or 2
     public final static double TILT_ANGLE_ASCENT2_DEG     = 64.25; // Arm at rotation back to the low bar for ascent level 2
     public final static double TILT_ANGLE_ASCENT3_DEG     = 56.50; // Arm at rotation back to the low bar for ascent level 2
     public final static double TILT_ANGLE_PARK_DEG        = 33.80; // Arm at rotation back to the low bar for park in auto
@@ -150,8 +152,8 @@ public class Hardware2025Bot
     public final static double TILT_ANGLE_DRIVE_DEG       =  4.00; // Arm for parking in auto or driving around
     public final static double TILT_ANGLE_TELEOP_COLLECT_DEG =  3.80; // Arm for collecting in TeleOp
     public final static double TILT_ANGLE_SPECIMEN0_DEG   = 60.00; // (NEW) Angle for grabbing specimens off field wall
-    public final static double TILT_ANGLE_SPECIMEN1_DEG   = 63.00; // AUTO: Angle for scoring specimens (above bar)
-    public final static double TILT_ANGLE_SPECIMEN2_DEG   = 57.40; // AUTO: Angle for scoring specimens (clipped)
+    public final static double TILT_ANGLE_SPECIMEN1_DEG   = 65.00; // AUTO: Angle for scoring specimens (above bar)
+    public final static double TILT_ANGLE_SPECIMEN2_DEG   = 59.40; // AUTO: Angle for scoring specimens (clipped)
     public final static double TILT_ANGLE_SPECIMEN3_DEG   = 90.00; // AUTO: Angle for backward specimen scoring
     public final static double TILT_ANGLE_CLIP_DEG        = 45.00; // AUTO: clip specimen on bar by just driving forward
     public final static double TILT_ANGLE_HW_MIN_DEG      =  0.00; // Arm at maximum rotation DOWN/FWD
@@ -185,9 +187,9 @@ public class Hardware2025Bot
     public double       VIPER_HOLD_POWER   =  0.001; // Motor power used to HOLD viper slide at current extension
     public double       VIPER_LOWER_POWER  = -0.500; // Motor power used to RETRACT viper slide
 
-    // Encoder counts for 435 RPM lift motors theoretical max 5.80 rev * 384.54 ticks/rev = 2230 counts
-    // Encoder counts for 312 RPM lift motors theoretical max 5.76 rev * 537.7  ticks/rev = 3100 counts
-    // Encoder counts for 223 RPM lift motors theoretical max 5.60 rev * 751.8  ticks/rev = 4214 counts
+    // Encoder counts for 435 RPM lift motors theoretical max 5.8 rev * 384.54 ticks/rev = 2230 counts
+    // Encoder counts for 312 RPM lift motors theoretical max 5.8 rev * 537.7  ticks/rev = 3118 counts
+    // Encoder counts for 223 RPM lift motors theoretical max 5.8 rev * 751.8  ticks/rev = 4360 counts
 
     public final static int    VIPER_EXTEND_ZERO         = 0;     // fully retracted (may need to be adjustable??)
     public final static int    VIPER_EXTEND_AUTO_READY   = 1177;  // extend for collecting during auto
@@ -247,10 +249,8 @@ public class Hardware2025Bot
     public final static double ELBOW_SERVO_WALL2 = 0.500;       // Grab specimen off wall in autonomous
     public final static double ELBOW_SERVO_WALL2_ANGLE = 180.0; // Grab specimen off wall in autonomous
     public final static double ELBOW_SERVO_CLIP = 0.510;        // AUTO: clip specimen on bar by just driving forward
-    //public final static double ELBOW_SERVO_GRABR1 = 0.580;       // TELE: grab at right 45deg angle
-    //public final static double ELBOW_SERVO_GRABR2 = 0.650;       // TELE: grab at right 45deg angle
-    public final static double ELBOW_SERVO_GRABR1 = 0.650;       // TELE: grab at right 45deg angle
-    public final static double ELBOW_SERVO_GRABR2 = 0.790;
+    public final static double ELBOW_SERVO_GRABR1 = 0.580;       // TELE: grab at right 45deg angle
+    public final static double ELBOW_SERVO_GRABR2 = 0.650;       // TELE: grab at right 45deg angle
     public final static double ELBOW_SERVO_GRABL1 = 0.440;       // TELE: grab at left  22deg angle
     public final static double ELBOW_SERVO_GRABL2 = 0.370;       // TELE: grab at left  22deg angle
     public final static double ELBOW_SERVO_BAR3   = 1.000;       // For backward arm scoring
@@ -274,7 +274,7 @@ public class Hardware2025Bot
     public final static double WRIST_SERVO_BAR1_ANGLE = 173.0;
     public final static double WRIST_SERVO_BAR2 = 0.640;         // AUTO: specimen bar (when clipped)
     public final static double WRIST_SERVO_BAR2_ANGLE = 173.0;
-    public final static double WRIST_SERVO_BAR3 = 0.170;         // AUTO: specimen bar (reverse scoring)
+    public final static double WRIST_SERVO_BAR3 = 0.170;
     public final static double WRIST_SERVO_WALL0 = 0.500;        // AUTO: grab specimen off wall (on approach)
     public final static double WRIST_SERVO_WALL0_ANGLE = 180.0;
     public final static double WRIST_SERVO_WALL1 = 0.519;        // AUTO: grab specimen off wall (lift off)
@@ -299,7 +299,8 @@ public class Hardware2025Bot
         CLAW_OPEN_NARROW,
         CLAW_OPEN_WIDE,
         CLAW_OPEN,       /* used to toggle between OPEN_NARROW and OPEN_WIDE */
-        CLAW_CLOSED
+        CLAW_CLOSED,
+        CLAW_OPEN_SWEEPER
     }
 
     public Hardware2025Bot.clawStateEnum clawState = Hardware2025Bot.clawStateEnum.CLAW_INIT;
