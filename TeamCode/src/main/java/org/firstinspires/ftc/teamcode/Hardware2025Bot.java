@@ -191,26 +191,30 @@ public class Hardware2025Bot
     // Encoder counts for 312 RPM lift motors theoretical max 5.8 rev * 537.7  ticks/rev = 3118 counts
     // Encoder counts for 223 RPM lift motors theoretical max 5.8 rev * 751.8  ticks/rev = 4360 counts
 
-    public final static int    VIPER_EXTEND_ZERO  = 0;      // fully retracted (may need to be adjustable??)
-    public final static int    VIPER_EXTEND_AUTO_READY  = 1600;    // extend for collecting during auto
-    public final static int    VIPER_EXTEND_AUTO_COLLECT = 1600;    // extend for collecting during auto
-    public final static int    VIPER_EXTEND_SAMPLE3  = 1500;  // extend for collecting during auto (3rd sample along wall)
-    public final static int    VIPER_EXTEND_HANG1 = 1250;   // extend to this to prepare for level 2 ascent
-    public final static int    VIPER_EXTEND_PARK = 3410;   // extend to this to park in auto
-    public final static int    VIPER_EXTEND_HANG2 =  640;   // retract to this extension during level 2 ascent
-    public final static int    VIPER_EXTEND_GRAB  = 1600;   // extend for collection from submersible
-    public final static int    VIPER_EXTEND_SECURE=  490;   // Intake is tucked into robot to be safe
-    public final static int    VIPER_EXTEND_SAFE  = 1100;   // Intake is far enough out to safely rotate down and rotate up
-    public final static int    VIPER_EXTEND_AUTO1 = 1980;   // NEW raised to where the specimen hook is above the high bar
-    public final static int    VIPER_EXTEND_AUTO2 = 1200;   // NEW retract to clip the specimen to the bar
-    public final static int    VIPER_EXTEND_CLIP  = 1580;   // AUTO: clip specimen on bar by just driving forward
-    public final static int    VIPER_EXTEND_BASKET= 4200;   // raised to basket-scoring height
-    public final static int    VIPER_EXTEND_42    = 3400;   // max forward extension for 42" limit
-    public final static int    VIPER_EXTEND_FULL1 = 2800;   // extended 36" forward (max for 20"x42" limit at horizontal)
-    public final static int    VIPER_EXTEND_FULL2 = 4214;   // hardware fully extended (never exceed this count!)
-    public final static int    VIPER_EXTEND_WALL0 = 25;     // AUTO: grab specimen off wall (on approach)
-    public final static int    VIPER_EXTEND_WALL1 = 230;    // AUTO: grab specimen off wall (lift off)
-    public final static double TILT_ANGLE_42      = Math.toDegrees(Math.acos((double)Hardware2025Bot.VIPER_EXTEND_42/(double)Hardware2025Bot.VIPER_EXTEND_BASKET)); // Minimum tilt angle needed to fully extend viper
+    public final static int    VIPER_EXTEND_ZERO         = 0;     // fully retracted (may need to be adjustable??)
+    public final static int    VIPER_EXTEND_AUTO_READY   = 1177;  // extend for collecting during auto
+    public final static int    VIPER_EXTEND_AUTO_COLLECT = 1177;  // extend for collecting during auto
+    public final static int    VIPER_EXTEND_SAMPLE3 = 1103;   // extend for collecting during auto (3rd sample along wall)
+    public final static int    VIPER_EXTEND_HANG1   = 2207;   // extend to this to prepare for level 2 ascent
+    public final static int    VIPER_EXTEND_PARK2   = 2508;   // extend to this to park in auto
+    public final static int    VIPER_EXTEND_PARK1   = 1618;   // extend to this to park in auto
+    public final static int    VIPER_EXTEND_HANG2   = 2942;   // retract to this extension during level 2 ascent
+    public final static int    VIPER_EXTEND_HANG3   = 2501;   // retract to this extension during level 2 ascent
+    public final static int    VIPER_EXTEND_HANG4   = 2501;   // retract to this extension during level 2 ascent
+    public final static int    VIPER_EXTEND_GRAB    = 1177;   // extend for collection from submersible
+    public final static int    VIPER_EXTEND_SECURE  =  360;   // Intake is tucked into robot to be safe
+    public final static int    VIPER_EXTEND_SAFE    =  809;   // Intake is far enough out to safely rotate down and rotate up
+    public final static int    VIPER_EXTEND_AUTO1   = 1450;   // raised to where the specimen hook is above the high bar
+    public final static int    VIPER_EXTEND_AUTO2   =  810;   // retract to clip the specimen to the bar
+    public final static int    VIPER_EXTEND_AUTO3   = 1037;   // raised to where the specimen hook is above the high bar REVERSE
+    public final static int    VIPER_EXTEND_AUTO4   =  337;   // retract to clip the specimen to the bar REVERSE
+    public final static int    VIPER_EXTEND_CLIP    = 1162;   // AUTO: clip specimen on bar by just driving forward
+    public final static int    VIPER_EXTEND_BASKET  = 2980;   // raised to basket-scoring height
+    public final static int    VIPER_EXTEND_42      = 2501;   // max forward extension for 42" limit
+    public final static int    VIPER_EXTEND_FULL2   = 2975;   // hardware fully extended (never exceed this count!)
+    public final static int    VIPER_EXTEND_WALL0   = 19;     // AUTO: grab specimen off wall (on approach)
+    public final static int    VIPER_EXTEND_WALL1   = 170;    // AUTO: grab specimen off wall (lift off)
+    public final static double TILT_ANGLE_42  = Math.toDegrees(Math.acos((double)Hardware2025Bot.VIPER_EXTEND_42/(double)Hardware2025Bot.VIPER_EXTEND_BASKET)); // Minimum tilt angle needed to fully extend viper
 //  PIDControllerLift   liftPidController;           // PID parameters for the lift motors
 //  public double       liftMotorPID_p     = -0.100; //  Raise p = proportional
 //  public double       liftMotorPID_i     =  0.000; //  Raise i = integral
@@ -295,7 +299,8 @@ public class Hardware2025Bot
         CLAW_OPEN_NARROW,
         CLAW_OPEN_WIDE,
         CLAW_OPEN,       /* used to toggle between OPEN_NARROW and OPEN_WIDE */
-        CLAW_CLOSED
+        CLAW_CLOSED,
+        CLAW_OPEN_SWEEPER
     }
 
     public Hardware2025Bot.clawStateEnum clawState = Hardware2025Bot.clawStateEnum.CLAW_INIT;
