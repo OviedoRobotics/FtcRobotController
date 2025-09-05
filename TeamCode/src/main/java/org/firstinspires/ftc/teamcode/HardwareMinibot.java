@@ -2,18 +2,13 @@ package org.firstinspires.ftc.teamcode;
 
 import static java.lang.Thread.sleep;
 
-import android.os.Environment;
-
 import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.hardware.bosch.JustLoggingAccelerationIntegrator;
 import com.qualcomm.hardware.lynx.LynxModule;
-import com.qualcomm.robotcore.hardware.AnalogInput;
-import com.qualcomm.robotcore.hardware.Servo;
-import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.DigitalChannel;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
@@ -65,7 +60,7 @@ public class HardwareMinibot
     public final static double MIN_TURN_POW       = 0.03;    // Minimum speed to turn the robot
     public final static double MIN_STRAFE_POW     = 0.04;    // Minimum speed to strafe the robot
     protected double COUNTS_PER_MOTOR_REV  = 28.0;    // goBilda Yellow Jacket Planetary Gear Motor Encoders
-//  protected double DRIVE_GEAR_REDUCTION  = 26.851;  // goBilda 26.9:1 (223rpm) gear ratio with 1:1 HDT5 pully/belt
+    //  protected double DRIVE_GEAR_REDUCTION  = 26.851;  // goBilda 26.9:1 (223rpm) gear ratio with 1:1 HDT5 pully/belt
     protected double DRIVE_GEAR_REDUCTION  = 19.203;  // goBilda 19.2:1 (312rpm) gear ratio with 1:1 HDT5 pully/belt
     protected double MECANUM_SLIPPAGE      = 1.01;    // one wheel revolution doesn't achieve 6" x 3.1415 of travel.
     protected double WHEEL_DIAMETER_INCHES = 3.77953; // (96mm) -- for computing circumference
@@ -223,6 +218,13 @@ public class HardwareMinibot
         return -headingAngle;  // degrees (+90 is CW; -90 is CCW)
     } // headingIMU
 
+    public double angleWrapper(double angle) {
+        angle %= 360.0;
+        if (angle > 180) angle -= 360;
+        if (angle < -180) angle += 360;
+        return -angle;
+    }
+
     /*--------------------------------------------------------------------------------------------*/
     /*public double headingIMUradians()
     {
@@ -354,7 +356,7 @@ public class HardwareMinibot
         // Return the verified power setting
         return powerNext;
     } // restrictDeltaPower
-    
+
     /*--------------------------------------------------------------------------------------------*/
     /* setRunToPosition()                                                                         */
     /* - driveY -   true = Drive forward/back; false = Strafe right/left                          */
