@@ -19,7 +19,7 @@
  * SOFTWARE.
  */
 
-package org.firstinspires.ftc.robotcontroller.external.samples;
+package org.firstinspires.ftc.teamcode;
 
 import android.util.Size;
 
@@ -55,9 +55,9 @@ import org.firstinspires.ftc.vision.opencv.PredominantColorProcessor;
  * Remove or comment out the @Disabled line to add this OpMode to the Driver Station OpMode list
  */
 
-@Disabled
-@TeleOp(name = "Concept: Vision Color-Sensor", group = "Concept")
-public class ConceptVisionColorSensor extends LinearOpMode
+//@Disabled
+@TeleOp(name = "Sensor: Vision Color-Sensor", group = "Sensor")
+public class TestVisionColorSensor extends LinearOpMode
 {
     @Override
     public void runOpMode()
@@ -108,7 +108,7 @@ public class ConceptVisionColorSensor extends LinearOpMode
         VisionPortal portal = new VisionPortal.Builder()
                 .addProcessor(colorSensor)
                 .setCameraResolution(new Size(320, 240))
-                .setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"))
+                .setCamera(hardwareMap.get(WebcamName.class, "Webcam1"))
                 .build();
 
         telemetry.setMsTransmissionInterval(50);  // Speed up telemetry updates, Just use for debugging.
