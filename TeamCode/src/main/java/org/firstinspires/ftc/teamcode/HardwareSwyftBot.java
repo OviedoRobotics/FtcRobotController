@@ -6,12 +6,11 @@ import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.hardware.bosch.JustLoggingAccelerationIntegrator;
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.hardware.AnalogInput;
-import com.qualcomm.robotcore.hardware.PIDFCoefficients;
-import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.PIDFCoefficients;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
@@ -253,6 +252,88 @@ public class HardwareSwyftBot
         tiltAngle = angles.secondAngle;
         return -headingAngle;  // degrees (+90 is CW; -90 is CCW)
     } // headingIMU
+
+    static double thetaMaxTurret = 375;
+    static double thetaMinTurret = 0;
+    static double thetaMaxFlapper = 355;
+    static double thetaMinFlapper = 0;
+    static double STARTING_HEADING = 90;
+    static double TEST_LAUNCH_X = 6;
+    static double TEST_LAUNCH_Y = 2;
+    static double X_BIN_L = 0.1666; // in feet
+    static double Y_BIN_L = 10;   // in feet
+    static double LAUNCH_EXIT_SPEED = 22;
+    static double Z_BIN = 3.23;
+    static double Z_SHOOTER = 0;
+    static double TURRET_SERVO_RELATIVE_0_ANGLE = 0; // offset from robot heading and turret servo. (if robot is straight and turret is to the left, this angle is 90)
+    static double TURRET_SERVO_HORIZONTAL_POSITION = TURRET_SERVO_INIT;
+    static double SHOOTER_SERVO_POS_VERTICAL = 0.64;
+
+    static double SHOOTER_SERVO_HORIZONTAL_POSITION = 0.39;
+    public double computeAlignedTurretPos() {
+        double deltaServoPos = (computeTurretAngle())/(thetaMaxTurret - thetaMinTurret) + TURRET_SERVO_HORIZONTAL_POSITION; // servo 0->1 is clockwise
+        deltaServoPos += TURRET_SERVO_INIT;
+        return (deltaServoPos > TURRET_SERVO_P90 || deltaServoPos < TURRET_SERVO_N90)? turretServo1.getPosition() : deltaServoPos;
+    }
+
+    public double computeTurretAngle() {
+        double driveTrainHeading = -1*headingIMU() + STARTING_HEADING;
+        //double xR = odom.getPosY(DistanceUnit.MM);
+        //double yR = odom.getPosX(DistanceUnit.MM);
+        double xR = TEST_LAUNCH_X;
+        double yR = TEST_LAUNCH_Y;
+        double xB = X_BIN_L;
+        double yB = Y_BIN_L;
+
+        double deltaHeading = calculateHeadingChange(xR, yR, xB, yB, driveTrainHeading);
+
+        return Math.toDegrees(deltaHeading);
+    }
+
+    public double calculateHeadingChange(double xR, double yR, double xB, double yB, double heading) {
+        double angleToTarget = Math.atan2(yB- yR, xB- xR); // in radians
+        // in radians. servo clockwise direction is positive need to multiply by negative one.
+        double delta = -(angleToTarget - (Math.toRadians(heading) + TURRET_SERVO_RELATIVE_0_ANGLE));
+        // determine angle that the turret servo needs
+        // to turn to and account for the offset of the angle of the turret servo from the robot.
+        delta = TURRET_SERVO_RELATIVE_0_ANGLE + delta;
+        // Normalize to [0, 360]
+        //if(delta < 0) delta += 360;
+        return delta;
+    }
+
+    public double computeAlignedFlapperPos() {
+        double deltaServoPos = computeLaunchAngle()/(thetaMaxFlapper - thetaMinFlapper) + SHOOTER_SERVO_HORIZONTAL_POSITION;
+        return (deltaServoPos > SHOOTER_SERVO_POS_VERTICAL || deltaServoPos < SHOOTER_SERVO_HORIZONTAL_POSITION)? shooterServo.getPosition() : deltaServoPos;
+    }
+
+    public double computeLaunchAngle() {
+        double v = LAUNCH_EXIT_SPEED;
+        double d = Math.sqrt((Math.pow((X_BIN_L - TEST_LAUNCH_X), 2) + Math.pow((Y_BIN_L - TEST_LAUNCH_Y),2)));
+        double h = Z_BIN - Z_SHOOTER;
+        double g = 32.174;  // ft/sec/sec gravitational constant
+
+        double discriminant = v * v * v * v - g * (g * d * d + 2 * v * v * h);
+
+        // Check if a real solution exists
+        if (discriminant < 0) return 999.9;
+
+        double sqrtTerm = Math.sqrt(discriminant);
+
+        // Two possible tangent values
+        double tanTheta1 = (v * v + sqrtTerm) / (g * d);
+        double tanTheta2 = (v * v - sqrtTerm) / (g * d);
+
+        // Compute angles in radians
+        double theta1 = Math.atan(tanTheta1);
+        double theta2 = Math.atan(tanTheta2);
+
+        // Ensure thetaUp > thetaDown
+        double thetaUp = Math.max(theta1, theta2);
+        double thetaDown = Math.min(theta1, theta2);
+
+        return Math.toDegrees(thetaUp);
+    } // computeAbsoluteAngle
 
     /*--------------------------------------------------------------------------------------------*/
     public void readBulkData() {

@@ -4,7 +4,6 @@ package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 
 /**
  * TeleOp DriveTrain Only (with test modes).
@@ -106,6 +105,17 @@ public class TeleopSwyftbot extends LinearOpMode {
                 else {
                     backwardDriveControl = !backwardDriveControl; // reverses which end of robot is "FRONT"
                 }
+            }
+
+            //================ LEFT BUMPER SETS TURRET SERVO POSITION ================
+            if (gamepad1_l_bumper_now && !gamepad1_l_bumper_last) {
+                //robot.turretServo1.setPosition(robot.computeAlignedTurretPos());
+                telemetry.addData("TurretAngle", robot.computeTurretAngle());
+            }
+
+            if (gamepad1_r_bumper_now && !gamepad1_r_bumper_last) {
+                //robot.shooterServo.setPosition(robot.computeAlignedFlapperPos());
+                telemetry.addData("FlapperAngle", robot.computeLaunchAngle());
             }
 
             telemetry.addData("cross","Toggle Intake");
