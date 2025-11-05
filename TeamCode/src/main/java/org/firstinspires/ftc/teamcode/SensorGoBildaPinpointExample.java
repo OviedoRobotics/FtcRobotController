@@ -61,7 +61,7 @@ For support, contact tech@gobilda.com
  */
 
 @TeleOp(name="goBILDA Pinpoint Example", group="Test")
-@Disabled
+//@Disabled
 
 public class SensorGoBildaPinpointExample extends LinearOpMode {
 
@@ -86,7 +86,7 @@ public class SensorGoBildaPinpointExample extends LinearOpMode {
         the tracking point the Y (strafe) odometry pod is. forward of center is a positive number,
         backwards is a negative number.
          */
-        odom.setOffsets(-84.0, -168.0, DistanceUnit.MM); //these are tuned for 3110-0002-0001 Product Insight #1
+        odom.setOffsets(0.0, 0.0, DistanceUnit.MM); //these are tuned for 3110-0002-0001 Product Insight #1
 
         /*
         Set the kind of pods used by your robot. If you're using goBILDA odometry pods, select either
@@ -96,7 +96,6 @@ public class SensorGoBildaPinpointExample extends LinearOpMode {
          */
         odom.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
         //odo.setEncoderResolution(13.26291192, DistanceUnit.MM);
-
 
         /*
         Set the direction that each of the two odometry pods count. The X (forward) pod should

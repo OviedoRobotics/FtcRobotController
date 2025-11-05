@@ -1,4 +1,4 @@
-/* FTC Team 7572 - Version 1.0 (12/21/2024) */
+/* FTC Team 7572 - Version 1.0 (10/13/2025) */
 package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.Disabled;
@@ -9,7 +9,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
  * TeleOp Servo Test Program
  */
 @TeleOp(name="Teleop-PositionTest", group="Test")
-@Disabled
+//@Disabled
 public class TeleopPositionTest extends LinearOpMode {
     boolean gamepad1_triangle_last,   gamepad1_triangle_now   = false;  //
     boolean gamepad1_circle_last,     gamepad1_circle_now     = false;  //
@@ -25,20 +25,16 @@ public class TeleopPositionTest extends LinearOpMode {
     boolean gamepad1_l_trigger_last,  gamepad1_l_trigger_now  = false;
     boolean gamepad1_r_trigger_last,  gamepad1_r_trigger_now  = false;
 
-    int     selectedServo = 0;  // 0=push, 1=wrist, 2=gecko
-    double  elbowPos, wristPos, clawPos;
-    double  stepSize = 0.01;
-
-    double  viperPower = 0.0;
-    boolean tiltAngleTweaked = false; // Reminder to zero power when TILT input stops
-    boolean liftTweaked      = false; // Reminder to zero power when LIFT input stops
+    int     selectedMechanism = 0;  // 0=shooter servo; 1=shooter motor, 2=turret servo(s), 3=spin servo; 4=left/inject servo
+    double  servoStepSize = 0.01;
+    double  shooterPos, turretPos, spinPos, liftPos;
+    double  shooterPower = 0.50;
 
     long    nanoTimeCurr=0, nanoTimePrev=0;
     double  elapsedTime, elapsedHz;
 
     /* Declare OpMode members. */
-//  Hardware2025Bot robot = new Hardware2025Bot(telemetry);
-    Hardware2025Bot robot = new Hardware2025Bot();
+    HardwareSwyftBot robot = new HardwareSwyftBot();
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -50,10 +46,22 @@ public class TeleopPositionTest extends LinearOpMode {
         robot.init(hardwareMap,true);
 
         // Preload each variable with the initialization position
-        elbowPos = robot.ELBOW_SERVO_INIT;
-        wristPos = robot.WRIST_SERVO_INIT;
-        clawPos  = robot.CLAW_SERVO_INIT;
-        //geckoOn = false;
+        shooterPos = robot.SHOOTER_SERVO_INIT;
+        robot.shooterServo.setPosition(shooterPos);
+
+        turretPos = robot.TURRET_SERVO_INIT;
+        robot.turretServo1.setPosition(turretPos);
+//      robot.turretServo2.setPosition(turretPos);
+
+        // Don't start up the shooter motor until user selects it for modification
+//      robot.shooterMotor1.setPower( shooterPower );
+//      robot.shooterMotor2.setPower( shooterPower );
+    
+        spinPos = robot.SPIN_SERVO_INIT;
+        robot.spinServo.setPosition(spinPos);
+
+        liftPos = robot.LIFT_SERVO_INIT;
+        robot.liftServo.setPosition(liftPos);
 
         // Send telemetry message to signify robot waiting;
         telemetry.addData("State", "Ready");
@@ -72,68 +80,80 @@ public class TeleopPositionTest extends LinearOpMode {
             robot.readBulkData();
 
             //================ Update telemetry with current state ================
-            telemetry.addData("Use CROSS to toggle between servos", " " );
-            telemetry.addData("Use left/right BUMPERS to index servos", " " );
-            switch( selectedServo ) { // 0=push, 1=wrist, 2=gecko
+            telemetry.addData("Use CROSS to toggle between mechanisms", " " );
+            telemetry.addData("Use left/right BUMPERS to adjust setting lower/higher", " " );
+            switch( selectedMechanism ) { // 0=shooter servo
                 case 0 :
-                    telemetry.addData("SELECTED:", "ElbowServo" );
-                    telemetry.addData("Elbow Servo Position", "%.3f", robot.getElbowServoPos() );
-                    telemetry.addData("Elbow Servo Angle", "%.1f", robot.getElbowServoAngle());
+                    telemetry.addData("SELECTED:", "shooterServo" );
+                    telemetry.addData("Shoooter Servo Position", "%.3f", robot.shooterServo.getPosition() );
                     break;
                 case 1 :
-                    telemetry.addData("SELECTED:", "WristServo" );
-                    telemetry.addData("Wrist Servo Position", "%.3f", robot.getWristServoPos() );
-                    telemetry.addData("Wrist Servo Angle", "%.1f",robot.getWristServoAngle());
+                    telemetry.addData("SELECTED:", "shooterMotor" );
+                    telemetry.addData("Upper Motor Power", "%.2f", robot.shooterMotor1.getPower() );
+                    telemetry.addData("Lower Motor Power", "%.2f", robot.shooterMotor2.getPower() );
                     break;
                 case 2 :
-//                  telemetry.addData("SELECTED:", "IntakeServo" );
-//                  telemetry.addData("Intake Servo power", "%.1f", robot.geckoServo.getPower() );
-                    telemetry.addData("SELECTED:", "ClawServo" );
-                    telemetry.addData("Claw Servo Position", "%.1f", robot.clawServo.getPosition());
+                    telemetry.addData("SELECTED:", "turretServo1/2" );
+                    telemetry.addData("Turret Servo1 Set Position", "%.3f", turretPos );
+
+                    telemetry.addData("Turret Servo1 Get Position", "%.3f", robot.turretServo1.getPosition() );
+                    //telemetry.addData("Turret Servo2 Position", "%.3f", robot.turretServo2.getPosition() );
+                    break;
+                case 3 :
+                    telemetry.addData("SELECTED:", "spinServo" );
+                    telemetry.addData("Spindexer Servo Position", "%.3f", robot.spinServo.getPosition() );
+                    break;
+                case 4 :
+                    telemetry.addData("SELECTED:", "liftServo" );
+                    telemetry.addData("Injector Servo Position", "%.3f", robot.liftServo.getPosition() );
                     break;
                 default :
-                    selectedServo = 0;
+                    selectedMechanism = 0;
                     break;
             } // switch()
 
             //================ CROSS SWITCHES WHICH SERVO WE'RE CONTROLLING ================
             if( gamepad1_cross_now && !gamepad1_cross_last)
             {
-                selectedServo += 1;
-                if( selectedServo > 2 ) selectedServo = 0;
+                selectedMechanism += 1;
+                if( selectedMechanism > 4 ) selectedMechanism = 0;
             } // cross
 
             //================ LEFT BUMPER DECREASES SERVO POSITION ================
             if( gamepad1_l_bumper_now && !gamepad1_l_bumper_last)
             {
-                switch( selectedServo ) { // 0=push, 1=wrist, 2=gecko
+                switch( selectedMechanism ) {
                     case 0 :
-                        elbowPos -= stepSize;
-                        if( elbowPos < 0.0 ) elbowPos = 0.0;
-                        if( elbowPos > 1.0 ) elbowPos = 1.0;
-                        robot.elbowServo.setPosition(elbowPos);
+                        shooterPos -= servoStepSize;
+                        if( shooterPos < 0.0 ) shooterPos = 0.0;
+                        if( shooterPos > 1.0 ) shooterPos = 1.0;
+                        robot.shooterServo.setPosition(shooterPos);
                         break;
                     case 1 :
-                        wristPos -= stepSize;
-                        if( wristPos < 0.0 ) wristPos = 0.0;
-                        if( wristPos > 1.0 ) wristPos = 1.0;
-                        robot.wristServo.setPosition(wristPos);
+                        shooterPower -= 0.05;
+                        if( shooterPower < 0.0 ) shooterPower = 0.0;
+                        if( shooterPower > 1.0 ) shooterPower = 1.0;
+                        robot.shooterMotor1.setPower( shooterPower );
+                        robot.shooterMotor2.setPower( shooterPower );
                         break;
                     case 2 :
-                        clawPos -= stepSize;
-                        if( clawPos < 0.0 ) clawPos = 0.0;
-                        if( clawPos > 1.0 ) clawPos = 1.0;
-                        robot.clawServo.setPosition(clawPos);
-/*
-                        if(geckoOn){
-                            robot.geckoServo.setPower(0.0);
-                            geckoOn = false;
-                        }
-                        else{
-                            robot.geckoServo.setPower(-1.0);
-                            geckoOn = true;
-                        }
-*/
+                        turretPos -= 0.02;
+                        if( turretPos < 0.0 ) turretPos = 0.0;
+                        if( turretPos > 1.0 ) turretPos = 1.0;
+                        robot.turretServo1.setPosition(turretPos);
+//                      robot.turretServo2.setPosition(turretPos);
+                        break;
+                    case 3 :
+                        spinPos -= servoStepSize;
+                        if( spinPos < 0.0 ) spinPos = 0.0;
+                        if( spinPos > 1.0 ) spinPos = 1.0;
+                        robot.spinServo.setPosition(spinPos);
+                        break;
+                    case 4 :
+                        liftPos -= servoStepSize;
+                        if( liftPos < 0.0 ) liftPos = 0.0;
+                        if( liftPos > 1.0 ) liftPos = 1.0;
+                        robot.liftServo.setPosition(liftPos);
                         break;
                     default :
                         break;
@@ -143,42 +163,43 @@ public class TeleopPositionTest extends LinearOpMode {
             //================ RIGHT BUMPER INCREASES SERVO POSITION ================
             else if( gamepad1_r_bumper_now && !gamepad1_r_bumper_last)
             {
-                switch( selectedServo ) { // 0=push, 1=wrist, 2=gecko
+                switch( selectedMechanism ) {
                     case 0 :
-                        elbowPos += stepSize;
-                        if( elbowPos < 0.0 ) elbowPos = 0.0;
-                        if( elbowPos > 1.0 ) elbowPos = 1.0;
-                        robot.elbowServo.setPosition(elbowPos);
+                        shooterPos += servoStepSize;
+                        if( shooterPos < 0.0 ) shooterPos = 0.0;
+                        if( shooterPos > 1.0 ) shooterPos = 1.0;
+                        robot.shooterServo.setPosition(shooterPos);
                         break;
                     case 1 :
-                        wristPos += stepSize;
-                        if( wristPos < 0.0 ) wristPos = 0.0;
-                        if( wristPos > 1.0 ) wristPos = 1.0;
-                        robot.wristServo.setPosition(wristPos);
+                        shooterPower += 0.05;
+                        if( shooterPower < 0.0 ) shooterPower = 0.0;
+                        if( shooterPower > 1.0 ) shooterPower = 1.0;
+                        robot.shooterMotor1.setPower( shooterPower );
+                        robot.shooterMotor2.setPower( shooterPower );
                         break;
                     case 2 :
-                        clawPos += stepSize;
-                        if( clawPos < 0.0 ) clawPos = 0.0;
-                        if( clawPos > 1.0 ) clawPos = 1.0;
-                        robot.clawServo.setPosition(clawPos);
-/*
-                        if(geckoOn){
-                            robot.geckoServo.setPower(0.0);
-                            geckoOn = false;
-                        }
-                        else{
-                            robot.geckoServo.setPower(1.0);
-                            geckoOn = true;
-                        }
-*/
+                        turretPos += 0.02;
+                        if( turretPos < 0.0 ) turretPos = 0.0;
+                        if( turretPos > 1.0 ) turretPos = 1.0;
+                        robot.turretServo1.setPosition(turretPos);
+//                      robot.turretServo2.setPosition(turretPos);
+                        break;
+                    case 3 :
+                        spinPos += servoStepSize;
+                        if( spinPos < 0.0 ) spinPos = 0.0;
+                        if( spinPos > 1.0 ) spinPos = 1.0;
+                        robot.spinServo.setPosition(spinPos);
+                        break;
+                    case 4 :
+                        liftPos += servoStepSize;
+                        if( liftPos < 0.0 ) liftPos = 0.0;
+                        if( liftPos > 1.0 ) liftPos = 1.0;
+                        robot.liftServo.setPosition(liftPos);
                         break;
                     default :
                         break;
                 } // switch()
             } // right bumper
-
-            processTiltControls();
-            ProcessViperLiftControls();
 
             // Compute current cycle time
             nanoTimePrev = nanoTimeCurr;
@@ -187,8 +208,6 @@ public class TeleopPositionTest extends LinearOpMode {
             elapsedHz    =  1000.0 / elapsedTime;
 
             // Update telemetry data
-            telemetry.addData("Tilt", "%.1f deg", robot.armTiltAngle);
-            telemetry.addData("Viper", "%d counts", robot.viperMotorPos );
             telemetry.addData("CycleTime", "%.1f msec (%.1f Hz)", elapsedTime, elapsedHz );
             telemetry.update();
 
@@ -214,103 +233,5 @@ public class TeleopPositionTest extends LinearOpMode {
         gamepad1_l_trigger_last  = gamepad1_l_trigger_now;   gamepad1_l_trigger_now  = (gamepad1.left_trigger >= 0.5);
         gamepad1_r_trigger_last  = gamepad1_r_trigger_now;   gamepad1_r_trigger_now  = (gamepad1.right_trigger >= 0.5);
     } // captureGamepad1Buttons
-
-    /*---------------------------------------------------------------------------------*/
-    void processTiltControls() {
-        // The encoder is backwards from our definition of MAX and MIN. Maybe change the
-        // convention in hardware class?
-        boolean safeToManuallyLower = (robot.armTiltAngle > Hardware2025Bot.TILT_ANGLE_HW_MIN_DEG);
-        boolean safeToManuallyRaise = (robot.armTiltAngle < Hardware2025Bot.TILT_ANGLE_HW_MAX_DEG);
-        double  gamepad1_right_stick = gamepad1.right_stick_y;
-        boolean manual_tilt_control = ( Math.abs(gamepad1_right_stick) > 0.08 );
-
-        //===================================================================
-        // Check for an OFF-to-ON toggle of the gamepad1 CROSS button
-        if( gamepad1_cross_now && !gamepad1_cross_last)
-        {
-        }
-        //===================================================================
-        // Check for an OFF-to-ON toggle of the gamepad1 LEFT BUMPER
-        else if( gamepad1_l_bumper_now && !gamepad1_l_bumper_last )
-        {
-        }
-
-        //===================================================================
-        else if( manual_tilt_control || tiltAngleTweaked) {
-            // Does user want to rotate turret DOWN (negative joystick input)
-            if( safeToManuallyLower && (gamepad1_right_stick < -0.08) ) {
-                double motorPower = 0.95 * gamepad1_right_stick; // NEGATIVE
-                robot.wormTiltMotor.setPower( motorPower );   // -8% to -95%
-                tiltAngleTweaked = true;
-            }
-            // Does user want to rotate turret UP (positive joystick input)
-            else if( safeToManuallyRaise && (gamepad1_right_stick > 0.08) ) {
-                double motorPower = 0.95 * gamepad1_right_stick; // POSITIVE
-                robot.wormTiltMotor.setPower( motorPower );   // +8% to +95%
-                tiltAngleTweaked = true;
-            }
-            // No more input?  Time to stop turret movement!
-            else if(tiltAngleTweaked) {
-                robot.wormTiltMotor.setPower( 0.0 );
-                tiltAngleTweaked = false;
-            }
-        } // manual_tilt_control
-
-    } // processTiltControls
-
-    /*---------------------------------------------------------------------------------*/
-    void ProcessViperLiftControls() {
-        boolean safeToManuallyRetract = (robot.viperMotorPos > Hardware2025Bot.VIPER_EXTEND_ZERO);
-        boolean safeToManuallyExtend  = (robot.viperMotorPos < Hardware2025Bot.VIPER_EXTEND_FULL2);
-        // Capture user inputs ONCE, in case they change during processing of this code
-        // or we want to scale them down
-        double  gamepad1_left_trigger  = gamepad1.left_trigger  * 0.5;  // fine control, not speed
-        double  gamepad1_right_trigger = gamepad1.right_trigger * 0.5;
-        boolean manual_lift_control = ( (gamepad1_left_trigger  > 0.25) || (gamepad1_right_trigger > 0.25) );
-
-        //===================================================================
-        // Check for an OFF-to-ON toggle of the gamepad1 DPAD UP
-        if( gamepad1_dpad_up_now && !gamepad1_dpad_up_last)
-        {
-        }
-        // Check for an OFF-to-ON toggle of the gamepad1 DPAD RIGHT
-        else if( gamepad1_dpad_right_now && !gamepad1_dpad_right_last)
-        {
-        }
-        // Check for an OFF-to-ON toggle of the gamepad1 DPAD DOWN
-        else if( gamepad1_dpad_down_now && !gamepad1_dpad_down_last)
-        {
-        }
-        // Check for an OFF-to-ON toggle of the gamepad1 DPAD RIGHT
-        else if( gamepad1_dpad_left_now && !gamepad1_dpad_left_last)
-        {
-        }
-        //===================================================================
-        else if( manual_lift_control || liftTweaked ) {
-            // Does user want to manually RAISE the lift?
-            if( safeToManuallyExtend && (gamepad1_right_trigger > 0.25) ) {
-                viperPower = gamepad1_right_trigger;
-                robot.viperMotor.setPower( viperPower );  // fixed power? (robot.VIPER_RAISE_POWER)
-                liftTweaked = true;
-            }
-            // Does user want to manually LOWER the lift?
-            else if( safeToManuallyRetract && (gamepad1_left_trigger > 0.25) ) {
-                viperPower = robot.VIPER_LOWER_POWER;
-                robot.viperMotor.setPower( viperPower );
-                liftTweaked = true;
-            }
-            // No more input?  Time to stop lift movement!
-            else if( liftTweaked ) {
-                // if the lift is near the bottom, truly go to zero power
-                // but if in a raised position, only drop to minimal holding power
-                boolean closeToZero = (Math.abs(robot.viperMotorPos - Hardware2025Bot.VIPER_EXTEND_ZERO) < 20);
-                viperPower = closeToZero? 0.0 : robot.VIPER_HOLD_POWER;
-                robot.viperMotor.setPower( viperPower );
-                liftTweaked = false;
-            }
-        } // manual_lift_control
-
-    }  // ProcessLiftControls
-
 
 } // TeleopPositionTest
