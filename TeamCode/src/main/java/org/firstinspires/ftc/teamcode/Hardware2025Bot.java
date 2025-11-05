@@ -37,6 +37,7 @@ public class Hardware2025Bot
     public double imuHeadingAngle = 0.0;
     public double imuTiltAngle    = 0.0;
     public double rcStartAngle    = 180.0;
+    public double turretStartAngle = 45.0; //TODO: Find actual value
 
     //====== GOBILDA PINPOINT ODOMETRY COMPUTER ======
     GoBildaPinpointDriver odom;
@@ -78,53 +79,6 @@ public class Hardware2025Bot
     // The math above assumes motor encoders.  For REV odometry pods, the counts per inch is different
     protected double COUNTS_PER_INCH2      = 1738.4;  // 8192 counts-per-rev / (1.5" omni wheel * PI)
 
-    //====== Linear actuator snorkle MOTORS (RUN_USING_ENCODER) =====
-    protected DcMotorEx snorkleLMotor = null;
-    public int          snorkleLMotorTgt    = 0;       // RUN_TO_POSITION target encoder count
-    public int          snorkleLMotorPos    = 0;       // current encoder count
-    public double       snorkleLMotorVel    = 0.0;     // encoder counts per second
-    public double       snorkleLMotorAmps   = 0.0;     // current power draw (Amps)
-    public double       snorkleLMotorAmpsPk = 0.0;     // peak power draw (Amps)
-    public double       snorkleLMotorSetPwr = 0.0;     // requested power setting
-    public double       snorkleLMotorPwr    = 0.0;     // current power setting
-    public boolean      snorkleLMotorBusy   = false;
-
-    protected DcMotorEx snorkleRMotor = null;
-    public int          snorkleRMotorTgt    = 0;       // RUN_TO_POSITION target encoder count
-    public int          snorkleRMotorPos    = 0;       // current encoder count
-    public double       snorkleRMotorVel    = 0.0;     // encoder counts per second
-    public double       snorkleRMotorAmps   = 0.0;     // current power draw (Amps)
-    public double       snorkleRMotorAmpsPk = 0.0;     // peak power draw (Amps)
-    public double       snorkleRMotorSetPwr = 0.0;     // requested power setting
-    public double       snorkleRMotorPwr    = 0.0;     // current power setting
-    public boolean      snorkleRMotorBusy   = false;
-
-    public ElapsedTime  snorkleTimer        = new ElapsedTime();
-
-    public final static int   SNORKLE_HW_MAX   = 3328;  // encoder for max possible extension RIGHT
-    public final static int   SNORKLE_LEVEL2A  = 2750;  // encoder for snorkel above the bar
-    public final static int   SNORKLE_LEVEL2B  = 50;    // encoder for snorkel fully retracted (with margin)
-    public final static int   SNORKLE_LOW_BAR  = 1300;  // encoder for snorkel where fully retracted (with margin)
-    public final static int   SNORKLE_HW_MIN   = 0;     // encoder position at maximum rotation LEFT
-
-    //====== Worm gear tilt MOTORS (RUN_USING_ENCODER) =====
-    protected DcMotorEx wormTiltMotor       = null;
-    public int          wormTiltMotorTgt    = 0;      // RUN_TO_POSITION target encoder count
-    public int          wormTiltMotorPos    = 0;      // current encoder count
-    public double       wormTiltMotorVel    = 0.0;    // encoder counts per second
-    public double       wormTiltMotorAmps   = 0.0;    // current power draw (Amps)
-    public double       wormTiltMotorAmpsPk = 0.0;    // peak power draw (Amps) 312rpm = 9.2A @ 12V
-    public double       wormTiltMotorSetPwr = 0.0;    // requested power setting
-    public double       wormTiltMotorPwr    = 0.0;    // current power setting
-    public double       WORM_TILT_VIPER_TO_BASKET_DEG= 45.0;   // angle at when the viper motor starts extending when going to basket
-    public double       WORM_TILT_VIPER_FROM_BASKET_DEG  = 80; // angle at when the viper motor starts extending from the basket
-
-    protected AnalogInput      armTiltEncoder    = null;    // US Digital absolute magnetic encoder (MA3)
-    public double              armTiltAngle       = 0.0;    // 0V = 0 degrees; 3.3V = 359.99 degrees
-    public static final double armTiltAngleOffset = 128.0;  // allows us to adjust the 0-360 deg range
-
-    // This value is set at init.
-    public static double startingArmTiltAngle = 0.0;
     // Delta math: 332rpm -0.1 deg = -3891 encoder counts       435rpm:  3.8 deg = 0 encoder counts
     //                    94.4 deg = 5 encoder counts                   91.2 deg = 2614 encoder counts
     //             ==>    94.5 deg for 3896 encoder counts              87.4 deg = 2614 encoder counts
@@ -132,195 +86,47 @@ public class Hardware2025Bot
     public final static double ENCODER_COUNTS_PER_DEG  = 2614.0 / 87.4;  // for 435rpm motor
 
 //  public final static double GOBILDA_435_MOTOR_REV = 537.7; // Ticks per revolution for a GOBILDA 435 RPM motor
-//  public final static double SUPER_DUTY_WORM_GEAR_REDUCTION = 28.0; // Gear reduction for super duty worm gear
-//  public final static double ENCODER_COUNTS_PER_REV  = (GOBILDA_435_MOTOR_REV * SUPER_DUTY_WORM_GEAR_REDUCTION); // The number of counts it takes to complete one revolution
 //  public final static double ENCODER_COUNTS_PER_DEG = ENCODER_COUNTS_PER_REV / 360.0;  // The number of counts it takes to tilt one degree
 
-    public final static double TILT_ANGLE_HW_MAX_DEG      = 94.00; // Arm at maximum rotation UP/BACK (horizontal = -200)
-    public final static double TILT_ANGLE_BASKET_DEG      = 90.00; // Arm at rotation back to the basket for scoring
-    public final static double TILT_ANGLE_AUTO_PRE_DEG    = 83.00; // Arm almost at  basket (start to slow; avoid wobble)
-    public final static double TILT_ANGLE_SUBMERSIBLE_DEG = 10.00; // Arm at rotation back to the submersible for collecting
-    public final static double TILT_ANGLE_SWEEPER_DEG       = 6.00; // Arm at rotation to get into position to sweep TODO: tweak value
-    public final static double TILT_ANGLE_SWEEPER_LOWER_DEG = 4.00; // Arm rotated to actually sweep TODO: tweak value
-    public final static double TILT_ANGLE_PARK1_DEG       = 64.25; // Arm at rotation for parking during left-side auto
-    public final static double TILT_ANGLE_LEVEL2A_DEG     = 58.00; // Arm at rotation #1 for level 2 ascent
-    public final static double TILT_ANGLE_LEVEL2B_DEG     = 49.00; // Arm at rotation #2 for level 2 ascent
-    public final static double TILT_ANGLE_LEVEL2C_DEG     = 41.60; // Arm at rotation #3 for level 2 ascent
-    public final static double TILT_ANGLE_LEVEL2D_DEG     = 46.20; // Arm at rotation #4 for level 2 ascent
-    public final static double TILT_ANGLE_LEVEL2E_DEG     = 46.20; // Arm at rotation #5 for level 2 ascent
-    public final static double TILT_ANGLE_LEVEL2F_DEG     = 59.10; // Arm at rotation #6 for level 2 ascent
-    public final static double TILT_ANGLE_LEVEL2G_DEG     = 45.00; // Arm at rotation #7 to drop robot to floor
-    public final static double TILT_ANGLE_PARK_DEG        = 33.80; // Arm at rotation back to the low bar for park in auto
-    public final static double TILE_ANGLE_BASKET_SAFE_DEG = 90.00; // Arm safe to rotate intake from basket
-    public final static double TILT_ANGLE_VERTICAL_DEG    = 54.50; // Straight up vertical (safe to start retracting viper)
-    public final static double TILT_ANGLE_ZERO_DEG        =  4.00; // Arm for parking fully reset in auto
-    public final static double TILT_ANGLE_DRIVE_DEG       =  4.00; // Arm for parking in auto or driving around
-    public final static double TILT_ANGLE_TELEOP_COLLECT_DEG =  3.80; // Arm for collecting in TeleOp
-    public final static double TILT_ANGLE_SPECIMEN0_DEG   = 60.00; // (NEW) Angle for grabbing specimens off field wall
-    public final static double TILT_ANGLE_SPECIMEN1_DEG   = 63.00; // AUTO: Angle for scoring specimens (above bar)
-    public final static double TILT_ANGLE_SPECIMEN2_DEG   = 57.40; // AUTO: Angle for scoring specimens (clipped)
-    public final static double TILT_ANGLE_SPECIMEN3_DEG   = 90.00; // AUTO: Angle for backward specimen scoring
-    public final static double TILT_ANGLE_CLIP_DEG        = 45.00; // AUTO: clip specimen on bar by just driving forward
-    public final static double TILT_ANGLE_HW_MIN_DEG      =  0.00; // Arm at maximum rotation DOWN/FWD
-    public final static double TILT_ANGLE_COLLECT_DEG     =  4.00; // Arm to collect samples at ground level
-    public final static double TILT_ANGLE_COLLECT1_DEG    =  2.90; // Arm to collect samples at ground level for only the first sample
-    public final static double TILT_ANGLE_SAMPLE3_DEG     =  3.00; // Arm to collect samples at ground level (3rd one against wall)
-    public final static double TILT_ANGLE_START_DEG       = 13.00; // AUTO: starting position LOW
-    public final static double TILT_ANGLE_WALL_DEG        = 13.90; // AUTO: starting position HIGH (motor tilted back & touches wall)
-    public final static double TILT_ANGLE_WALL0_DEG       = 21.50; // AUTO: grab specimen off wall (on approach)
-    public final static double TILT_ANGLE_WALL1_DEG       = 33.00; // AUTO: grab specimen off wall (lift off)
-    public final static double TILT_ANGLE_AUTO_5_DEG      = 22.00; // AUTO: initial tilt for sample 5 auto
+    //====== Collector MOTOR (RUN_USING_ENCODER) =====
+    protected DcMotorEx collectorMotor = null;
+    public int          collectorMotorTgt    = 0;       // RUN_TO_POSITION target encoder count
+    public int          collectorMotorPos    = 0;       // current encoder count
+    public double       collectorMotorVel    = 0.0;     // encoder counts per second
+    public double       collectorMotorAmps   = 0.0;     // current power draw (Amps)
+    public double       collectorMotorAmpsPk = 0.0;     // peak power draw (Amps)
+    public double       collectorMotorSetPwr = 0.0;     // requested power setting
+    public double       collectorMotorPwr    = 0.0;     // current power setting
+    public boolean      collectorMotorBusy   = false;
 
-    //====== Viper slide MOTOR (RUN_USING_ENCODER) =====
-    protected DcMotorEx viperMotor       = null;
-    public int          viperMotorTgt    = 0;       // RUN_TO_POSITION target encoder count
-    public int          viperMotorPos    = 0;       // current encoder count
-    public double       viperMotorVel    = 0.0;     // encoder counts per second
-    public double       viperMotorAmps   = 0.0;     // current power draw (Amps)
-    public double       viperMotorAmpsPk = 0.0;     // peak power draw (Amps) 312rpm = 9.2A @ 12V
-    public double       viperMotorSetPwr = 0.0;     // requested power setting
-    public double       viperMotorPwr    = 0.0;     // current power setting
+    public ElapsedTime  collectorTimer       = new ElapsedTime();
 
-    public ElapsedTime  viperSlideTimer  = new ElapsedTime();
-    public ElapsedTime  wormTiltTimer    = new ElapsedTime();
+    //====== Flywheel MOTORS (RUN_USING_ENCODER) =====
+    protected DcMotorEx flywheelMotorTop = null;
+    public int          flywheelMotorTopTgt    = 0;       // RUN_TO_POSITION target encoder count
+    public int          flywheelMotorTopPos    = 0;       // current encoder count
+    public double       flywheelMotorTopVel    = 0.0;     // encoder counts per second
+    public double       flywheelMotorTopAmps   = 0.0;     // current power draw (Amps)
+    public double       flywheelMotorTopAmpsPk = 0.0;     // peak power draw (Amps)
+    public double       flywheelMotorTopSetPwr = 0.0;     // requested power setting
+    public double       flywheelMotorTopPwr    = 0.0;     // current power setting
+    public boolean      flywheelMotorTopBusy   = false;
 
-    public boolean      viperMotorAutoMove    = false; // have we commanded an automatic extension movement?
-    public boolean      wormTiltMotorAutoMove = false; // have we commanded an automatic tilt movement?
+    protected DcMotorEx flywheelMotorBottom = null;
+    public int          flywheelMotorBottomTgt    = 0;       // RUN_TO_POSITION target encoder count
+    public int          flywheelMotorBottomPos    = 0;       // current encoder count
+    public double       flywheelMotorBottomVel    = 0.0;     // encoder counts per second
+    public double       flywheelMotorBottomAmps   = 0.0;     // current power draw (Amps)
+    public double       flywheelMotorBottomAmpsPk = 0.0;     // peak power draw (Amps)
+    public double       flywheelMotorBottomSetPwr = 0.0;     // requested power setting
+    public double       flywheelMotorBottomPwr    = 0.0;     // current power setting
+    public boolean      flywheelMotorBottomBusy   = false;
 
-    public boolean      viperMotorBusy        = false;
-    public boolean      wormTiltMotorBusy     = false;
-
-    public double       VIPER_RAISE_POWER  =  1.000; // Motor power used to EXTEND viper slide
-    public double       VIPER_HOLD_POWER   =  0.001; // Motor power used to HOLD viper slide at current extension
-    public double       VIPER_LOWER_POWER  = -0.500; // Motor power used to RETRACT viper slide
-
-    // Encoder counts for 435 RPM lift motors theoretical max 5.80 rev * 384.54 ticks/rev = 2230 counts
-    // Encoder counts for 312 RPM lift motors theoretical max 5.76 rev * 537.7  ticks/rev = 3100 counts
-    // Encoder counts for 223 RPM lift motors theoretical max 5.60 rev * 751.8  ticks/rev = 4214 counts
-
-    public final static int    VIPER_EXTEND_ZERO         = 0;     // fully retracted (may need to be adjustable??)
-    public final static int    VIPER_EXTEND_AUTO_READY   = 1177;  // extend for collecting during auto
-    public final static int    VIPER_EXTEND_AUTO_COLLECT = 1177;  // extend for collecting during auto
-    public final static int    VIPER_EXTEND_SAMPLE3 = 1103;   // extend for collecting during auto (3rd sample along wall)
-    public final static int    VIPER_EXTEND_PARK2   = 2508;   // extend to this to park in auto
-    public final static int    VIPER_EXTEND_PARK1   = 1618;   // extend to this to park in auto
-    public final static int    VIPER_EXTEND_LEVEL2A = 1546;   // extend to this to prepare for level 2 ascent
-    public final static int    VIPER_EXTEND_LEVEL2B = 1546;   // retract to this extension during level 2 ascent
-    public final static int    VIPER_EXTEND_LEVEL2C = 2820;   // extend to this extension during level 2 ascent
-    public final static int    VIPER_EXTEND_LEVEL2D = 2820;   // retract to this extension during level 2 ascent
-    public final static int    VIPER_EXTEND_LEVEL2E = 2555;   // retract to this extension during level 2 ascent
-    public final static int    VIPER_EXTEND_LEVEL2F = 2150;   // retract to this extension during level 2 ascent
-    public final static int    VIPER_EXTEND_LEVEL2G = 2580;   // extend to this position at stop to drop L2 to floor
-    public final static int    VIPER_EXTEND_GRAB    = 1177;   // extend for collection from submersible
-    public final static int    VIPER_EXTEND_SECURE  =  360;   // Intake is tucked into robot to be safe
-    public final static int    VIPER_EXTEND_SAFE    =  809;   // Intake is far enough out to safely rotate down and rotate up
-    public final static int    VIPER_EXTEND_AUTO1   = 1450;   // raised to where the specimen hook is above the high bar
-    public final static int    VIPER_EXTEND_AUTO2   =  810;   // retract to clip the specimen to the bar
-    public final static int    VIPER_EXTEND_AUTO3   = 1037;   // raised to where the specimen hook is above the high bar REVERSE
-    public final static int    VIPER_EXTEND_AUTO4   =  337;   // retract to clip the specimen to the bar REVERSE
-    public final static int    VIPER_EXTEND_CLIP    = 1162;   // AUTO: clip specimen on bar by just driving forward
-    public final static int    VIPER_EXTEND_BASKET  = 2980;   // raised to basket-scoring height
-    public final static int    VIPER_EXTEND_42      = 2475;   // max forward extension for 42" limit
-    public final static int    VIPER_EXTEND_FULL2   = 2975;   // hardware fully extended (never exceed this count!)
-    public final static int    VIPER_EXTEND_WALL0   = 19;     // AUTO: grab specimen off wall (on approach)
-    public final static int    VIPER_EXTEND_WALL1   = 170;    // AUTO: grab specimen off wall (lift off)
-    public final static double TILT_ANGLE_42  = Math.toDegrees(Math.acos((double)Hardware2025Bot.VIPER_EXTEND_42/(double)Hardware2025Bot.VIPER_EXTEND_BASKET)); // Minimum tilt angle needed to fully extend viper
-
-//  PIDControllerLift   liftPidController;           // PID parameters for the lift motors
-//  public double       liftMotorPID_p     = -0.100; //  Raise p = proportional
-//  public double       liftMotorPID_i     =  0.000; //  Raise i = integral
-//  public double       liftMotorPID_d     = -0.007; //  Raise d = derivative
-//  public boolean      liftMotorPIDAuto   = false;  // Automatic movement in progress (PID)
-//  public int          liftMotorCycles    = 0;      // Automatic movement cycle count
-//  public int          liftMotorWait      = 0;      // Automatic movement wait count (truly there! not just passing thru)
-//  public int          liftTarget         = 0;      // Automatic movement target ticks
+    public ElapsedTime  flywheelTimer             = new ElapsedTime();
 
     //====== COLLECTOR SERVOS =====
     public AnalogInput elbowServoPos = null;
-    public Servo elbowServo = null;
-
-    public final static double ELBOW_SERVO_INIT = 0.500;
-    public final static double ELBOW_SERVO_INIT_ANGLE = 180.0;
-    public final static double ELBOW_SERVO_SAFE = 0.510;       // Safe orientation for driving
-    public final static double ELBOW_SERVO_SAFE_ANGLE = 180.0;
-    public final static double ELBOW_SERVO_GRAB = 0.510;       // For grabbing samples from the field floor
-    public final static double ELBOW_SERVO_GRAB_ANGLE = 180.0;
-    public final static double ELBOW_SERVO_GRAB3 = 0.580;      // For grabbing 3rd sample from field floor (against wall)
-    public final static double ELBOW_SERVO_GRAB3_ANGLE = 180.0;
-    public final static double ELBOW_SERVO_BASKET = 0.500;     // For scoring samples in the basket
-    public final static double ELBOW_SERVO_BASKET_ANGLE = 180.0;
-    public final static double ELBOW_SERVO_BAR1 = 0.520;       // NEW specimen bar (above)
-    public final static double ELBOW_SERVO_BAR1_ANGLE = 174.0;
-    public final static double ELBOW_SERVO_BAR2 = 0.520;       // NEW specimen bar (clipped)
-    public final static double ELBOW_SERVO_BAR2_ANGLE = 174.0;
-    public final static double ELBOW_SERVO_WALL0 = 0.500;       // Grab specimen off wall in autonomous
-    public final static double ELBOW_SERVO_WALL0_ANGLE = 180.0; // Grab specimen off wall in autonomous
-    public final static double ELBOW_SERVO_WALL1 = 0.510;       // Grab specimen off wall in autonomous
-    public final static double ELBOW_SERVO_WALL1_ANGLE = 176.0; // Grab specimen off wall in autonomous
-    public final static double ELBOW_SERVO_WALL2 = 0.500;       // Grab specimen off wall in autonomous
-    public final static double ELBOW_SERVO_WALL2_ANGLE = 180.0; // Grab specimen off wall in autonomous
-    public final static double ELBOW_SERVO_CLIP = 0.510;        // AUTO: clip specimen on bar by just driving forward
-    //public final static double ELBOW_SERVO_GRABR1 = 0.580;       // TELE: grab at right 45deg angle
-    //public final static double ELBOW_SERVO_GRABR2 = 0.650;       // TELE: grab at right 45deg angle
-    public final static double ELBOW_SERVO_GRABR1 = 0.650;       // TELE: grab at right 45deg angle
-    public final static double ELBOW_SERVO_GRABR2 = 0.790;
-    public final static double ELBOW_SERVO_GRABL1 = 0.440;       // TELE: grab at left  22deg angle
-    public final static double ELBOW_SERVO_GRABL2 = 0.370;       // TELE: grab at left  22deg angle
-    public final static double ELBOW_SERVO_BAR3   = 1.000;       // For backward arm scoring
-
-    public AnalogInput wristServoPos = null;
-    public Servo  wristServo = null;
-
-    public final static double WRIST_SERVO_INIT = 0.159;        // stored (pointing up)
-    public final static double WRIST_SERVO_INIT_ANGLE = 288.0;
-    public final static double WRIST_SERVO_SAFE = 0.340;        // safe orientation for driving
-    public final static double WRIST_SERVO_SAFE_ANGLE = 234.0;
-    public final static double WRIST_SERVO_GRAB = 0.730;        // grab floor sample (pointing down)
-    public final static double WRIST_SERVO_GRAB_ANGLE = 67.0;
-    public final static double WRIST_SERVO_BASKET1 = 0.600;     // AUTO/TELE: lifting arm toward basket
-    public final static double WRIST_SERVO_BASKET1_ANGLE = 157.0;
-    public final static double WRIST_SERVO_RAISE = 0.570;
-    public final static double WRIST_SERVO_RAISE_ANGLE = 157.0;
-    public final static double WRIST_SERVO_BASKET2 = 0.220;     // AUTO/TELE: scoring in basket
-    public final static double WRIST_SERVO_BASKET2_ANGLE = 270.0;
-    public final static double WRIST_SERVO_BAR1 = 0.640;         // AUTO: specimen bar (when above)
-    public final static double WRIST_SERVO_BAR1_ANGLE = 173.0;
-    public final static double WRIST_SERVO_BAR2 = 0.640;         // AUTO: specimen bar (when clipped)
-    public final static double WRIST_SERVO_BAR2_ANGLE = 173.0;
-    public final static double WRIST_SERVO_BAR3 = 0.170;         // AUTO: specimen bar (reverse scoring)
-    public final static double WRIST_SERVO_WALL0 = 0.500;        // AUTO: grab specimen off wall (on approach)
-    public final static double WRIST_SERVO_WALL0_ANGLE = 180.0;
-    public final static double WRIST_SERVO_WALL1 = 0.519;        // AUTO: grab specimen off wall (lift off)
-    public final static double WRIST_SERVO_WALL1_ANGLE = 173.0;
-    public final static double WRIST_SERVO_CLIP = 0.350;         // AAUTO: clip specimen on bar by just driving forward
-    public final static double WRIST_SERVO_LEVEL2 = 0.620;       // TELE: ascend level 2 position
-    // horizontal = 0.440
-    // straight down = 0.710
-
-    //public CRServo geckoServo = null;
-
-    //===== Claw servo =====
-    public Servo clawServo = null;
-
-    public final static double CLAW_SERVO_CLOSED  = 0.443;  // Claw closed (hold sample/specimen)
-    public final static double CLAW_SERVO_INIT    = 0.500;  // Claw in init position (servo default power-on state)
-    public final static double CLAW_SERVO_OPEN_N  = 0.600;  // claw opened narrow (enough to release/drop)
-    public final static double CLAW_SERVO_OPEN_S  = 0.550;  // claw opened to collect/sweep width
-    public final static double CLAW_SERVO_OPEN_W  = 0.900;  // claw opened wide (fully open and above samples on floor)
-
-    public enum clawStateEnum {
-        CLAW_INIT,
-        CLAW_OPEN_NARROW,
-        CLAW_OPEN_WIDE,
-        CLAW_OPEN,       /* used to toggle between OPEN_NARROW and OPEN_WIDE */
-        CLAW_CLOSED,
-        CLAW_OPEN_SWEEPER
-    }
-
-    public Hardware2025Bot.clawStateEnum clawState = Hardware2025Bot.clawStateEnum.CLAW_INIT;
-
-    //Ultrasonic sensors
-//  private MaxSonarI2CXL sonarRangeF = null;
+    public Servo kickerServo = null;
 
     /* local OpMode members. */
     protected HardwareMap hwMap = null;
@@ -385,88 +191,15 @@ public class Hardware2025Bot
         rearLeftMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rearRightMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        // Define and Initialize tilt motor and absolute position encoder
-        wormTiltMotor  = hwMap.get(DcMotorEx.class,"WormTilt");  // Control Hub port 1
-        armTiltEncoder = hwMap.get(AnalogInput.class, "tiltMA3"); // Expansion Hub analog 0
-        startingArmTiltAngle = computeAbsoluteAngle( armTiltEncoder.getVoltage(), armTiltAngleOffset);
-        wormTiltMotor.setDirection(DcMotor.Direction.FORWARD);
-        wormTiltMotor.setPower( 0.0 );
-        wormTiltMotor.setTargetPositionTolerance( 20 );
-
-        // Define and initialize the two snorkle motors
-        snorkleLMotor = hwMap.get(DcMotorEx.class,"SnorkleL");   // Control Hub port 0
-        snorkleRMotor = hwMap.get(DcMotorEx.class,"SnorkleR");   // Control Hub port 2
-        snorkleLMotor.setDirection(DcMotor.Direction.FORWARD);
-        snorkleRMotor.setDirection(DcMotor.Direction.FORWARD);
-        snorkleLMotor.setPower( 0.0 );
-        snorkleRMotor.setPower( 0.0 );
-
-        if( isAutonomous ) {
-            snorkleLMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-            snorkleRMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-            snorkleLMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-            snorkleRMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        } // not for teleop
-
-        // Reset tilt encoder so we can base everything off the absolute position encoder
-        wormTiltMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        wormTiltMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-
-        snorkleLMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        wormTiltMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-
-        // Viper slide motor
-        viperMotor = hwMap.get(DcMotorEx.class,"viperMotor");  // Expansion Hub port 2
-        viperMotor.setDirection(DcMotor.Direction.REVERSE);   // positive motor power extends
-        viperMotor.setPower( 0.0 );
-        viperMotor.setTargetPositionTolerance( 10 );
-        if( isAutonomous ) {
-            viperMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-            viperMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        }
-        viperMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-
-        elbowServo    = hwMap.servo.get("ElbowServo");          // servo port 0 (Expansion Hub)
-        elbowServoPos = hwMap.analogInput.get("ElbowServoPos"); // Analog port 1 (Expansion Hub)
-
-        wristServo    = hwMap.servo.get("WristServo");          // servo port 1 (Expansion Hub)
-        wristServoPos = hwMap.analogInput.get("WristServoPos"); // Analog port 0 (Expansion Hub)
-
-        clawServo     = hwMap.servo.get("ClawServo");           // servo port 2 (Expansion Hub)
-
-        if( isAutonomous ) {
-            elbowServo.setPosition(ELBOW_SERVO_INIT);
-            wristServo.setPosition(WRIST_SERVO_INIT);
-            clawServo.setPosition(CLAW_SERVO_INIT);
-        }
-
-//      geckoServo = hwMap.crservo.get("GeckoServo");           // servo port 2 (Expansion Hub)
-//      geckoServo.setPower(0.0);
-
         // Initialize REV Control Hub IMU
         initIMU();
-
-//      sonarRangeF = hwMap.get( MaxSonarI2CXL.class, "distance" );
 
     } /* init */
 
     /*--------------------------------------------------------------------------------------------*/
     public void resetEncoders() {
-        wormTiltMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        viperMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        snorkleLMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        snorkleRMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-
-        wormTiltMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        viperMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        snorkleLMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        snorkleRMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         odom.resetPosAndIMU();
-
-        elbowServo.setPosition(ELBOW_SERVO_INIT);
-        wristServo.setPosition(WRIST_SERVO_INIT);
-        clawServo.setPosition(CLAW_SERVO_INIT);
 
     } // resetEncoders
 
@@ -481,48 +214,7 @@ public class Hardware2025Bot
     } // rcStartAngleGet
 
     /*--------------------------------------------------------------------------------------------*/
-    public void clawStateSet( Hardware2025Bot.clawStateEnum newClawState )
-    {
-        switch( newClawState ) {
-            case CLAW_INIT :
-                clawServo.setPosition( CLAW_SERVO_INIT );
-                clawState = newClawState;
-                break;
-            case CLAW_OPEN :  // OPEN is used to toggle between OPEN_NARROW and OPEN_WIDE
-                if( clawState == Hardware2025Bot.clawStateEnum.CLAW_OPEN_NARROW ) {
-                    clawServo.setPosition( CLAW_SERVO_OPEN_W );
-                    clawState = Hardware2025Bot.clawStateEnum.CLAW_OPEN_WIDE;
-                } else if( clawState == Hardware2025Bot.clawStateEnum.CLAW_OPEN_WIDE ) {
-                    clawServo.setPosition( CLAW_SERVO_OPEN_N );
-                    clawState = Hardware2025Bot.clawStateEnum.CLAW_OPEN_NARROW;
-                } else { // Not currently OPEN in either NARROW or WIDE; start NARROW
-                    clawServo.setPosition( CLAW_SERVO_OPEN_N );
-                    clawState = Hardware2025Bot.clawStateEnum.CLAW_OPEN_NARROW;
-                }
-                break;
-            case CLAW_OPEN_NARROW :
-                clawServo.setPosition( CLAW_SERVO_OPEN_N );
-                clawState = newClawState;
-                break;
-            case CLAW_OPEN_WIDE :
-                clawServo.setPosition( CLAW_SERVO_OPEN_W );
-                clawState = newClawState;
-                break;
-            case CLAW_OPEN_SWEEPER :
-                clawServo.setPosition( CLAW_SERVO_OPEN_S );
-                clawState = newClawState;
-                break;
-            case CLAW_CLOSED :
-                clawServo.setPosition( CLAW_SERVO_CLOSED );
-                clawState = newClawState;
-                break;
-            default:
-                break;
-        } // switch()
 
-    } // clawStateSet
-
-    /*--------------------------------------------------------------------------------------------*/
     public void initIMU()
     {
         // Define and initialize REV Expansion Hub IMU
@@ -604,10 +296,6 @@ public class Hardware2025Bot
     /* using this function to account for that offset, we can place zero where we want it in s/w. */
     /* Having DEGREES_PER_ROTATION as a variable lets us adjust for the 3.3V vs. 5.0V difference. */
     /*--------------------------------------------------------------------------------------------*/
-    public static int computeEncoderCountsFromAngle( double angle )
-    {
-        return (int)((angle - startingArmTiltAngle) * ENCODER_COUNTS_PER_DEG);
-    } // computeEncoderCountsFromAngle
 
     /*--------------------------------------------------------------------------------------------*/
     public void readBulkData() {
@@ -625,51 +313,12 @@ public class Hardware2025Bot
         rearRightMotorVel  = rearRightMotor.getVelocity();
         rearLeftMotorPos   = rearLeftMotor.getCurrentPosition();
         rearLeftMotorVel   = rearLeftMotor.getVelocity();
-        //---- Viper Slide motor data ----
-        viperMotorPos      = viperMotor.getCurrentPosition();
-        viperMotorVel      = viperMotor.getVelocity();
-        viperMotorPwr      = viperMotor.getPower();
-        //---- Snorkle motor data ----
-        snorkleLMotorPos    = snorkleLMotor.getCurrentPosition();
-        snorkleLMotorVel    = snorkleLMotor.getVelocity();
-        snorkleLMotorPwr    = snorkleLMotor.getPower();
-        snorkleRMotorPos    = snorkleRMotor.getCurrentPosition();
-        snorkleRMotorVel    = snorkleRMotor.getVelocity();
-        snorkleRMotorPwr    = snorkleRMotor.getPower();
-        //---- Worm drive TILT motor data ----
-        wormTiltMotorPos    = wormTiltMotor.getCurrentPosition();
-        wormTiltMotorVel    = wormTiltMotor.getVelocity();
-        wormTiltMotorPwr    = wormTiltMotor.getPower();
-        armTiltAngle = computeAbsoluteAngle( armTiltEncoder.getVoltage(), armTiltAngleOffset);
         // NOTE: motor mA data is NOT part of the bulk-read, so increases cycle time!
 //      frontLeftMotorAmps  = frontLeftMotor.getCurrent(MILLIAMPS);
 //      frontRightMotorAmps = frontRightMotor.getCurrent(MILLIAMPS);
 //      rearRightMotorAmps  = rearRightMotor.getCurrent(MILLIAMPS);
 //      rearLeftMotorAmps   = rearLeftMotor.getCurrent(MILLIAMPS);
-//      viperMotorAmps      = viperMotor.getCurrent(MILLIAMPS);
-//      snorkleLMotorAmps   = snorkleLMotor.getCurrent(MILLIAMPS);
-//      snorkleRMotorAmps   = snorkleRMotor.getCurrent(MILLIAMPS);
-//      wormTiltMotorAmps   = wormTiltMotor.getCurrent(MILLIAMPS);
     } // readBulkData
-
-    /*--------------------------------------------------------------------------------------------*/
-    public void updateAscendMotorAmps() {
-
-        // monitor the viper slide motor current needed to lift robot during ascent
-        viperMotorAmps = viperMotor.getCurrent(CurrentUnit.AMPS);
-        if( viperMotorAmps > viperMotorAmpsPk ) viperMotorAmpsPk = viperMotorAmps;
-
-        // monitor the arm tilt motor current needed fold robot up from floor during ascent
-        wormTiltMotorAmps = wormTiltMotor.getCurrent(CurrentUnit.AMPS);
-        if( wormTiltMotorAmps > wormTiltMotorAmpsPk ) wormTiltMotorAmpsPk = wormTiltMotorAmps;
-
-        // monitor the arm pan motor current needed to keep arm from rotating during ascent
-        snorkleLMotorAmps = snorkleLMotor.getCurrent(CurrentUnit.AMPS);
-        if( snorkleLMotorAmps > snorkleLMotorAmpsPk ) snorkleLMotorAmpsPk = snorkleLMotorAmps;
-
-        snorkleRMotorAmps = snorkleRMotor.getCurrent(CurrentUnit.AMPS);
-        if( snorkleRMotorAmps > snorkleRMotorAmpsPk ) snorkleRMotorAmpsPk = snorkleRMotorAmps;
-    } // updateAscendMotorAmps
 
     /*--------------------------------------------------------------------------------------------*/
     // This is a slow operation (involves an I2C reading) so only do it as needed
@@ -783,178 +432,8 @@ public class Hardware2025Bot
     } // setRunToPosition
 
     /*--------------------------------------------------------------------------------------------*/
-    public double getElbowServoAngle() {
-        return (elbowServoPos.getVoltage() / 3.3) * 360.0;
-    }
-    public double getElbowServoPos()   { return  elbowServo.getPosition(); };
-
-    public double getWristServoAngle() {
-        return (wristServoPos.getVoltage() / 3.3) * 360.0;
-    }
-    public double getWristServoPos()   { return  wristServo.getPosition(); }
-
-    /*--------------------------------------------------------------------------------------------*/
-    /* startViperSlideExtension()                                                                 */
     /* NOTE: Comments online say the firmware that executes the motor RUN_TO_POSITION logic want  */
     /* the setup commands in this order: setTargetPosition(), setMode(), setPower().              */
-
-    public void startWormTilt(double targetArmAngle)
-    {   // Convert angle to encoder counts
-        int targetEncoderCount = computeEncoderCountsFromAngle(targetArmAngle);
-        // Range-check the target
-        if( targetArmAngle < TILT_ANGLE_HW_MIN_DEG) targetEncoderCount = computeEncoderCountsFromAngle(TILT_ANGLE_HW_MIN_DEG);
-        if( targetArmAngle > TILT_ANGLE_HW_MAX_DEG ) targetEncoderCount = computeEncoderCountsFromAngle(TILT_ANGLE_HW_MAX_DEG);
-
-        wormTiltMotor.setTargetPosition( targetEncoderCount );
-        wormTiltMotor.setMode( DcMotor.RunMode.RUN_TO_POSITION );
-
-        wormTiltMotor.setPower(0.8);
-        wormTiltTimer.reset();
-        wormTiltMotorAutoMove = true;
-        wormTiltMotorBusy = true;
-    } // startWormTilt
-    public void processWormTilt(){
-        // Has the automatic movement reached its destination?.
-        if( wormTiltMotorAutoMove ) {
-            if (!wormTiltMotor.isBusy()) {
-                wormTiltMotorBusy = false;
-                // Timeout reaching destination.
-            } else if (wormTiltTimer.milliseconds() > 5000) {
-                wormTiltMotorBusy = false;
-                //telemetry.addData("processViperSlideExtension", "Movement timed out.");
-                //telemetry.addData("processViperSlideExtension", "Position: %d", viperMotor.getCurrentPosition());
-                //telemetry.update();
-                //telemetrySleep();
-            }
-        }
-    } // processWormTilt
-
-    public void abortWormTilt()
-    {
-        // Have we commanded an AUTOMATIC lift movement that we need to terminate so we
-        // can return to MANUAL control?  (NOTE: we don't care here whether the AUTOMATIC
-        // movement has finished yet; MANUAL control immediately overrides that action.
-        if( wormTiltMotorAutoMove ) {
-            // turn off the auto-movement power, but don't go to ZERO POWER or
-            // the weight of the lift will immediately drop it back down.
-            wormTiltMotor.setMode(  DcMotor.RunMode.RUN_USING_ENCODER );
-            wormTiltMotor.setPower( 0.0 );
-//         liftMoveState = LiftMoveActivity.IDLE;
-//         liftStoreState = LiftStoreActivity.IDLE;
-            wormTiltMotorAutoMove = false;
-            wormTiltMotorBusy = false;
-        }
-    } // abortWormTilt
-
-    public void startViperSlideExtension(int targetEncoderCount )
-    {
-        startViperSlideExtension(targetEncoderCount, VIPER_RAISE_POWER, -VIPER_LOWER_POWER);
-    } // startViperSlideExtension
-
-    public void startViperSlideExtension(int targetEncoderCount, double raisePower, double lowerPower)
-    {
-        // Range-check the target
-        if( targetEncoderCount < VIPER_EXTEND_ZERO  ) targetEncoderCount = VIPER_EXTEND_ZERO;
-        if( targetEncoderCount > VIPER_EXTEND_FULL2 ) targetEncoderCount = VIPER_EXTEND_FULL2;
-        // Configure target encoder count
-        viperMotor.setTargetPosition( targetEncoderCount );
-        // Enable RUN_TO_POSITION mode
-        viperMotor.setMode(  DcMotor.RunMode.RUN_TO_POSITION );
-        // Are we raising or lowering the lift?
-        boolean directionUpward = (targetEncoderCount > viperMotorPos)? true : false;
-        // Set the power used to get there (NOTE: for RUN_TO_POSITION, always use a POSITIVE
-        // power setting, no matter which way the motor must rotate to achieve that target.
-        double motorPower = (directionUpward)? raisePower : lowerPower;
-        viperMotor.setPower( motorPower );
-        viperSlideTimer.reset();
-        // Note that we've started a RUN_TO_POSITION and need to reset to RUN_USING_ENCODER
-        viperMotorAutoMove = true;
-        viperMotorBusy = true;
-    } // startViperSlideExtension
-
-    public void processViperSlideExtension()
-    {
-        // Has the automatic movement reached its destination?.
-        if( viperMotorAutoMove ) {
-            if (!viperMotor.isBusy()) {
-                viperMotorBusy = false;
-            // Timeout reaching destination.
-            } else if (viperSlideTimer.milliseconds() > 5000) {
-                viperMotorBusy = false;
-              //telemetry.addData("processViperSlideExtension", "Movement timed out.");
-              //telemetry.addData("processViperSlideExtension", "Position: %d", viperMotor.getCurrentPosition());
-              //telemetry.update();
-              //telemetrySleep();
-            }
-        }
-    } // processViperSlideExtension
-
-    public void abortViperSlideExtension()
-    {
-        // Have we commanded an AUTOMATIC lift movement that we need to terminate so we
-        // can return to MANUAL control?  (NOTE: we don't care here whether the AUTOMATIC
-        // movement has finished yet; MANUAL control immediately overrides that action.
-        if( viperMotorAutoMove ) {
-           // turn off the auto-movement power, but don't go to ZERO POWER or
-           // the weight of the lift will immediately drop it back down.
-           viperMotor.setMode(  DcMotor.RunMode.RUN_USING_ENCODER );
-           viperMotor.setPower( VIPER_HOLD_POWER );
-//         liftMoveState = LiftMoveActivity.IDLE;
-//         liftStoreState = LiftStoreActivity.IDLE;
-           viperMotorAutoMove = false;
-           viperMotorBusy = false;
-        }
-    } // abortViperSlideExtension
-
-    public void startSnorkleExtension(int targetEncoderCount, double motorPower )
-    {
-        // Range-check the target
-        if( targetEncoderCount < SNORKLE_HW_MIN ) targetEncoderCount = SNORKLE_HW_MIN;
-        if( targetEncoderCount > SNORKLE_HW_MAX ) targetEncoderCount = SNORKLE_HW_MAX;
-        // Configure target encoder count
-        snorkleLMotor.setTargetPosition( targetEncoderCount );
-        snorkleRMotor.setTargetPosition( targetEncoderCount );
-        // Enable RUN_TO_POSITION mode
-        snorkleLMotor.setMode(  DcMotor.RunMode.RUN_TO_POSITION );
-        snorkleRMotor.setMode(  DcMotor.RunMode.RUN_TO_POSITION );
-
-        snorkleLMotor.setPower( motorPower );
-        snorkleRMotor.setPower( motorPower );
-        // Note that we've started a RUN_TO_POSITION and need to reset to RUN_USING_ENCODER
-        snorkleLMotorBusy = true;
-        snorkleRMotorBusy = true;
-        snorkleTimer.reset();
-    } // startSnorkleExtension
-
-    public void processSnorkleExtension()
-    {
-        if (!snorkleLMotor.isBusy() && !snorkleRMotor.isBusy()) {
-            snorkleLMotorBusy = false;
-            snorkleRMotorBusy = false;
-            // Timeout reaching destination.
-        } else if (snorkleTimer.milliseconds() > 5000) {
-            snorkleLMotorBusy = false;
-            snorkleRMotorBusy = false;
-            //telemetry.addData("processViperSlideExtension", "Movement timed out.");
-            //telemetry.addData("processViperSlideExtension", "Position: %d", viperMotor.getCurrentPosition());
-            //telemetry.update();
-            //telemetrySleep();
-        }
-    } // processSnorkleExtension
-
-    public void abortSnorkleExtension()
-    {
-        // turn off the auto-movement power, but don't go to ZERO POWER or
-        // the weight of the lift will immediately drop it back down.
-        snorkleLMotor.setMode(  DcMotor.RunMode.RUN_USING_ENCODER );
-        snorkleRMotor.setPower( 0.0 );
-//      liftMoveState = LiftMoveActivity.IDLE;
-//      liftStoreState = LiftStoreActivity.IDLE;
-        snorkleLMotorBusy = false;
-        snorkleRMotorBusy = false;
-    } // abortSnorkleExtension
-
-    /*--------------------------------------------------------------------------------------------*/
 
     /***
      *

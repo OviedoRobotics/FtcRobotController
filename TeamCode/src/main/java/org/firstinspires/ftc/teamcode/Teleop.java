@@ -2,6 +2,7 @@
 */
 package org.firstinspires.ftc.teamcode;
 
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -15,7 +16,7 @@ import java.util.Locale;
 /**
  * TeleOp Full Control.
  */
-//@Disabled
+@Disabled
 public abstract class Teleop extends LinearOpMode {
     boolean gamepad1_triangle_last,   gamepad1_triangle_now   = false;  //
     boolean gamepad1_circle_last,     gamepad1_circle_now     = false;  //
