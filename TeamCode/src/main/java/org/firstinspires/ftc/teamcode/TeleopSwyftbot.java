@@ -5,6 +5,7 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.eventloop.opmode.Disabled;
+import com.qualcomm.robotcore.hardware.Gamepad;
 
 /**
  * TeleOp DriveTrain Only (with test modes).
@@ -51,6 +52,9 @@ public class TeleopSwyftbot extends LinearOpMode {
     boolean shooterMotorsOn = false;
     boolean injectorReset = true;
 
+    Gamepad.RumbleEffect spindexerRumbleL;    // Can't spin further LEFT!
+    Gamepad.RumbleEffect spindexerRumbleR;    // Can't spin further RIGHT!
+
     long      nanoTimeCurr=0, nanoTimePrev=0;
     double    elapsedTime, elapsedHz;
 
@@ -62,6 +66,14 @@ public class TeleopSwyftbot extends LinearOpMode {
         telemetry.addData("State", "Initializing (please wait)");
         telemetry.update();
 
+        spindexerRumbleL = new Gamepad.RumbleEffect.Builder()
+                .addStep(1.0, 0.0, 250)  //  Rumble LEFT motor 100% for 250 mSec
+                .build();
+
+        spindexerRumbleR = new Gamepad.RumbleEffect.Builder()
+                .addStep(0.0, 1.0, 250)  //  Rumble RIGHT motor 100% for 250 mSec
+                .build();
+                
         // Initialize robot hardware
         robot.init(hardwareMap,false);
 
@@ -142,6 +154,7 @@ public class TeleopSwyftbot extends LinearOpMode {
 
             processCollector();
             processSpindexer();
+            processShooterFlap();
             processShooter();
             processInjector();
 
@@ -152,6 +165,7 @@ public class TeleopSwyftbot extends LinearOpMode {
             elapsedHz    =  1000.0 / elapsedTime;
 
             // Update telemetry data
+            telemetry.addData("Shooter Servo", "%.3f", robot.shooterServoCurPos );
             telemetry.addData("CycleTime", "%.1f msec (%.1f Hz)", elapsedTime, elapsedHz );
             telemetry.update();
 
@@ -522,20 +536,20 @@ public class TeleopSwyftbot extends LinearOpMode {
 
     /*---------------------------------------------------------------------------------*/
     void processSpindexer() {
-        // Rotate spindexer to a specific position
-        if( gamepad2_dpad_left_now && !gamepad2_dpad_left_last) {
+        // Rotate spindexer left or right one position
+        if( gamepad2_l_bumper_now && !gamepad2_l_bumper_last) {
             resetInjector();
-            robot.spinServo.setPosition( robot.SPIN_SERVO_S1 );
-        } else if( gamepad2_dpad_up_now && !gamepad2_dpad_up_last) {
+            if( robot.spinServoCurPos != HardwareSwyftBot.spindexerStateEnum.SPIN_P1 )
+                robot.spinServoSetPosition( HardwareSwyftBot.spindexerStateEnum.SPIN_DECREMENT );
+            else
+                gamepad2.runRumbleEffect(spindexerRumbleL);            
+        } else if( gamepad2_r_bumper_now && !gamepad2_r_bumper_last) {
             resetInjector();
-            robot.spinServo.setPosition( robot.SPIN_SERVO_S2 );
-        } else if( gamepad2_dpad_right_now && !gamepad2_dpad_right_last) {
-            resetInjector();
-            robot.spinServo.setPosition( robot.SPIN_SERVO_S3 );
-        } else if( gamepad2_dpad_down_now && !gamepad2_dpad_down_last) {
-            resetInjector();
-            robot.spinServo.setPosition( robot.SPIN_SERVO_C2 );
-        }
+            if( robot.spinServoCurPos != HardwareSwyftBot.spindexerStateEnum.SPIN_P3 )
+                robot.spinServoSetPosition( HardwareSwyftBot.spindexerStateEnum.SPIN_INCREMENT );
+            else
+                gamepad2.runRumbleEffect(spindexerRumbleR);
+        } 
     } // processSpindexer
 
     /*---------------------------------------------------------------------------------*/
@@ -547,6 +561,27 @@ public class TeleopSwyftbot extends LinearOpMode {
             injectorReset = true;
         }
     } // resetInjector
+
+    /*---------------------------------------------------------------------------------*/
+    void processShooterFlap() {
+    // Check for an OFF-to-ON toggle of gamepad2 DPAD buttons (controls shooter flapper up/down)
+        if( gamepad2_dpad_down_now && !gamepad2_dpad_down_last ) {
+            // aim LOWER
+            robot.shooterServoCurPos += 0.01;
+            // Don't exceed our mechanical limits
+            if( robot.shooterServoCurPos > robot.SHOOTER_SERVO_MAX )
+                robot.shooterServoCurPos = robot.SHOOTER_SERVO_MAX;
+            robot.shooterServo.setPosition( robot.shooterServoCurPos );
+        }
+        else if( gamepad2_dpad_up_now && !gamepad2_dpad_up_last ) {
+            // aim HIGHER
+            robot.shooterServoCurPos -= 0.01;
+            // Don't exceed our mechanical limits
+            if( robot.shooterServoCurPos < robot.SHOOTER_SERVO_MIN )
+                robot.shooterServoCurPos = robot.SHOOTER_SERVO_MIN;
+            robot.shooterServo.setPosition( robot.shooterServoCurPos );
+        }
+    }   // processShooterFlap
 
     /*---------------------------------------------------------------------------------*/
     void processShooter() {

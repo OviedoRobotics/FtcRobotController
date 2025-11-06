@@ -57,10 +57,14 @@ public class HardwareSwyftBot
     public Servo       shooterServo    = null;
     public AnalogInput shooterServoPos = null;
 
-    public final static double SHOOTER_SERVO_INIT = 0.61;
+    public final static double SHOOTER_SERVO_INIT = 0.610;   // straight up
     public final static double SHOOTER_SERVO_INIT_ANGLE = 180.0;
-    public final static double SHOOTER_SERVO_BACK = 0.61;
-    public final static double SHOOTER_SERVO_BACK_ANGLE = 180.0;
+    public final static double SHOOTER_SERVO_MIN = 0.399;
+    public final static double SHOOTER_SERVO_MIN_ANGLE = 180.0;
+    public final static double SHOOTER_SERVO_MAX = 0.640;
+    public final static double SHOOTER_SERVO_MAX_ANGLE = 180.0;
+
+    public double shooterServoCurPos = SHOOTER_SERVO_INIT;
 
     //====== TURRET 5-turn SERVOS =====
     public Servo       turretServo1    = null;
@@ -78,11 +82,19 @@ public class HardwareSwyftBot
     public Servo       spinServo    = null;
     public AnalogInput spinServoPos = null;
 
-    public final static double SPIN_SERVO_INIT = 0.50;    // inject 1 / collect 2 (rib forward)
-    public final static double SPIN_SERVO_S1   = 0.50;    // inject 1 / collect 2 (rib backward)
-    public final static double SPIN_SERVO_C2   = 0.31;    // collect 1 / (rib backward)
-    public final static double SPIN_SERVO_S2   = 0.13;    // inject 2 / collect 2 / (rib backward)
-    public final static double SPIN_SERVO_S3   = 0.88;    // inject 3 / collect 2 / (rib backward)
+    public final static double SPIN_SERVO_P1 = 0.13;    // position 1
+    public final static double SPIN_SERVO_P2 = 0.50;    // position 2 (also the INIT position)
+    public final static double SPIN_SERVO_P3 = 0.88;    // position 3
+
+    public enum spindexerStateEnum {
+        SPIN_P1,
+        SPIN_P2,
+        SPIN_P3,
+        SPIN_INCREMENT,
+        SPIN_DECREMENT
+    }
+    
+    public spindexerStateEnum spinServoCurPos = spindexerStateEnum.SPIN_P2;
 
     //====== INJECTOR/LIFTER SERVO =====
     public Servo       liftServo    = null;
@@ -226,7 +238,7 @@ public class HardwareSwyftBot
         turretServo1.setPosition(TURRET_SERVO_INIT);
 //      turretServo2.setPosition(TURRET_SERVO_INIT);
         shooterServo.setPosition(SHOOTER_SERVO_INIT);
-        spinServo.setPosition(SPIN_SERVO_INIT);
+        spinServoSetPosition(spindexerStateEnum.SPIN_P2);
     } // initializeServos
 
     /*--------------------------------------------------------------------------------------------*/
@@ -284,6 +296,45 @@ public class HardwareSwyftBot
         rearLeftMotor.setPower( 0.0 );
         rearRightMotor.setPower( 0.0 );
     } // driveTrainMotorsZero
+
+    /*--------------------------------------------------------------------------------------------*/
+    public void spinServoSetPosition( spindexerStateEnum position )
+    {
+        switch( position ) {
+            case SPIN_P1 : spinServo.setPosition(SPIN_SERVO_P1);
+                           spinServoCurPos = spindexerStateEnum.SPIN_P1;
+                           break;
+            case SPIN_P2 : spinServo.setPosition(SPIN_SERVO_P2);
+                           spinServoCurPos = spindexerStateEnum.SPIN_P2;
+                           break;
+            case SPIN_P3 : spinServo.setPosition(SPIN_SERVO_P3);
+                           spinServoCurPos = spindexerStateEnum.SPIN_P3;
+                           break;
+            case SPIN_INCREMENT :
+                           if( spinServoCurPos == spindexerStateEnum.SPIN_P1 ) {
+                               spinServo.setPosition(SPIN_SERVO_P2);
+                               spinServoCurPos = spindexerStateEnum.SPIN_P2;
+                           }
+                           else if( spinServoCurPos == spindexerStateEnum.SPIN_P2 ) {
+                               spinServo.setPosition(SPIN_SERVO_P3);
+                               spinServoCurPos = spindexerStateEnum.SPIN_P3;
+                           } // else no room to increment further!
+                           break;
+            case SPIN_DECREMENT :
+                           if( spinServoCurPos == spindexerStateEnum.SPIN_P3 ) {
+                               spinServo.setPosition(SPIN_SERVO_P2);
+                               spinServoCurPos = spindexerStateEnum.SPIN_P2;
+                           }
+                           else if( spinServoCurPos == spindexerStateEnum.SPIN_P2 ) {
+                               spinServo.setPosition(SPIN_SERVO_P1);
+                               spinServoCurPos = spindexerStateEnum.SPIN_P1;
+                           } // else no room to increment further!
+            
+                           break;
+        default:
+                break;
+        } // switch()
+    } // spinServoSetPosition
 
     /*--------------------------------------------------------------------------------------------*/
 
