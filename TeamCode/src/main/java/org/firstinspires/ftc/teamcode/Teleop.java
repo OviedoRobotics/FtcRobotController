@@ -654,7 +654,7 @@ public abstract class Teleop extends LinearOpMode {
 
     /*---------------------------------------------------------------------------------*/
     void processInjector() {
-        // Check for an OFF-to-ON toggle of the gamepad2 TRIANGLE button (command ball injection!)
+        // Check for an OFF-to-ON toggle of thee gamepad2 TRIANGLE button (command ball injection!)
         if( gamepad2_triangle_now && !gamepad2_triangle_last) {
             // Ensure an earlier injection request isn't already underway
             if ((robot.liftServoBusyU == false) && (robot.liftServoBusyD == false)) {

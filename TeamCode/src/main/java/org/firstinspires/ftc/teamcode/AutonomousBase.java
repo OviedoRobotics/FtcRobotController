@@ -58,6 +58,8 @@ public abstract class AutonomousBase extends LinearOpMode {
     static final double MIN_SPIN_RATE      = 0.06;    // Minimum power to turn the robot
     static final double MIN_DRIVE_POW      = 0.06;    // Minimum speed to move the robot
     static final double MIN_DRIVE_MAGNITUDE = Math.sqrt(MIN_DRIVE_POW*MIN_DRIVE_POW+MIN_DRIVE_POW*MIN_DRIVE_POW);
+    static final double FIRST_SPIKE_MARK_RED_POS_X = 0.0; // TODO: Find real position
+    static final double FIRST_SPIKE_MARK_RED_POS_Y = 0.0; // TODO: Find real position
 
     // NOTE: Initializing the odometry global X-Y and ANGLE to 0-0 and 0deg means the frame of reference for all movements is
     // the starting positiong/orientation of the robot.  An alternative is to make the bottom-left corner of the field the 0-0
@@ -89,21 +91,7 @@ public abstract class AutonomousBase extends LinearOpMode {
     int         initMenuMax      = 6;    // we have 6 total entries
     int         startDelaySec    = 0;     // 1: wait [seconds] at startup -- applies to both left/rigth starting positions
     int         parkDelaySec     = 0;     // 2: wait [seconds] before parking in observation zone -- applies to that parking zone
-
-    boolean     scorePreloadSpecimen = true;  // 3: score preloaded specimen (true=yes; false=no)
-    boolean     onlyPark             = false;  // 4: only park no scoring (true=yes; false=no)
-    boolean     tiltAdjusted         = false;
-    boolean     clawOpen             = false;
-
-    int         spikeSamples     = 0;      // set in each left/right autonomous program
-    int         parkLocation     = 0;      // 5: park 0=NONE, 1=OBSERVATION, 2=SUBMERSIBLE
-    final int   PARK_NONE        = 0;
-    final int   PARK_OBSERVATION = 1;
-    final int   PARK_SUBMERSIBLE = 2;
-
-    String[]    parkLocationStr = {"NONE", "OBSERVATION", "SUBMERSIBLE"};
-    // For RIGHT, parking in OBSERVATION means the far end
-    // For LEFT,  parking in OBSERVATION means the triangular section
+    int         scoringZones     = 0;
 
     ElapsedTime autonomousTimer     = new ElapsedTime();  // overall
     ElapsedTime motionTimer         = new ElapsedTime();  // for driving
@@ -184,61 +172,9 @@ public abstract class AutonomousBase extends LinearOpMode {
                         startDelaySec++;
                     }
                 } // next
-
                 if( prevValue ) {
                     if (startDelaySec > 0) {
                         startDelaySec--;
-                    }
-                } // prev
-                break;
-            case 2 : // PARK DELAY [sec]
-                if( nextValue ) {
-                    if (parkDelaySec < 9) {
-                        parkDelaySec++;
-                    }
-                } // next
-
-                if( prevValue ) {
-                    if (parkDelaySec > 0) {
-                        parkDelaySec--;
-                    }
-                } // prev
-                break;
-            case 3 : // SCORE PRELOADED SPECIMEN?
-                if( nextValue || prevValue) {
-                    scorePreloadSpecimen = !scorePreloadSpecimen;
-                } // next
-                break;
-            case 4 : // immediately park
-                if( nextValue || prevValue) {
-                    onlyPark = !onlyPark;
-                } // next
-                break;
-
-            case 5: // WHAT LOCATION DO YOU WANT TO PARK IN?
-                if( nextValue ){
-                    if( parkLocation < 2){
-                        parkLocation++;
-                    }
-                }// next
-
-                if( prevValue ){
-                    if( parkLocation > 0){
-                        parkLocation--;
-                    }
-                }// prev
-                break;
-
-            case 6 : // HOW MANY PIXELS DO WE SCORE FROM 5-STACK?
-                if( nextValue ) {
-                   if (spikeSamples < 3) {
-                       spikeSamples++;
-                   }
-                } // next
-
-                if( prevValue ) {
-                    if (spikeSamples > 0) {
-                        spikeSamples--;
                     }
                 } // prev
                 break;
@@ -250,15 +186,7 @@ public abstract class AutonomousBase extends LinearOpMode {
         // Update our telemetry
         performEveryLoop();
         telemetry.addData("Start Delay",  "%d sec %s", startDelaySec, ((initMenuSelected==1)? "<-":"  ") );
-        telemetry.addData("Park Delay", "%d sec %s", parkDelaySec, ((initMenuSelected==2)? "<-":"  ") );
-        telemetry.addData("Specimen Preload", "%s %s",((scorePreloadSpecimen)? "yes":"no"), ((initMenuSelected==3)? "<-":"  ") );
-        telemetry.addData("Only Park", "%s %s",((onlyPark)? "yes":"no"), ((initMenuSelected==4)? "<-":"  ") );
-        telemetry.addData("Park Location","%s %s", parkLocationStr[parkLocation],
-                ((initMenuSelected==5)? "<-":"  "));
-        telemetry.addData("spike specimens", "%d  %s",spikeSamples,((initMenuSelected==6)? "<-":"  ") );
-        telemetry.addData("Odometry","x=%.2f y=%.2f  %.2f deg",
-                robotGlobalXCoordinatePosition, robotGlobalYCoordinatePosition, Math.toDegrees(robotOrientationRadians) );
-        telemetry.addLine("Right bumper open/close claw to load specimen.");
+
         telemetry.addData(">","version 100" );
         telemetry.update();
     } // processAutonomousInitMenu
@@ -280,6 +208,7 @@ public abstract class AutonomousBase extends LinearOpMode {
         robotGlobalXCoordinatePosition = pos.getX(DistanceUnit.INCH);
         robotGlobalYCoordinatePosition = pos.getY(DistanceUnit.INCH);
         robotOrientationRadians        = pos.getHeading(AngleUnit.RADIANS);
+        robot.processInjectionStateMachine();
     } // performEveryLoop
 
     /*---------------------------------------------------------------------------------*/
