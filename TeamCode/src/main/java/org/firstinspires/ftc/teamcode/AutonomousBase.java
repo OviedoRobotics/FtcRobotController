@@ -90,7 +90,6 @@ public abstract class AutonomousBase extends LinearOpMode {
     int         startDelaySec    = 0;     // 1: wait [seconds] at startup -- applies to both left/rigth starting positions
     int         parkDelaySec     = 0;     // 2: wait [seconds] before parking in observation zone -- applies to that parking zone
 
-    int         scoringZones         = 0; // Max 2, number of tick marks to collect from
     boolean     scorePreloadSpecimen = true;  // 3: score preloaded specimen (true=yes; false=no)
     boolean     onlyPark             = false;  // 4: only park no scoring (true=yes; false=no)
     boolean     tiltAdjusted         = false;
@@ -248,6 +247,20 @@ public abstract class AutonomousBase extends LinearOpMode {
                 break;
         } // switch()
 
+        // Update our telemetry
+        performEveryLoop();
+        telemetry.addData("Start Delay",  "%d sec %s", startDelaySec, ((initMenuSelected==1)? "<-":"  ") );
+        telemetry.addData("Park Delay", "%d sec %s", parkDelaySec, ((initMenuSelected==2)? "<-":"  ") );
+        telemetry.addData("Specimen Preload", "%s %s",((scorePreloadSpecimen)? "yes":"no"), ((initMenuSelected==3)? "<-":"  ") );
+        telemetry.addData("Only Park", "%s %s",((onlyPark)? "yes":"no"), ((initMenuSelected==4)? "<-":"  ") );
+        telemetry.addData("Park Location","%s %s", parkLocationStr[parkLocation],
+                ((initMenuSelected==5)? "<-":"  "));
+        telemetry.addData("spike specimens", "%d  %s",spikeSamples,((initMenuSelected==6)? "<-":"  ") );
+        telemetry.addData("Odometry","x=%.2f y=%.2f  %.2f deg",
+                robotGlobalXCoordinatePosition, robotGlobalYCoordinatePosition, Math.toDegrees(robotOrientationRadians) );
+        telemetry.addLine("Right bumper open/close claw to load specimen.");
+        telemetry.addData(">","version 100" );
+        telemetry.update();
     } // processAutonomousInitMenu
 
     /*--------------------------------------------------------------------------------------------*/
@@ -298,6 +311,7 @@ public abstract class AutonomousBase extends LinearOpMode {
         baseDir.mkdirs();
     }
 
+    /*---------------------------------------------------------------------------------*/
     void driveAndRotate(double drivePower, double turnPower) {
         double frontRight, frontLeft, rearRight, rearLeft, maxPower;
 
@@ -352,14 +366,14 @@ public abstract class AutonomousBase extends LinearOpMode {
      * @return  error angle: Degrees in the range +/- 180. Centered on the robot's frame of reference
      *          Positive error means the robot should turn LEFT (CCW) to reduce error.
      */
-    protected double getAngleError(double targetAngle) {
+/*    protected double getAngleError(double targetAngle) {
         // calculate error in -179 to +180 range  (
-        double robotError = targetAngle - robot.headingIMU();
+        double robotError = targetAngle - robot.imuHeadingAngle;
         while (robotError >  180.0)  robotError -= 360.0;
         while (robotError <= -180.0) robotError += 360.0;
         return robotError;
     } // getAngleError()
-
+*/
     /*---------------------------------------------------------------------------------------------
      * returns desired steering force.  +/- 1 range.  positive = steer left
      * @param error   Error angle in robot relative degrees
@@ -516,7 +530,8 @@ public abstract class AutonomousBase extends LinearOpMode {
      * @param timeout - The maximum amount of time to wait until giving up
      * @return true if reached distance, false if timeout occurred first
      */
-    public boolean strafeToWall(boolean leftWall, double maxSpeed, int distanceFromWall, int timeout) {
+
+/*    public boolean strafeToWall(boolean leftWall, double maxSpeed, int distanceFromWall, int timeout) {
         double maxPower = Math.abs(maxSpeed);
         boolean reachedDestination = false;
         int allowedError = 2; // in cm
@@ -566,7 +581,7 @@ public abstract class AutonomousBase extends LinearOpMode {
 
         return reachedDestination;
     } // strafeToWall
-
+*/
     /**
      * @param frontWall - true drive to front wall, false drive to back wall
      * @param maxSpeed - The speed to use when going large distances
@@ -574,7 +589,7 @@ public abstract class AutonomousBase extends LinearOpMode {
      * @param timeout - The maximum amount of time to wait until giving up
      * @return true if reached distance, false if timeout occurred first
      */
-    public boolean driveToWall(boolean frontWall, double maxSpeed, int distanceFromWall, int timeout) {
+/*    public boolean driveToWall(boolean frontWall, double maxSpeed, int distanceFromWall, int timeout) {
         double maxPower = Math.abs(maxSpeed);
         boolean reachedDestination = false;
         int allowedError = 2; // in cm
@@ -624,7 +639,7 @@ public abstract class AutonomousBase extends LinearOpMode {
 
         return reachedDestination;
     } // driveToWall
-
+*/
     //============================ TIME-BASED NAVIGATION FUNCTIONS ============================
 
     /*---------------------------------------------------------------------------------------------
@@ -688,7 +703,7 @@ public abstract class AutonomousBase extends LinearOpMode {
             }
 
             // configure RUN_TO_POSITION drivetrain motor setpoints
-            robot.setRunToPosition( driveY, distance );
+//            robot.setRunToPosition( driveY, distance );
 
             // start motion.
             maxSpeed = Range.clip(Math.abs(maxSpeed), -1.0, 1.0);
@@ -706,10 +721,10 @@ public abstract class AutonomousBase extends LinearOpMode {
                 // Bulk-refresh the Hub1/Hub2 device status (motor status, digital I/O) -- FASTER!
                 performEveryLoop();
 
-                int frontLeftError  = Math.abs(robot.frontLeftMotorTgt - robot.frontLeftMotorPos);
-                int frontRightError = Math.abs(robot.frontRightMotorTgt - robot.frontRightMotorPos);
-                int rearLeftError   = Math.abs(robot.rearLeftMotorTgt - robot.rearLeftMotorPos);
-                int rearRightError  = Math.abs(robot.rearRightMotorTgt - robot.rearRightMotorPos);
+                int frontLeftError  = 0; //Math.abs(robot.frontLeftMotorTgt - robot.frontLeftMotorPos);
+                int frontRightError = 0; //Math.abs(robot.frontRightMotorTgt - robot.frontRightMotorPos);
+                int rearLeftError   = 0; //Math.abs(robot.rearLeftMotorTgt - robot.rearLeftMotorPos);
+                int rearRightError  = 0; //Math.abs(robot.rearRightMotorTgt - robot.rearRightMotorPos);
                 int avgError = (frontLeftError + frontRightError + rearLeftError + rearRightError) / 4;
 
                 // 19.2:1 is 537 counts/rotation (18.85" distance).  1/2" tolerance = 14.24 counts
@@ -763,8 +778,8 @@ public abstract class AutonomousBase extends LinearOpMode {
                 if( false ) {
                     telemetry.addData("loopCount", "%d", loopCount );
                     telemetry.addData("Err/St", "%5.1f/%5.3f", error, steer);
-                    telemetry.addData("Target F", "%7d:%7d", robot.frontLeftMotorTgt, robot.frontRightMotorTgt);
-                    telemetry.addData("Target R", "%7d:%7d", robot.rearLeftMotorTgt, robot.rearRightMotorTgt);
+//                    telemetry.addData("Target F", "%7d:%7d", robot.frontLeftMotorTgt, robot.frontRightMotorTgt);
+//                    telemetry.addData("Target R", "%7d:%7d", robot.rearLeftMotorTgt, robot.rearRightMotorTgt);
                     telemetry.addData("Error F", "%7d:%7d", frontLeftError, frontRightError);
                     telemetry.addData("Error R", "%7d:%7d", rearLeftError, rearRightError);
                     telemetry.addData("Speed", "%5.3f:%5.3f", leftSpeed, rightSpeed);

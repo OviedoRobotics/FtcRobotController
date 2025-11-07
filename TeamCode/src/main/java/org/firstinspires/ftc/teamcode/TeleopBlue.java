@@ -6,20 +6,20 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 /**
- * TeleOp for RED alliance
+ * TeleOp for BLUE alliance
  */
-@TeleOp(name="Teleop-Red", group="7592")
+@TeleOp(name="Teleop-Blue", group="7592")
 //@Disabled
-public class TeleopRed extends Teleop {
+public class TeleopBlue extends Teleop {
 
     @Override
     public void setAllianceSpecificBehavior() {
         // DECODE has different AprilTags for Red vs. Blue.
-        blueAlliance = false;
+        blueAlliance = true;
         farAlliance  = true;
 
         // DECODE AprilTag assignments (tag family 36h11)
-        aprilTagGoal = 24;  // Red Alliance Goal
+        aprilTagGoal = 20;  // Blue Alliance Goal
         
         // Note: common OBELISK april tags for both RED & BLUE alliance
         //  21 = GPP (green purple purple)
@@ -28,4 +28,4 @@ public class TeleopRed extends Teleop {
         
         
     }
-} // TeleopRed
+} // TeleopBlue

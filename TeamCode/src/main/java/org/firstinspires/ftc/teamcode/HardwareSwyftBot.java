@@ -97,12 +97,15 @@ public class HardwareSwyftBot
     public spindexerStateEnum spinServoCurPos = spindexerStateEnum.SPIN_P2;
 
     //====== INJECTOR/LIFTER SERVO =====
-    public Servo       liftServo    = null;
-    public AnalogInput liftServoPos = null;
+    public Servo       liftServo      = null;
+    public AnalogInput liftServoPos   = null;
+    public boolean     liftServoBusyU = false;  // busy going UP (lifting)
+    public boolean     liftServoBusyD = false;  // busy going DOWN (resetting)
+    public ElapsedTime liftServoTimer = new ElapsedTime();
 
-    public final static double LIFT_SERVO_INIT   = 0.50;
-    public final static double LIFT_SERVO_RESET  = 0.50;
-    public final static double LIFT_SERVO_INJECT = 0.72;
+    public final static double LIFT_SERVO_INIT   = 0.51;
+    public final static double LIFT_SERVO_RESET  = 0.51;
+    public final static double LIFT_SERVO_INJECT = 0.30;
 
     /* local OpMode members. */
     protected HardwareMap hwMap = null;
@@ -223,7 +226,9 @@ public class HardwareSwyftBot
 //      liftServoPos = hwMap.analogInput.get("liftServoPos");       // Analog port ? (Expansion Hub)
 
         // Ensure all servos are in the initialize position (YES for auto; NO for teleop)
-        initializeServos();
+        if( isAutonomous ) {
+           resetEncoders();
+        }
 
         // Initialize REV Control Hub IMU
         initIMU();
@@ -231,7 +236,7 @@ public class HardwareSwyftBot
     } /* init */
 
     /*--------------------------------------------------------------------------------------------*/
-    public void initializeServos()
+    public void resetEncoders()
     {
         // Initialize the injector servo first! (so it's out of the way for spindexer rotation)
         liftServo.setPosition(LIFT_SERVO_INIT);
@@ -239,7 +244,7 @@ public class HardwareSwyftBot
 //      turretServo2.setPosition(TURRET_SERVO_INIT);
         shooterServo.setPosition(SHOOTER_SERVO_INIT);
         spinServoSetPosition(spindexerStateEnum.SPIN_P2);
-    } // initializeServos
+    } // resetEncoders
 
     /*--------------------------------------------------------------------------------------------*/
     public void initIMU()
@@ -298,6 +303,15 @@ public class HardwareSwyftBot
     } // driveTrainMotorsZero
 
     /*--------------------------------------------------------------------------------------------*/
+    public void stopMotion() {
+        // Stop all motion;
+        frontLeftMotor.setPower(0);
+        frontRightMotor.setPower(0);
+        rearLeftMotor.setPower(0);
+        rearRightMotor.setPower(0);
+    }
+
+    /*--------------------------------------------------------------------------------------------*/
     public void spinServoSetPosition( spindexerStateEnum position )
     {
         switch( position ) {
@@ -335,6 +349,76 @@ public class HardwareSwyftBot
                 break;
         } // switch()
     } // spinServoSetPosition
+
+    /*--------------------------------------------------------------------------------------------*/
+    public void startInjectionStateMachine()
+    {
+        // Command the lift/injection servo to the INJECT position
+        liftServo.setPosition( LIFT_SERVO_INJECT );
+        // Start a timer (in case we need to timeout)
+        liftServoTimer.reset();
+        // Set a flag indicating the liftServo is busy lifting UP
+        liftServoBusyU = true;
+        liftServoBusyD = false; // ensure the reset flag is cleared
+    } // startInjectionStateMachine
+
+    /*--------------------------------------------------------------------------------------------*/
+    public void processInjectionStateMachine()
+    {
+        // Process the LIFTING case (AxonMax+ no-load 60deg rotation = 115 msec
+        if( liftServoBusyU ) {
+            boolean servoFullyInjected = false;  // need Axon position feedback!!
+            boolean servoTimeoutU = (liftServoTimer.milliseconds() > 750);
+            // Has the injector servo reached the desired position? (or timed-out?)
+            if( servoFullyInjected || servoTimeoutU ) {
+              liftServoBusyU = false;  // the UP phase is complete
+              // Begin the DOWN/reset phase
+              liftServo.setPosition( LIFT_SERVO_RESET );
+              liftServoTimer.reset();
+              liftServoBusyD = true;
+              }
+        } // UP
+        
+        // Process the RESETTING case (AxonMax+ no-load 60deg rotation = 115 msec
+        if( liftServoBusyD ) {
+            boolean servoFullyReset = false;  // need Axon position feedback!!
+            boolean servoTimeoutD = (liftServoTimer.milliseconds() > 500);
+            // Has the injector servo reached the desired position? (or timed-out?)
+            if( servoFullyReset || servoTimeoutD ) {
+              liftServoBusyD = false;  // the DOWN phase is complete
+              liftServoBusyU = false;  // ensure the flag is cleared
+              }
+        } // DOWN
+                
+    } // processInjectionStateMachine
+
+    public void abortInjectionStateMachine()
+    {
+       // if we don't want to wait for injection
+       liftServo.setPosition( LIFT_SERVO_RESET );
+       liftServoTimer.reset();
+       liftServoBusyD = true;        
+    } // abortInjectionStateMachine
+
+    public void waitForInjector()
+    {
+       // Query this before attempting to rotate the spindexer, so we don't
+       // try to rotate while the injector is raised and blocking the rotation
+       for( int i=0; i<5; i++ ) {
+           if( !liftServoBusyU && !liftServoBusyD ) break;
+           // wait 100msec and try again
+           try {
+               sleep(100);
+           } catch (InterruptedException e) {
+               throw new RuntimeException(e);
+           }
+       }
+       // TODO:  we don't really have to wait until the injector servo is fully reset.
+       // The spindexer is safe to turn once the servo is below a given angle.  Once
+       // servo position feedback is hooked up, we can check the current angle and
+       // return as soon as it is below that safe angle.
+        
+    } // waitForInjector
 
     /*--------------------------------------------------------------------------------------------*/
 
