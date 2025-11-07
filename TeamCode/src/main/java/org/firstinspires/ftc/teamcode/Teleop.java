@@ -3,9 +3,11 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
-import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.hardware.Gamepad;
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
+import java.util.Locale;
 
 /**
  * TeleOp for the 2025-2026 FTC DECODE Season
@@ -43,6 +45,7 @@ public abstract class Teleop extends LinearOpMode {
     double  rearLeft, rearRight, frontLeft, frontRight, maxPower;  /* Motor power levels */
     boolean backwardDriveControl = false; // drive controls backward (other end of robot becomes "FRONT")
     boolean controlMultSegLinear = true;
+    double   curX, curY, curAngle;
 
     boolean blueAlliance;   // set in the Blue/Red
     boolean farAlliance;    //
@@ -54,8 +57,9 @@ public abstract class Teleop extends LinearOpMode {
     int       driverMode               = DRIVER_MODE_STANDARD;
     double    driverAngle              = 0.0;  /* for DRIVER_MODE_DRV_CENTRIC */
 
-    boolean enableOdometry = false;
-    boolean intakeMotorOn = false;
+    boolean enableOdometry = true;
+    boolean intakeMotorOnFwd = false;
+    boolean intakeMotorOnRev = false;
     boolean shooterMotorsOn = false;
 
     Gamepad.RumbleEffect spindexerRumbleL;    // Can't spin further LEFT!
@@ -116,7 +120,7 @@ public abstract class Teleop extends LinearOpMode {
             robot.readBulkData();
 
             // Request an update from the Pinpoint odometry computer (single I2C read)
-/*            if( enableOdometry ) {
+            if( enableOdometry ) {
                 robot.odom.update();
                 Pose2D pos = robot.odom.getPosition();  // x,y pos in inch; heading in degrees
                 curX     = pos.getX(DistanceUnit.INCH);
@@ -137,7 +141,7 @@ public abstract class Teleop extends LinearOpMode {
                 telemetry.addData("Velocity", velStr);
                 telemetry.addData("Status", robot.odom.getDeviceStatus());
             }
-*/
+
             // Check for an OFF-to-ON toggle of the gamepad1 TRIANGLE button (toggles SINGLE-MOTOR drive control)
             if( gamepad1_triangle_now && !gamepad1_triangle_last)
             {
@@ -535,10 +539,10 @@ public abstract class Teleop extends LinearOpMode {
         double effectiveHeading;
 
         // Retrieve X/Y and ROTATION joystick input
-        y = -gamepad1.left_stick_y;
+        y = gamepad1.left_stick_y;
         x = gamepad1.left_stick_x;
         rx = gamepad1.right_stick_x;
-        botHeading = -robot.headingIMU();  // Assume this returns degrees; negative sign may need adjustment based on IMU convention
+        botHeading = robot.headingIMU();  // Assume this returns degrees; negative sign may need adjustment based on IMU convention
 
         if (gamepad1.square) {
             // The driver presses SQUARE, then uses the left joystick to say what angle the robot
@@ -574,10 +578,14 @@ public abstract class Teleop extends LinearOpMode {
         double rearLeft = (rotY - rotX + rx) / denominator;
         double rearRight = (rotY + rotX - rx) / denominator;
 
+        double bad_weight_scaling = 0.77;   // temporary fix!!
+        rearLeft *= bad_weight_scaling;
+        rearRight *= bad_weight_scaling;
+
         // Update motor power settings (assuming left motors are defined as REVERSE mode in hardware,
         // or adjust signs here if necessary. If positive power to all moves forward without negation,
         // remove the negatives below.)
-        robot.driveTrainMotors(-frontLeft, frontRight, -rearLeft, rearRight);
+        robot.driveTrainMotors(frontLeft, frontRight, rearLeft, rearRight);
     } // processDriverCentricDriveMode
 
     /*---------------------------------------------------------------------------------*/
@@ -585,14 +593,29 @@ public abstract class Teleop extends LinearOpMode {
         // Check for an OFF-to-ON toggle of the gamepad2 CROSS button (toggles INTAKE on/off)
         if( gamepad2_cross_now && !gamepad2_cross_last)
         {
-            if (intakeMotorOn == false){
+            if (intakeMotorOnFwd == false){
                 robot.intakeMotor.setPower(0.90);
-                intakeMotorOn = true;
+                intakeMotorOnFwd = true;
+                intakeMotorOnRev = false;
             } else{
                 robot.intakeMotor.setPower(0.00);
-                intakeMotorOn = false;
+                intakeMotorOnFwd = false;
+                intakeMotorOnRev = false;
             }
-        }
+        } // cross
+        // Do we have too many balls and need to ANTI-collect?
+        if( gamepad2_square_now && !gamepad2_square_last)
+        {
+            if (intakeMotorOnRev == false){
+                robot.intakeMotor.setPower(-0.90);
+                intakeMotorOnFwd = false;
+                intakeMotorOnRev = true;
+            } else{
+                robot.intakeMotor.setPower(0.00);
+                intakeMotorOnFwd = false;
+                intakeMotorOnRev = false;
+            }
+        } // square
     } // processCollector
 
     /*---------------------------------------------------------------------------------*/

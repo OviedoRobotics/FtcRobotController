@@ -38,10 +38,41 @@ public class HardwareSwyftBot
     GoBildaPinpointDriver odom;
 
     //====== MECANUM DRIVETRAIN MOTORS (RUN_USING_ENCODER) =====
-    protected DcMotorEx frontLeftMotor  = null;
-    protected DcMotorEx frontRightMotor = null;
-    protected DcMotorEx rearLeftMotor   = null;
-    protected DcMotorEx rearRightMotor  = null;
+    protected DcMotorEx frontLeftMotor     = null;
+    public int          frontLeftMotorTgt  = 0;       // RUN_TO_POSITION target encoder count
+    public int          frontLeftMotorPos  = 0;       // current encoder count
+    public double       frontLeftMotorVel  = 0.0;     // encoder counts per second
+    public double       frontLeftMotorAmps = 0.0;     // current power draw (Amps)
+
+    protected DcMotorEx frontRightMotor    = null;
+    public int          frontRightMotorTgt = 0;       // RUN_TO_POSITION target encoder count
+    public int          frontRightMotorPos = 0;       // current encoder count
+    public double       frontRightMotorVel = 0.0;     // encoder counts per second
+    public double       frontRightMotorAmps= 0.0;     // current power draw (Amps)
+
+    protected DcMotorEx rearLeftMotor      = null;
+    public int          rearLeftMotorTgt   = 0;       // RUN_TO_POSITION target encoder count
+    public int          rearLeftMotorPos   = 0;       // current encoder count
+    public double       rearLeftMotorVel   = 0.0;     // encoder counts per second
+    public double       rearLeftMotorAmps  = 0.0;     // current power draw (Amps)
+
+    protected DcMotorEx rearRightMotor     = null;
+    public int          rearRightMotorTgt  = 0;       // RUN_TO_POSITION target encoder count
+    public int          rearRightMotorPos  = 0;       // current encoder count
+    public double       rearRightMotorVel  = 0.0;     // encoder counts per second
+    public double       rearRightMotorAmps = 0.0;     // current power draw (Amps)
+
+    public final static double MIN_DRIVE_POW      = 0.03;    // Minimum speed to move the robot
+    public final static double MIN_TURN_POW       = 0.03;    // Minimum speed to turn the robot
+    public final static double MIN_STRAFE_POW     = 0.04;    // Minimum speed to strafe the robot
+    protected double COUNTS_PER_MOTOR_REV  = 28.0;    // goBilda Yellow Jacket Planetary Gear Motor Encoders
+    // TODO: update COUNTS/REV for SwyftDrive motors!!
+    protected double DRIVE_GEAR_REDUCTION  = 12.7;    // SwyftDrive 12.7:1 (475rpm) gear ratio
+    protected double MECANUM_SLIPPAGE      = 1.01;    // one wheel revolution doesn't achieve 6" x 3.1415 of travel.
+    protected double WHEEL_DIAMETER_INCHES = 3.38583; // (86mm) -- for computing circumference
+    protected double COUNTS_PER_INCH       = (COUNTS_PER_MOTOR_REV * DRIVE_GEAR_REDUCTION * MECANUM_SLIPPAGE) / (WHEEL_DIAMETER_INCHES * 3.1415);
+    // The math above assumes motor encoders.  For REV odometry pods, the counts per inch is different
+    protected double COUNTS_PER_INCH2      = 1738.4;  // 8192 counts-per-rev / (1.5" omni wheel * PI)
 
     //====== 2025 DECODE SEASON MECHANISM MOTORS (RUN_USING_ENCODER) =====
     protected DcMotorEx intakeMotor     = null;
@@ -57,11 +88,11 @@ public class HardwareSwyftBot
     public Servo       shooterServo    = null;
     public AnalogInput shooterServoPos = null;
 
-    public final static double SHOOTER_SERVO_INIT = 0.610;   // straight up
+    public final static double SHOOTER_SERVO_INIT = 0.50;   // straight up
     public final static double SHOOTER_SERVO_INIT_ANGLE = 180.0;
-    public final static double SHOOTER_SERVO_MIN = 0.399;
+    public final static double SHOOTER_SERVO_MIN = 0.50;
     public final static double SHOOTER_SERVO_MIN_ANGLE = 180.0;
-    public final static double SHOOTER_SERVO_MAX = 0.640;
+    public final static double SHOOTER_SERVO_MAX = 0.50;
     public final static double SHOOTER_SERVO_MAX_ANGLE = 180.0;
 
     public double shooterServoCurPos = SHOOTER_SERVO_INIT;
@@ -103,9 +134,9 @@ public class HardwareSwyftBot
     public boolean     liftServoBusyD = false;  // busy going DOWN (resetting)
     public ElapsedTime liftServoTimer = new ElapsedTime();
 
-    public final static double LIFT_SERVO_INIT   = 0.51;
-    public final static double LIFT_SERVO_RESET  = 0.51;
-    public final static double LIFT_SERVO_INJECT = 0.30;
+    public final static double LIFT_SERVO_INIT   = 0.49;
+    public final static double LIFT_SERVO_RESET  = 0.49;
+    public final static double LIFT_SERVO_INJECT = 0.31;
 
     /* local OpMode members. */
     protected HardwareMap hwMap = null;
@@ -135,16 +166,16 @@ public class HardwareSwyftBot
 //      odom.setOffsets(-144.00, +88.00, DistanceUnit.MM); // odometry pod x,y locations relative center of robot
         odom.setOffsets(0.00, 0.00, DistanceUnit.MM);      // odometry pod x,y locations relative center of robot  2 2
         odom.setEncoderResolution( GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD ); // 4bar pods
-        odom.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.REVERSED, GoBildaPinpointDriver.EncoderDirection.REVERSED);
+        odom.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.REVERSED, GoBildaPinpointDriver.EncoderDirection.FORWARD);
         if( isAutonomous ) {
             odom.resetPosAndIMU();
         }
 
         // Define and Initialize drivetrain motors
         frontLeftMotor  = hwMap.get(DcMotorEx.class,"FrontLeft");  // Expansion Hub port 0 (REVERSE)
-        frontRightMotor = hwMap.get(DcMotorEx.class,"FrontRight"); // Control   Hub port 0 (forward)
+        frontRightMotor = hwMap.get(DcMotorEx.class,"FrontRight"); // Control Hub   port 0 (forward)
         rearLeftMotor   = hwMap.get(DcMotorEx.class,"RearLeft");   // Expansion Hub port 1 (REVERSE)
-        rearRightMotor  = hwMap.get(DcMotorEx.class,"RearRight");  // Control   Hub port 1 (forward)
+        rearRightMotor  = hwMap.get(DcMotorEx.class,"RearRight");  // Control Hub   port 1 (forward)
 
         frontLeftMotor.setDirection(DcMotor.Direction.FORWARD);
         frontRightMotor.setDirection(DcMotor.Direction.REVERSE);
@@ -172,7 +203,7 @@ public class HardwareSwyftBot
         rearRightMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         // Define and Initialize intake motor
-        intakeMotor  = hwMap.get(DcMotorEx.class,"IntakeMotor");  // Expansion Hub port 0 
+        intakeMotor  = hwMap.get(DcMotorEx.class,"IntakeMotor");  // Expansion Hub port 2
         intakeMotor.setDirection(DcMotor.Direction.FORWARD);
         intakeMotor.setPower( 0.0 );
         intakeMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -209,7 +240,7 @@ public class HardwareSwyftBot
 
         // Initialize the servo on the shooter
         shooterServo    = hwMap.servo.get("shooterServo");          // servo port 0 (Control Hub)
-        shooterServoPos = hwMap.analogInput.get("shooterServoPos"); // Analog port ? (Control Hub)
+//      shooterServoPos = hwMap.analogInput.get("shooterServoPos"); // Analog port ? (Control Hub)
 
         // Initialize the servos that rotate the turret
         turretServo1    = hwMap.servo.get("turretServo1");          // servo port 2 (Control Hub)
@@ -310,6 +341,34 @@ public class HardwareSwyftBot
         rearLeftMotor.setPower(0);
         rearRightMotor.setPower(0);
     }
+
+    /*--------------------------------------------------------------------------------------------*/
+    /* setRunToPosition()                                                                         */
+    /* - driveY -   true = Drive forward/back; false = Strafe right/left                          */
+    /* - distance - how far to move (inches).  Positive is FWD/RIGHT                              */
+    public void setRunToPosition( boolean driveY, double distance )
+    {
+        // Compute how many encoder counts achieves the specified distance
+        int moveCounts = (int)(distance * COUNTS_PER_INCH);
+
+        // These motors move the same for front/back or right/left driving
+        frontLeftMotorTgt  = frontLeftMotorPos  +  moveCounts;
+        frontRightMotorTgt = frontRightMotorPos + (moveCounts * ((driveY)? 1:-1));
+        rearLeftMotorTgt   = rearLeftMotorPos   + (moveCounts * ((driveY)? 1:-1));
+        rearRightMotorTgt  = rearRightMotorPos  +  moveCounts;
+
+        // Configure target encoder count
+        frontLeftMotor.setTargetPosition(  frontLeftMotorTgt  );
+        frontRightMotor.setTargetPosition( frontRightMotorTgt );
+        rearLeftMotor.setTargetPosition(   rearLeftMotorTgt   );
+        rearRightMotor.setTargetPosition(  rearRightMotorTgt  );
+
+        // Enable RUN_TO_POSITION mode
+        frontLeftMotor.setMode(  DcMotor.RunMode.RUN_TO_POSITION );
+        frontRightMotor.setMode( DcMotor.RunMode.RUN_TO_POSITION );
+        rearLeftMotor.setMode(   DcMotor.RunMode.RUN_TO_POSITION );
+        rearRightMotor.setMode(  DcMotor.RunMode.RUN_TO_POSITION );
+    } // setRunToPosition
 
     /*--------------------------------------------------------------------------------------------*/
     public void spinServoSetPosition( spindexerStateEnum position )
