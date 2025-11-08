@@ -57,7 +57,7 @@ public class TeleopPositionTest extends LinearOpMode {
 //      robot.shooterMotor1.setPower( shooterPower );
 //      robot.shooterMotor2.setPower( shooterPower );
     
-        spinPos = robot.SPIN_SERVO_INIT;
+        spinPos = robot.SPIN_SERVO_P2;
         robot.spinServo.setPosition(spinPos);
 
         liftPos = robot.LIFT_SERVO_INIT;
