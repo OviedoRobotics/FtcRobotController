@@ -1,5 +1,5 @@
 /* FTC Team 7572 - Version 1.0 (01/19/2025) */
-package org.firstinspires.ftc.teamcode;
+package org.firstinspires.ftc.teamcode.demotest;
 
 import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;

@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode;
+package org.firstinspires.ftc.teamcode.robothardware;
 
 import static java.lang.Thread.sleep;
 
@@ -10,7 +10,6 @@ import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
@@ -19,6 +18,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
+import org.firstinspires.ftc.teamcode.hardwaredriver.GoBildaPinpointDriver;
 
 /*
  * Hardware class for Swyft Robotics SWYFT DRIVE V2 chassis with 86mm mecanum wheels
@@ -35,28 +35,28 @@ public class HardwareSwyftBot
     public double tiltAngle    = 0.0;
 
     //====== GOBILDA PINPOINT ODOMETRY COMPUTER ======
-    GoBildaPinpointDriver odom;
+    public GoBildaPinpointDriver odom;
 
     //====== MECANUM DRIVETRAIN MOTORS (RUN_USING_ENCODER) =====
-    protected DcMotorEx frontLeftMotor     = null;
+    public DcMotorEx frontLeftMotor     = null;
     public int          frontLeftMotorTgt  = 0;       // RUN_TO_POSITION target encoder count
     public int          frontLeftMotorPos  = 0;       // current encoder count
     public double       frontLeftMotorVel  = 0.0;     // encoder counts per second
     public double       frontLeftMotorAmps = 0.0;     // current power draw (Amps)
 
-    protected DcMotorEx frontRightMotor    = null;
+    public DcMotorEx frontRightMotor    = null;
     public int          frontRightMotorTgt = 0;       // RUN_TO_POSITION target encoder count
     public int          frontRightMotorPos = 0;       // current encoder count
     public double       frontRightMotorVel = 0.0;     // encoder counts per second
     public double       frontRightMotorAmps= 0.0;     // current power draw (Amps)
 
-    protected DcMotorEx rearLeftMotor      = null;
+    public DcMotorEx rearLeftMotor      = null;
     public int          rearLeftMotorTgt   = 0;       // RUN_TO_POSITION target encoder count
     public int          rearLeftMotorPos   = 0;       // current encoder count
     public double       rearLeftMotorVel   = 0.0;     // encoder counts per second
     public double       rearLeftMotorAmps  = 0.0;     // current power draw (Amps)
 
-    protected DcMotorEx rearRightMotor     = null;
+    public DcMotorEx rearRightMotor     = null;
     public int          rearRightMotorTgt  = 0;       // RUN_TO_POSITION target encoder count
     public int          rearRightMotorPos  = 0;       // current encoder count
     public double       rearRightMotorVel  = 0.0;     // encoder counts per second
@@ -75,10 +75,10 @@ public class HardwareSwyftBot
     protected double COUNTS_PER_INCH2      = 1738.4;  // 8192 counts-per-rev / (1.5" omni wheel * PI)
 
     //====== 2025 DECODE SEASON MECHANISM MOTORS (RUN_USING_ENCODER) =====
-    protected DcMotorEx intakeMotor     = null;
+    public DcMotorEx intakeMotor     = null;
 
-    protected DcMotorEx shooterMotor1   = null;  // upper 
-    protected DcMotorEx shooterMotor2   = null;  // lower
+    public DcMotorEx shooterMotor1   = null;  // upper
+    public DcMotorEx shooterMotor2   = null;  // lower
     public    double    shooterMotorVel = 0.0; // encoder counts per second
 
     public final static double SHOOTER_MOTOR_FAR  = 0.55;

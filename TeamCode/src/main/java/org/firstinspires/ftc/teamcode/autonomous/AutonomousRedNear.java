@@ -1,20 +1,20 @@
 /* FTC Team 7572 - Version 1.0 (11/07/2024)
  */
-package org.firstinspires.ftc.teamcode;
+package org.firstinspires.ftc.teamcode.autonomous;
 
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
-import com.qualcomm.robotcore.util.ElapsedTime;
+import org.firstinspires.ftc.teamcode.robothardware.HardwareSwyftBot;
 
 import java.util.List;
 
 /**
  */
-@Autonomous(name="Blue Near", group="7592", preselectTeleOp = "Teleop-Blue")
+@Autonomous(name="Red Near", group="7592", preselectTeleOp = "Teleop-Red")
 //@Disabled
-public class AutonomousBlueNear extends AutonomousBase {
+public class AutonomousRedNear extends AutonomousBase {
 
     // These constants define the desired driving/control characteristics
     // The can/should be tweaked to suite the specific robot drivetrain.
@@ -33,7 +33,7 @@ public class AutonomousBlueNear extends AutonomousBase {
         telemetry.addData("State", "Initializing (please wait)");
         telemetry.update();
         robot.init(hardwareMap,true);
-        redAlliance  = false;
+        redAlliance  = true;
 
         // NOTE: Control Hub is assigned eth0 address 172.29.0.1 by limelight DHCP server
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
@@ -76,7 +76,7 @@ public class AutonomousBlueNear extends AutonomousBase {
         // Assume turret position, flapper, and flywheel motor power is in position
 //      mainAutonomous( obeliskID );
         // just park for now!
-        driveToPosition(19.0, 18.0, 0.0, DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_TO);
+        driveToPosition(19.0, -18.0, 0.0, DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_TO);
 
         //---------------------------------------------------------------------------------
 
@@ -186,4 +186,4 @@ public class AutonomousBlueNear extends AutonomousBase {
 //        driveToPosition()
     }
 
-} /* AutonomousBlueNear */
+} /* AutonomousRedNear */
