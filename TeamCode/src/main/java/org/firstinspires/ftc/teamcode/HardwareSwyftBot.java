@@ -6,12 +6,11 @@ import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.hardware.bosch.JustLoggingAccelerationIntegrator;
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.hardware.AnalogInput;
-import com.qualcomm.robotcore.hardware.PIDFCoefficients;
-import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.PIDFCoefficients;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
@@ -118,7 +117,7 @@ public class HardwareSwyftBot
     public final static double SPIN_SERVO_P2 = 0.50;    // position 2 (also the INIT position)
     public final static double SPIN_SERVO_P3 = 0.88;    // position 3
 
-    public enum spindexerStateEnum {
+    public enum SpindexerState {
         SPIN_P1,
         SPIN_P2,
         SPIN_P3,
@@ -126,7 +125,7 @@ public class HardwareSwyftBot
         SPIN_DECREMENT
     }
     
-    public spindexerStateEnum spinServoCurPos = spindexerStateEnum.SPIN_P2;
+    public SpindexerState spinServoCurPos = SpindexerState.SPIN_P2;
 
     //====== INJECTOR/LIFTER SERVO =====
     public Servo       liftServo      = null;
@@ -278,7 +277,7 @@ public class HardwareSwyftBot
 //      turretServo2.setPosition(TURRET_SERVO_INIT);
         shooterServo.setPosition(SHOOTER_SERVO_INIT);
         sleep(250);
-        spinServoSetPosition(spindexerStateEnum.SPIN_P3); // allows autonomous progression 3-2-1
+        spinServoSetPosition(SpindexerState.SPIN_P3); // allows autonomous progression 3-2-1
     } // resetEncoders
 
     /*--------------------------------------------------------------------------------------------*/
@@ -375,38 +374,37 @@ public class HardwareSwyftBot
     } // setRunToPosition
 
     /*--------------------------------------------------------------------------------------------*/
-    public void spinServoSetPosition( spindexerStateEnum position )
+    public void spinServoSetPosition( SpindexerState position )
     {
         switch( position ) {
             case SPIN_P1 : spinServo.setPosition(SPIN_SERVO_P1);
-                           spinServoCurPos = spindexerStateEnum.SPIN_P1;
+                           spinServoCurPos = SpindexerState.SPIN_P1;
                            break;
             case SPIN_P2 : spinServo.setPosition(SPIN_SERVO_P2);
-                           spinServoCurPos = spindexerStateEnum.SPIN_P2;
+                           spinServoCurPos = SpindexerState.SPIN_P2;
                            break;
             case SPIN_P3 : spinServo.setPosition(SPIN_SERVO_P3);
-                           spinServoCurPos = spindexerStateEnum.SPIN_P3;
+                           spinServoCurPos = SpindexerState.SPIN_P3;
                            break;
             case SPIN_INCREMENT :
-                           if( spinServoCurPos == spindexerStateEnum.SPIN_P1 ) {
+                           if( spinServoCurPos == SpindexerState.SPIN_P1 ) {
                                spinServo.setPosition(SPIN_SERVO_P2);
-                               spinServoCurPos = spindexerStateEnum.SPIN_P2;
+                               spinServoCurPos = SpindexerState.SPIN_P2;
                            }
-                           else if( spinServoCurPos == spindexerStateEnum.SPIN_P2 ) {
+                           else if( spinServoCurPos == SpindexerState.SPIN_P2 ) {
                                spinServo.setPosition(SPIN_SERVO_P3);
-                               spinServoCurPos = spindexerStateEnum.SPIN_P3;
+                               spinServoCurPos = SpindexerState.SPIN_P3;
                            } // else no room to increment further!
                            break;
             case SPIN_DECREMENT :
-                           if( spinServoCurPos == spindexerStateEnum.SPIN_P3 ) {
+                           if( spinServoCurPos == SpindexerState.SPIN_P3 ) {
                                spinServo.setPosition(SPIN_SERVO_P2);
-                               spinServoCurPos = spindexerStateEnum.SPIN_P2;
+                               spinServoCurPos = SpindexerState.SPIN_P2;
                            }
-                           else if( spinServoCurPos == spindexerStateEnum.SPIN_P2 ) {
+                           else if( spinServoCurPos == SpindexerState.SPIN_P2 ) {
                                spinServo.setPosition(SPIN_SERVO_P1);
-                               spinServoCurPos = spindexerStateEnum.SPIN_P1;
+                               spinServoCurPos = SpindexerState.SPIN_P1;
                            } // else no room to increment further!
-            
                            break;
         default:
                 break;

@@ -2,11 +2,18 @@
 */
 package org.firstinspires.ftc.teamcode;
 
+import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState.SPIN_DECREMENT;
+import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState.SPIN_INCREMENT;
+import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState.SPIN_P1;
+import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState.SPIN_P3;
+
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.Gamepad;
+
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
+
 import java.util.Locale;
 
 /**
@@ -548,14 +555,14 @@ public abstract class Teleop extends LinearOpMode {
         // Rotate spindexer left or right one position
         if( gamepad2_l_bumper_now && !gamepad2_l_bumper_last) {
             robot.waitForInjector();
-            if( robot.spinServoCurPos != HardwareSwyftBot.spindexerStateEnum.SPIN_P1 )
-                robot.spinServoSetPosition( HardwareSwyftBot.spindexerStateEnum.SPIN_DECREMENT );
+            if( robot.spinServoCurPos != SPIN_P1 )
+                robot.spinServoSetPosition( SPIN_DECREMENT );
             else
                 gamepad2.runRumbleEffect(spindexerRumbleL);            
         } else if( gamepad2_r_bumper_now && !gamepad2_r_bumper_last) {
             robot.waitForInjector();
-            if( robot.spinServoCurPos != HardwareSwyftBot.spindexerStateEnum.SPIN_P3 )
-                robot.spinServoSetPosition( HardwareSwyftBot.spindexerStateEnum.SPIN_INCREMENT );
+            if( robot.spinServoCurPos != SPIN_P3 )
+                robot.spinServoSetPosition( SPIN_INCREMENT );
             else
                 gamepad2.runRumbleEffect(spindexerRumbleR);
         } 

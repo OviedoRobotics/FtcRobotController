@@ -2,11 +2,16 @@
  */
 package org.firstinspires.ftc.teamcode;
 
+import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState.SPIN_P1;
+import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState.SPIN_P2;
+import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState.SPIN_P3;
+
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
-import com.qualcomm.robotcore.util.ElapsedTime;
+
+import org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState;
 
 import java.util.List;
 
@@ -24,7 +29,7 @@ public class AutonomousRedNear extends AutonomousBase {
     double pos_y=robotGlobalYCoordinatePosition, pos_x=robotGlobalXCoordinatePosition, pos_angle=robotOrientationRadians;  // Allows us to specify movement ABSOLUTELY
 
     private Limelight3A limelight;
-    private int         obeliskID=21; // if we can't see it, assume GPP (green purple purple)
+    private int         obeliskID=23; // if we can't see it, default to PPG (purple purple green)
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -163,15 +168,39 @@ public class AutonomousRedNear extends AutonomousBase {
             //  21 = GPP (green purple purple)
             //  22 = PGP (purple green purple)
             //  23 = PPG (purple purple green)
-            for(int i=0; i<3; i++) {
-                launchBall();
+            SpindexerState[] shootOrder = getShootOrder(obeliskID);
+            for(int i=0; i<shootOrder.length; i++) {
                 // rotate to the next position
-                robot.spinServoSetPosition( HardwareSwyftBot.spindexerStateEnum.SPIN_DECREMENT );
+                robot.spinServoSetPosition( shootOrder[i] );
+                launchBall();
                 if( !opModeIsActive() ) break;
                 sleep(2000 );
             }
         } // opModeIsActive
     } // scoreSamplePreload
+
+    SpindexerState[] getShootOrder(int obeliskID) {
+        // Note: common OBELISK april tags for both RED & BLUE alliance
+        //  21 = GPP (green purple purple)
+        //  22 = PGP (purple green purple)
+        //  23 = PPG (purple purple green)
+
+        // Based on our preload pattern:
+        // SPIN_P2 = purple
+        // SPIN_P1 = purple
+        // SPIN_P3 = green
+
+        switch (obeliskID) {
+            case 21:
+                return new SpindexerState[] {SPIN_P3, SPIN_P2, SPIN_P1};
+            case 22:
+                return new SpindexerState[] {SPIN_P2, SPIN_P3, SPIN_P1};
+            case 23:
+                return new SpindexerState[] {SPIN_P2, SPIN_P1, SPIN_P3};
+            default:
+                return new SpindexerState[0];
+        }
+    }
 
     private void launchBall(){
         robot.startInjectionStateMachine();
