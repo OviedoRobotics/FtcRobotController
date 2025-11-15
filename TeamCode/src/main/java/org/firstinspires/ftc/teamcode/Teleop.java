@@ -2,11 +2,18 @@
 */
 package org.firstinspires.ftc.teamcode;
 
+import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState.SPIN_DECREMENT;
+import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState.SPIN_INCREMENT;
+import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState.SPIN_P1;
+import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState.SPIN_P3;
+
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.Gamepad;
+
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
+
 import java.util.Locale;
 
 /**
@@ -217,6 +224,7 @@ public abstract class Teleop extends LinearOpMode {
 
             // Update telemetry data
             telemetry.addData("Shooter Servo", "%.3f", robot.shooterServoCurPos );
+            telemetry.addData("Shooter RPM", "%.1f", robot.shooterMotorVel );
 //          telemetry.addData("Angles", "IMU %.2f, Pinpoint %.2f deg)", robot.headingIMU(), curAngle );
             telemetry.addData("CycleTime", "%.1f msec (%.1f Hz)", cycleTimeElapsed, cycleTimeHz);
             telemetry.update();
@@ -275,7 +283,6 @@ public abstract class Teleop extends LinearOpMode {
     /*---------------------------------------------------------------------------------*/
     boolean processDpadDriveMode() {
         double fineControlSpeed = 0.40;
-        double bad_weight_scaling = 0.77;
         boolean dPadMode = true;
         // Only process 1 Dpad button at a time
         if( gamepad1.dpad_up ) {
@@ -294,17 +301,17 @@ public abstract class Teleop extends LinearOpMode {
         }
         else if( gamepad1.dpad_left ) {
             telemetry.addData("Dpad","LEFT");
-            frontLeft  =  fineControlSpeed;
-            frontRight = -fineControlSpeed;
-            rearLeft   = -fineControlSpeed * bad_weight_scaling;
-            rearRight  =  fineControlSpeed * bad_weight_scaling;
+            frontLeft  = -fineControlSpeed;
+            frontRight =  fineControlSpeed;
+            rearLeft   =  fineControlSpeed;
+            rearRight  = -fineControlSpeed;
         }
         else if( gamepad1.dpad_right ) {
             telemetry.addData("Dpad","RIGHT");
-            frontLeft  = -fineControlSpeed;
-            frontRight =  fineControlSpeed;
-            rearLeft   =  fineControlSpeed * bad_weight_scaling;
-            rearRight  = -fineControlSpeed * bad_weight_scaling;
+            frontLeft  =  fineControlSpeed;
+            frontRight = -fineControlSpeed;
+            rearLeft   = -fineControlSpeed;
+            rearRight  =  fineControlSpeed;
         }
         else {
             dPadMode = false;
@@ -421,7 +428,7 @@ public abstract class Teleop extends LinearOpMode {
         // Retrieve X/Y and ROTATION joystick input
         if( controlMultSegLinear ) {  // robot centric results in 1.0 max power
             yTranslation = multSegLinearXY( -gamepad1.left_stick_y );
-            xTranslation = multSegLinearXY( -gamepad1.left_stick_x );
+            xTranslation = multSegLinearXY(  gamepad1.left_stick_x );
             rotation     = multSegLinearRot( -gamepad1.right_stick_x );
         }
         else {
@@ -445,10 +452,6 @@ public abstract class Teleop extends LinearOpMode {
         rearRight  = yTranslation + xTranslation + rotation;
         rearLeft   = yTranslation - xTranslation - rotation;
 
-        double bad_weight_scaling = 0.77;   // temporary fix!!
-        rearLeft *= bad_weight_scaling;
-        rearRight *= bad_weight_scaling;
-        
         // Normalize the values so none exceed +/- 1.0
         maxPower = Math.max( Math.max( Math.abs(rearLeft),  Math.abs(rearRight)  ),
                              Math.max( Math.abs(frontLeft), Math.abs(frontRight) ) );
@@ -466,73 +469,6 @@ public abstract class Teleop extends LinearOpMode {
     /*---------------------------------------------------------------------------------*/
     /*  TELE-OP: Driver-centric Mecanum-wheel drive control (depends on gyro!)         */
     /*---------------------------------------------------------------------------------*/
-    void processDriverCentricDriveModeOLD() {
-        double leftFrontAngle, rightFrontAngle, leftRearAngle, rightRearAngle;
-        double gyroAngle;
-
-        // Retrieve X/Y and ROTATION joystick input
-        if( controlMultSegLinear ) { // // driver centric results in 0.6 max??
-            yTranslation = 1.66 * multSegLinearXY( -gamepad1.left_stick_y );
-            xTranslation = 1.66 * multSegLinearXY(  gamepad1.left_stick_x );
-            rotation     = 1.66 * multSegLinearRot( -gamepad1.right_stick_x );
-        }
-        else {
-            yTranslation = -gamepad1.left_stick_y;
-            xTranslation = gamepad1.left_stick_x;
-            rotation = -gamepad1.right_stick_x;
-        }
-        gyroAngle = -robot.headingIMU();
-
-        if (gamepad1.square) {
-            // The driver presses SQUARE, then uses the left joystick to say what angle the robot
-            // is aiming.  This will calculate the values as long as SQUARE is pressed, and will
-            // not drive the robot using the left stick.  Once SQUARE is released, it will use the
-            // final calculated angle and drive with the left stick.  Button should be released
-            // before stick.  The default behavior of atan2 is 0 to -180 on Y Axis CCW, and 0 to
-            // 180 CW.  This code normalizes that to 0 to 360 CCW from the Y Axis
-            driverAngle = -Math.toDegrees( Math.atan2( -gamepad1.left_stick_x, gamepad1.left_stick_y) );
-            if (driverAngle < 0) {
-                driverAngle += 360.0;
-            }
-            driverAngle -= gyroAngle;
-            xTranslation = 0.0;
-            yTranslation = 0.0;
-            rotation     = 0.0;
-        }
-
-        // Adjust new gyro angle for the driver reference angle
-        gyroAngle += driverAngle;
-
-        // Compute motor angles relative to current orientation
-        rightFrontAngle = Math.toRadians( gyroAngle + 315 );  //   /    pulls at 315deg (135+180)
-        leftFrontAngle  = Math.toRadians( gyroAngle + 45  );  //   \    pulls at 45deg
-        rightRearAngle  = Math.toRadians( gyroAngle + 225 );  //   \    pulls at 225deg (45+180)
-        leftRearAngle   = Math.toRadians( gyroAngle + 135 );  //   /    pulls at 135
-
-        frontRight = (yTranslation * Math.sin(rightFrontAngle) + xTranslation * Math.cos(rightFrontAngle))/Math.sqrt(2) + rotation;
-        frontLeft  = (yTranslation * Math.sin(leftFrontAngle)  + xTranslation * Math.cos(leftFrontAngle))/Math.sqrt(2)  + rotation;
-        rearRight  = (yTranslation * Math.sin(rightRearAngle)  + xTranslation * Math.cos(rightRearAngle))/Math.sqrt(2)  + rotation;
-        rearLeft   = (yTranslation * Math.sin(leftRearAngle)   + xTranslation * Math.cos(leftRearAngle))/Math.sqrt(2)   + rotation;
-
-        // Normalize the values so none exceed +/- 1.0
-        maxPower = Math.max( Math.max( Math.abs(rearLeft),  Math.abs(rearRight)  ),
-                             Math.max( Math.abs(frontLeft), Math.abs(frontRight) ) );
-        if (maxPower > 1.0)
-        {
-            rearLeft   /= maxPower;
-            rearRight  /= maxPower;
-            frontLeft  /= maxPower;
-            frontRight /= maxPower;
-        }
-
-        // Update motor power settings (left motors are defined as REVERSE mode)
-        robot.driveTrainMotors( -frontLeft, frontRight, -rearLeft, rearRight );
-
-    } // processDriverCentricDriveMode
-
-    /*---------------------------------------------------------------------------------*/
-    /*  TELE-OP: Driver-centric Mecanum-wheel drive control (depends on gyro!)         */
-    /*---------------------------------------------------------------------------------*/
     void processDriverCentricDriveMode() {
         double y, x, rx;
         double botHeading;
@@ -540,9 +476,9 @@ public abstract class Teleop extends LinearOpMode {
 
         // Retrieve X/Y and ROTATION joystick input
         y = gamepad1.left_stick_y;
-        x = gamepad1.left_stick_x;
+        x = -gamepad1.left_stick_x;
         rx = gamepad1.right_stick_x;
-        botHeading = robot.headingIMU();  // Assume this returns degrees; negative sign may need adjustment based on IMU convention
+        botHeading = -robot.headingIMU();  // Assume this returns degrees; negative sign may need adjustment based on IMU convention
 
         if (gamepad1.square) {
             // The driver presses SQUARE, then uses the left joystick to say what angle the robot
@@ -551,7 +487,7 @@ public abstract class Teleop extends LinearOpMode {
             // final calculated angle and drive with the left stick.  Button should be released
             // before stick.  The default behavior of atan2 is 0 to -180 on Y Axis CCW, and 0 to
             // 180 CW.  This code normalizes that to 0 to 360 CCW from the Y Axis
-            driverAngle = -Math.toDegrees(Math.atan2(gamepad1.left_stick_x, gamepad1.left_stick_y));
+            driverAngle = Math.toDegrees(Math.atan2(gamepad1.left_stick_x, gamepad1.left_stick_y));
             if (driverAngle < 0) {
                 driverAngle += 360.0;
             }
@@ -577,10 +513,6 @@ public abstract class Teleop extends LinearOpMode {
         double frontRight = (rotY - rotX - rx) / denominator;
         double rearLeft = (rotY - rotX + rx) / denominator;
         double rearRight = (rotY + rotX - rx) / denominator;
-
-        double bad_weight_scaling = 0.77;   // temporary fix!!
-        rearLeft *= bad_weight_scaling;
-        rearRight *= bad_weight_scaling;
 
         // Update motor power settings (assuming left motors are defined as REVERSE mode in hardware,
         // or adjust signs here if necessary. If positive power to all moves forward without negation,
@@ -623,14 +555,14 @@ public abstract class Teleop extends LinearOpMode {
         // Rotate spindexer left or right one position
         if( gamepad2_l_bumper_now && !gamepad2_l_bumper_last) {
             robot.waitForInjector();
-            if( robot.spinServoCurPos != HardwareSwyftBot.spindexerStateEnum.SPIN_P1 )
-                robot.spinServoSetPosition( HardwareSwyftBot.spindexerStateEnum.SPIN_DECREMENT );
+            if( robot.spinServoCurPos != SPIN_P1 )
+                robot.spinServoSetPosition( SPIN_DECREMENT );
             else
                 gamepad2.runRumbleEffect(spindexerRumbleL);            
         } else if( gamepad2_r_bumper_now && !gamepad2_r_bumper_last) {
             robot.waitForInjector();
-            if( robot.spinServoCurPos != HardwareSwyftBot.spindexerStateEnum.SPIN_P3 )
-                robot.spinServoSetPosition( HardwareSwyftBot.spindexerStateEnum.SPIN_INCREMENT );
+            if( robot.spinServoCurPos != SPIN_P3 )
+                robot.spinServoSetPosition( SPIN_INCREMENT );
             else
                 gamepad2.runRumbleEffect(spindexerRumbleR);
         } 

@@ -95,7 +95,7 @@ public class TestPinpointOffsets extends LinearOpMode {
     void initializeHardware() {
  
         // Locate the odometry controller in our hardware settings
-        odom = hardwareMap.get(GoBildaPinpointDriver.class,"odom");   // Control Hub I2C port 3
+        odom = hardwareMap.get(GoBildaPinpointDriver.class,"odom");   // Expansion Hub I2C port 1
         if( fineTuneOnly ) { // assume we've run this before and only need to fine-tune
            odom.setOffsets(-148.0, +88.4, DistanceUnit.MM);  // odometry pod x,y offsets relative center of robot
            startXoffset = -148.0; // mm
@@ -107,20 +107,20 @@ public class TestPinpointOffsets extends LinearOpMode {
         }
         odom.setEncoderResolution( GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD );
         odom.setEncoderDirections( GoBildaPinpointDriver.EncoderDirection.REVERSED,
-                                   GoBildaPinpointDriver.EncoderDirection.REVERSED );
+                                  GoBildaPinpointDriver.EncoderDirection.REVERSED);
         odom.resetPosAndIMU();
 
         // Query hardware info
-        frontLeftMotor  = hardwareMap.get(DcMotorEx.class,"FrontLeft");  // REVERSE
-        frontRightMotor = hardwareMap.get(DcMotorEx.class,"FrontRight"); // forward
-        rearLeftMotor   = hardwareMap.get(DcMotorEx.class,"RearLeft");   // REVERSE
-        rearRightMotor  = hardwareMap.get(DcMotorEx.class,"RearRight");  // forward
+        frontLeftMotor  = hardwareMap.get(DcMotorEx.class,"FrontLeft");  // FORWARD
+        frontRightMotor = hardwareMap.get(DcMotorEx.class,"FrontRight"); // reverse
+        rearLeftMotor   = hardwareMap.get(DcMotorEx.class,"RearLeft");   // FORWARD
+        rearRightMotor  = hardwareMap.get(DcMotorEx.class,"RearRight");  // reverse
 
         // Set motor position-power direction
-        frontLeftMotor.setDirection(DcMotor.Direction.REVERSE);
-        frontRightMotor.setDirection(DcMotor.Direction.FORWARD);
-        rearLeftMotor.setDirection(DcMotor.Direction.REVERSE);
-        rearRightMotor.setDirection(DcMotor.Direction.FORWARD);
+        frontLeftMotor.setDirection(DcMotor.Direction.FORWARD);
+        frontRightMotor.setDirection(DcMotor.Direction.REVERSE);
+        rearLeftMotor.setDirection(DcMotor.Direction.FORWARD);
+        rearRightMotor.setDirection(DcMotor.Direction.REVERSE);
 
         // Set all drivetrain motors to zero power
         driveTrainMotorsZero();

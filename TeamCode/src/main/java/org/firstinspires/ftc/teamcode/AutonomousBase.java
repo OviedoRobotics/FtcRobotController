@@ -1,5 +1,8 @@
 package org.firstinspires.ftc.teamcode;
 
+import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState.SPIN_P1;
+import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState.SPIN_P2;
+import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState.SPIN_P3;
 import static java.lang.Math.abs;
 import static java.lang.Math.toRadians;
 
@@ -8,7 +11,6 @@ import android.os.SystemClock;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
 
@@ -58,6 +60,8 @@ public abstract class AutonomousBase extends LinearOpMode {
     static final double MIN_SPIN_RATE      = 0.06;    // Minimum power to turn the robot
     static final double MIN_DRIVE_POW      = 0.06;    // Minimum speed to move the robot
     static final double MIN_DRIVE_MAGNITUDE = Math.sqrt(MIN_DRIVE_POW*MIN_DRIVE_POW+MIN_DRIVE_POW*MIN_DRIVE_POW);
+    static final double FIRST_SPIKE_MARK_RED_POS_X = 0.0; // TODO: Find real position
+    static final double FIRST_SPIKE_MARK_RED_POS_Y = 0.0; // TODO: Find real position
 
     // NOTE: Initializing the odometry global X-Y and ANGLE to 0-0 and 0deg means the frame of reference for all movements is
     // the starting positiong/orientation of the robot.  An alternative is to make the bottom-left corner of the field the 0-0
@@ -74,45 +78,16 @@ public abstract class AutonomousBase extends LinearOpMode {
     double autoYpos                             = 0.0;   // (useful when a given value remains UNCHANGED from one
     double autoAngle                            = 0.0;   // movement to the next, or INCREMENTAL change from current location).
 
-    double beforeXpos                           = 0.0;   // Keeps track of our BEFORE alignToPole() odometry location
-    double beforeYpos                           = 0.0;
-    double beforeAngle                          = 0.0;
-
-    double afterXpos                            = 0.0;   // Keeps track of our AFTER alignToPole() odometry location
-    double afterYpos                            = 0.0;
-    double afterAngle                           = 0.0;
-
     String      storageDir;
     boolean     redAlliance      = true;  // Is alliance BLUE (true) or RED (false)?
     boolean     forceAlliance    = false; // Override vision pipeline? (toggled during init phase of autonomous)
     int         initMenuSelected = 1;    // start on the first entry
     int         initMenuMax      = 6;    // we have 6 total entries
     int         startDelaySec    = 0;     // 1: wait [seconds] at startup -- applies to both left/rigth starting positions
-    int         parkDelaySec     = 0;     // 2: wait [seconds] before parking in observation zone -- applies to that parking zone
-
-    boolean     scorePreloadSpecimen = true;  // 3: score preloaded specimen (true=yes; false=no)
-    boolean     onlyPark             = false;  // 4: only park no scoring (true=yes; false=no)
-    boolean     tiltAdjusted         = false;
-    boolean     clawOpen             = false;
-
-    int         spikeSamples     = 0;      // set in each left/right autonomous program
-    int         parkLocation     = 0;      // 5: park 0=NONE, 1=OBSERVATION, 2=SUBMERSIBLE
-    final int   PARK_NONE        = 0;
-    final int   PARK_OBSERVATION = 1;
-    final int   PARK_SUBMERSIBLE = 2;
-
-    String[]    parkLocationStr = {"NONE", "OBSERVATION", "SUBMERSIBLE"};
-    // For RIGHT, parking in OBSERVATION means the far end
-    // For LEFT,  parking in OBSERVATION means the triangular section
+    int         scoringZones     = 0;
 
     ElapsedTime autonomousTimer     = new ElapsedTime();  // overall
     ElapsedTime motionTimer         = new ElapsedTime();  // for driving
-    ElapsedTime autoViperMotorTimer = new ElapsedTime();
-    ElapsedTime autoTiltMotorTimer  = new ElapsedTime();
-    ElapsedTime autoPanMotorTimer   = new ElapsedTime();
-    ElapsedTime autoElbowServoTimer = new ElapsedTime();
-    ElapsedTime autoWristServoTimer = new ElapsedTime();
-    ElapsedTime autoClawServoTimer  = new ElapsedTime();
 
     // gamepad controls for changing autonomous options
     boolean gamepad1_circle_last,   gamepad1_circle_now  =false;
@@ -141,27 +116,6 @@ public abstract class AutonomousBase extends LinearOpMode {
         boolean prevEntry = (gamepad1_dpad_up_now    && !gamepad1_dpad_up_last);
         boolean nextValue = (gamepad1_dpad_right_now && !gamepad1_dpad_right_last);
         boolean prevValue = (gamepad1_dpad_left_now  && !gamepad1_dpad_left_last);
-        double  startTiltAngle = robot.armTiltAngle;
-        boolean needToTiltLower, needToTiltHigher;
-
-        // Automatically position the tilt angle during INIT for autonomous
-        if(auto5){
-            needToTiltLower = (startTiltAngle > Hardware2025Bot.TILT_ANGLE_AUTO_5_DEG);
-            needToTiltHigher = (startTiltAngle < Hardware2025Bot.TILT_ANGLE_AUTO_5_DEG - 1.0);
-        } else {
-            needToTiltLower = (startTiltAngle > Hardware2025Bot.TILT_ANGLE_WALL_DEG);
-            needToTiltHigher = (startTiltAngle < Hardware2025Bot.TILT_ANGLE_START_DEG);
-        }
-        if( needToTiltLower ) {
-            robot.wormTiltMotor.setPower( -0.08 );   // LOWER tilt angle
-            tiltAdjusted = true;
-        } else if( needToTiltHigher ) {
-            robot.wormTiltMotor.setPower( +0.08 );   // RAISE tilt angle
-            tiltAdjusted = true;
-        } else if( tiltAdjusted ) {
-            robot.wormTiltMotor.setPower( 0.0 );     // stop tilt movement
-            tiltAdjusted = false;
-        }
 
         // Force RED alliance?
         if( gamepad1_circle_now && !gamepad1_circle_last ) {
@@ -212,57 +166,6 @@ public abstract class AutonomousBase extends LinearOpMode {
                     }
                 } // prev
                 break;
-            case 2 : // PARK DELAY [sec]
-                if( nextValue ) {
-                    if (parkDelaySec < 9) {
-                        parkDelaySec++;
-                    }
-                } // next
-
-                if( prevValue ) {
-                    if (parkDelaySec > 0) {
-                        parkDelaySec--;
-                    }
-                } // prev
-                break;
-            case 3 : // SCORE PRELOADED SPECIMEN?
-                if( nextValue || prevValue) {
-                    scorePreloadSpecimen = !scorePreloadSpecimen;
-                } // next
-                break;
-            case 4 : // immediately park
-                if( nextValue || prevValue) {
-                    onlyPark = !onlyPark;
-                } // next
-                break;
-
-            case 5: // WHAT LOCATION DO YOU WANT TO PARK IN?
-                if( nextValue ){
-                    if( parkLocation < 2){
-                        parkLocation++;
-                    }
-                }// next
-
-                if( prevValue ){
-                    if( parkLocation > 0){
-                        parkLocation--;
-                    }
-                }// prev
-                break;
-
-            case 6 : // HOW MANY PIXELS DO WE SCORE FROM 5-STACK?
-                if( nextValue ) {
-                   if (spikeSamples < 3) {
-                       spikeSamples++;
-                   }
-                } // next
-
-                if( prevValue ) {
-                    if (spikeSamples > 0) {
-                        spikeSamples--;
-                    }
-                } // prev
-                break;
             default : // recover from bad state
                 initMenuSelected = 1;
                 break;
@@ -271,77 +174,19 @@ public abstract class AutonomousBase extends LinearOpMode {
         // Update our telemetry
         performEveryLoop();
         telemetry.addData("Start Delay",  "%d sec %s", startDelaySec, ((initMenuSelected==1)? "<-":"  ") );
-        telemetry.addData("Park Delay", "%d sec %s", parkDelaySec, ((initMenuSelected==2)? "<-":"  ") );
-        telemetry.addData("Specimen Preload", "%s %s",((scorePreloadSpecimen)? "yes":"no"), ((initMenuSelected==3)? "<-":"  ") );
-        telemetry.addData("Only Park", "%s %s",((onlyPark)? "yes":"no"), ((initMenuSelected==4)? "<-":"  ") );
-        telemetry.addData("Park Location","%s %s", parkLocationStr[parkLocation],
-                ((initMenuSelected==5)? "<-":"  "));
-        telemetry.addData("spike specimens", "%d  %s",spikeSamples,((initMenuSelected==6)? "<-":"  ") );
         telemetry.addData("Odometry","x=%.2f y=%.2f  %.2f deg",
                 robotGlobalXCoordinatePosition, robotGlobalYCoordinatePosition, Math.toDegrees(robotOrientationRadians) );
-        telemetry.addData("Lift Angle","x=%.1f deg", startTiltAngle );
-        telemetry.addLine("Right bumper open/close claw to load specimen.");
+        telemetry.addLine("<LIST CONTROLS HERE TO PRE-LOAD 3 BALLS>");
         telemetry.addData(">","version 100" );
         telemetry.update();
     } // processAutonomousInitMenu
 
     /*--------------------------------------------------------------------------------------------*/
-    // All our autonomous requires the viper arm is fully retracted at the start
-    public void ensureViperArmFullyRetracted(){
-        int startViperMotorPos, endViperMotorPos, deltaViperMotorPos;
-        for( int i=0; i<16; i++) {
-            // Retract viper arm at low power for 1 second
-            startViperMotorPos = robot.viperMotorPos;
-            robot.viperMotor.setPower(-0.10);
-            sleep(1000);
-            robot.viperMotor.setPower(0.0);
-            sleep(100); //give motor time to stop
-            // update our encoder readings
-            performEveryLoop();
-            // Did anything change??
-            endViperMotorPos = robot.viperMotorPos;
-            deltaViperMotorPos = Math.abs(endViperMotorPos - startViperMotorPos);
-            telemetry.addData("deltaViperMotorPos", "%d counts", deltaViperMotorPos);
-            telemetry.update();
-            // Check if the count has decreased more than a bit then we need to check again
-            if (deltaViperMotorPos < 10) break;
-        }
-        // ensure viper encoder is reset after motion
-        robot.resetEncoders();
-    } // ensureViperArmFullyRetracted
-
-    public void ensureSnorkelFullyRetracted(boolean leftSide){
-        DcMotorEx snorkleMotor = leftSide ? robot.snorkleLMotor : robot.snorkleRMotor;
-        int startSnorkelMotorPos, endSnorkelMotorPos, deltaSnorkelMotorPos;
-
-        for( int i=0; i<10; i++) {
-            // Retract snorkels at low power for 1 second
-            startSnorkelMotorPos = leftSide ? robot.snorkleLMotorPos : robot.snorkleRMotorPos;;
-            snorkleMotor.setPower(-0.10);
-            sleep(1000);
-            snorkleMotor.setPower(0.0);
-            sleep(100); //give motor time to stop
-
-            // update our encoder readings
-            performEveryLoop();
-            // Did anything change??
-            endSnorkelMotorPos = leftSide ? robot.snorkleLMotorPos : robot.snorkleRMotorPos;
-
-            deltaSnorkelMotorPos = Math.abs(endSnorkelMotorPos - startSnorkelMotorPos);
-
-            telemetry.addData("deltaViperMotorPos", "%d counts", deltaSnorkelMotorPos);
-            telemetry.update();
-            // Check if the count has decreased more than a bit then we need to check again
-            if (deltaSnorkelMotorPos < 10) break;
-        }
-        // ensure viper encoder is reset after motion
-        robot.resetEncoders();
-    } // ensureSnorkelFullyRetracted
-
-    /*--------------------------------------------------------------------------------------------*/
     // Resets odometry starting position and angle to zero accumulated encoder counts
     public void resetGlobalCoordinatePosition(){
-//      robot.odom.resetPosAndIMU();
+//      robot.odom.resetPosAndIMU();   // don't need a full recalibration, just reset for any movement
+        robot.odom.setOffsets(0.0, 0.0, DistanceUnit.MM);
+//      robot.odom.setHeading( 180.0, AngleUnit.DEGREES ); // start pointing backward!
         robotGlobalXCoordinatePosition = 0.0;  // This will get overwritten the first time
         robotGlobalYCoordinatePosition = 0.0;  // we call robot.odom.update()!
         robotOrientationRadians        = 0.0;
@@ -355,27 +200,28 @@ public abstract class AutonomousBase extends LinearOpMode {
         robotGlobalXCoordinatePosition = pos.getX(DistanceUnit.INCH);
         robotGlobalYCoordinatePosition = pos.getY(DistanceUnit.INCH);
         robotOrientationRadians        = pos.getHeading(AngleUnit.RADIANS);
+        robot.processInjectionStateMachine();
     } // performEveryLoop
 
     /*---------------------------------------------------------------------------------*/
     // Create a time stamped folder in the Robot Control flash file storage
-    public void createAutoStorageFolder( boolean isRed, boolean isLeft ) {
+    public void createAutoStorageFolder( boolean isRed, boolean isFar ) {
         // Create a subdirectory based on DATE
 //      String timeString = new SimpleDateFormat("hh-mm-ss", Locale.getDefault()).format(new Date());
         String dateString = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
         storageDir = Environment.getExternalStorageDirectory().getPath() + "//FIRST//Webcam//" + dateString;
 
         if (isRed) {
-            if (isLeft) {
-                storageDir += "//red_left//";
+            if (isFar) {
+                storageDir += "//red_far//";
             } else {
-                storageDir += "//red_right//";
+                storageDir += "//red_near//";
             }
         } else {
-            if (isLeft) {
-                storageDir += "//blue_left//";
+            if (isFar) {
+                storageDir += "//blue_far//";
             } else {
-                storageDir += "//blue_right//";
+                storageDir += "//blue_near//";
             }
         }
         // If we save more than one file per Autonomous run, use both DATE & TIME
@@ -385,324 +231,6 @@ public abstract class AutonomousBase extends LinearOpMode {
         File baseDir = new File(storageDir);
         baseDir.mkdirs();
     }
-
-    /*---------------------------------------------------------------------------------*/
-    // Auto Elbow Movements
-    // Call this function instead of simply setting position. Resets the servo timer.
-    void autoElbowMoveToPosition(double targetElbowPosition){
-       robot.elbowServo.setPosition(targetElbowPosition);
-       autoElbowServoTimer.reset();
-    }
-    // Checks to see if servo reached its destination with a ?0.01 position tolerance
-    boolean elbowReachedDestination(double targetElbowPosition){
-        boolean reachedDestination = false;
-        if(Math.abs(robot.elbowServo.getPosition() - targetElbowPosition) < 0.01) reachedDestination = true;
-        return reachedDestination;
-    }
-    // Returns true if servo is moving. Passes in targetPosition and a specified timeout.
-    boolean autoElbowMoving(double targetElbowPosition, double timeout){
-        boolean elbowMoving = false;
-        if( elbowReachedDestination(targetElbowPosition)) {
-            elbowMoving = false;
-        }
-        // Did we timeout?
-        else if( autoElbowServoTimer.milliseconds() > timeout ) {
-            elbowMoving = false;
-        }
-        return elbowMoving;
-    }
-    // Returns true if servo is moving. Passes in targetPosition with a predefined timeout of 2000.
-    boolean autoElbowMoving(double targetElbowPosition){
-        boolean elbowMoving = false;
-        if( elbowReachedDestination(targetElbowPosition)) {
-            elbowMoving = false;
-        }
-        // Did we timeout?
-        else if( autoElbowServoTimer.milliseconds() > 2000 ) {
-            elbowMoving = false;
-        }
-        return elbowMoving;
-    }
-
-    // Auto Wrist Movements
-    // Call this function instead of simply setting position. Resets the servo timer.
-    void autoWristMoveToPosition(double targetWristPosition){
-        robot.wristServo.setPosition(targetWristPosition);
-        autoWristServoTimer.reset();
-    }
-    // Checks to see if servo reached its destination with a ?0.01 position tolerance
-    boolean wristReachedDestination(double targetWristPosition){
-        boolean reachedDestination = false;
-        if(Math.abs(robot.wristServo.getPosition() - targetWristPosition) < 0.01) reachedDestination = true;
-        return reachedDestination;
-    }
-    // Returns true if servo is moving. Passes in targetPosition and a specified timeout.
-    boolean autoWristMoving(double targetWristPosition, double timeout){
-        boolean wristMoving = false;
-        if( wristReachedDestination(targetWristPosition)) {
-            wristMoving = false;
-        }
-        // Did we timeout?
-        else if( autoWristServoTimer.milliseconds() > timeout ) {
-            wristMoving = false;
-        }
-        return wristMoving;
-    }
-    // Returns true if servo is moving. Passes in targetPosition with a predefined timeout of 2000.
-    boolean autoWristMoving(double targetWristPosition){
-        boolean wristMoving = false;
-        if( wristReachedDestination(targetWristPosition)) {
-            wristMoving = false;
-        }
-        // Did we timeout?
-        else if( autoWristServoTimer.milliseconds() > 2000 ) {
-            wristMoving = false;
-        }
-        return wristMoving;
-    }
-    // Auto Claw Movements
-    // Call this function instead of simply setting position. Resets the servo timer.
-    void autoClawMoveToPosition(double targetClawPosition){
-        robot.clawServo.setPosition(targetClawPosition);
-        autoClawServoTimer.reset();
-    }
-    // Checks to see if servo reached its destination with a ?0.01 position tolerance
-    boolean clawReachedDestination(double targetClawPosition){
-        boolean reachedDestination = false;
-        if(Math.abs(robot.clawServo.getPosition() - targetClawPosition) < 0.01) reachedDestination = true;
-        return reachedDestination;
-    }
-    // Returns true if servo is moving. Passes in targetPosition and a specified timeout.
-    boolean autoClawMoving(double targetClawPosition, double timeout){
-        boolean clawMoving = false;
-        if( clawReachedDestination(targetClawPosition)) {
-            clawMoving = false;
-        }
-        // Did we timeout?
-        else if( autoClawServoTimer.milliseconds() > timeout ) {
-            clawMoving = false;
-        }
-        return clawMoving;
-    }
-    // Returns true if servo is moving. Passes in targetPosition with a predefined timeout of 2000.
-    boolean autoClawMoving(double targetClawPosition){
-        boolean clawMoving = false;
-        if( clawReachedDestination(targetClawPosition)) {
-            clawMoving = false;
-        }
-        // Did we timeout?
-        else if( autoClawServoTimer.milliseconds() > 2000 ) {
-            clawMoving = false;
-        }
-        return clawMoving;
-    }
-
-    /*---------------------------------------------------------------------------------*/
-    void autoViperMotorMoveToTarget(int targetEncoderCount )
-    {
-        autoViperMotorMoveToTarget(targetEncoderCount, 1.0);
-    } // autoViperMotorMoveToTarget
-
-    /*---------------------------------------------------------------------------------*/
-    void autoViperMotorMoveToTarget(int targetEncoderCount, double power)
-    {
-        // Configure target encoder count
-        robot.viperMotor.setTargetPosition( targetEncoderCount );
-        // Enable RUN_TO_POSITION mode
-        robot.viperMotor.setMode(  DcMotor.RunMode.RUN_TO_POSITION );
-        // Are we retracting to the zero position?
-        boolean targetCloseToZero = (targetEncoderCount < 200)? true : false;
-        // Set the power used to get there (NOTE: for RUN_TO_POSITION, always use a POSITIVE
-        // power setting, no matter which way the motor must rotate to achieve that target.
-        double motorPower = (targetCloseToZero)? (power/2.0): power;
-        // Begin our timer and start the movement
-        autoViperMotorTimer.reset();
-        robot.viperMotor.setPower( motorPower );
-    } // autoViperMotorMoveToTarget
-
-    // Checks to see if viper reached its destination with a ?10.0 encoder count tolerance
-    boolean viperReachedDestination( int targetExtension ){
-        boolean reachedDestination = false;
-        // if within tolerance set reachedDestination to true
-        if(Math.abs(robot.viperMotor.getCurrentPosition() - targetExtension) < 10.0) {
-            reachedDestination = true;
-        }
-        return reachedDestination;
-    }
-    // Returns true if the viper motor is moving. Passes in the targetEncoderCount and specified timeout
-    boolean autoViperMotorMoving(int targetEncoderCount, double timeout) {
-        boolean viperMoving = true;
-        // Did the movement finish?
-        if( !robot.viperMotor.isBusy() || viperReachedDestination(targetEncoderCount)) {
-            viperMoving = false;
-//          robot.viperMotor.setPower( 0.001 );   // hold
-        }
-        // Did we timeout?
-        else if( autoViperMotorTimer.milliseconds() > timeout ) {
-            viperMoving = false;
-//         robot.viperMotor.setPower( 0.001 );   // hold
-        }
-        else {
-            // wait a little longer
-        }
-        return viperMoving;
-    } // autoViperMotorMoving
-
-    // Returns true if the viper motor is moving. Passes in the targetEncoderCount and sets the timeout to 3000
-    boolean autoViperMotorMoving(int targetEncoderCount) {
-        boolean viperMoving = true;
-        // Did the movement finish?
-        if( !robot.viperMotor.isBusy() || viperReachedDestination(targetEncoderCount)) {
-            viperMoving = false;
- //           robot.viperMotor.setPower( 0.001 );   // hold
-        }
-        // Did we timeout?
-        else if( autoViperMotorTimer.milliseconds() > 3000 ) {
-            viperMoving = false;
-//            robot.viperMotor.setPower( 0.001 );   // hold
-        }
-        else {
-            // wait a little longer
-        }
-        return viperMoving;
-    } // autoViperMotorMoving
-
-    // (OLD) Returns true if the viper motor is moving.
-    // No parameters (meaning it does not call viperReachedDestination and sets the timeout to 3000)
-    boolean autoViperMotorMoving() {
-        boolean viperMoving = true;
-        // Did the movement finish?
-        if( !robot.viperMotor.isBusy() ) {
-            viperMoving = false;
-            //robot.viperMotor.setPower( 0.001 );   // hold
-        }
-        // Did we timeout?
-        else if( autoViperMotorTimer.milliseconds() > 5000 ) {
-            viperMoving = false;
-            //robot.viperMotor.setPower( 0.001 );   // hold
-        }
-        else {
-            // wait a little longer
-        }
-        return viperMoving;
-    } // autoViperMotorMoving
-
-    /*---------------------------------------------------------------------------------*/
-    void autoTiltMotorMoveToTarget(double targetArmAngle )
-    {
-        autoTiltMotorMoveToTarget( targetArmAngle, 0.80 );
-    } // autoTiltMotorMoveToTarget
-
-    void autoTiltMotorMoveToTarget(double targetArmAngle, double power )
-    {
-        // Convert angle to encoder counts
-        int targetEncoderCount = Hardware2025Bot.computeEncoderCountsFromAngle(targetArmAngle);
-        // Configure target encoder count
-        robot.wormTiltMotor.setTargetPosition( targetEncoderCount );
-        // Enable RUN_TO_POSITION mode
-        robot.wormTiltMotor.setMode(  DcMotor.RunMode.RUN_TO_POSITION );
-        // Begin our timer and start the movement
-        autoTiltMotorTimer.reset();
-        robot.wormTiltMotor.setPower( power );
-    } // autoTiltMotorMoveToTarget
-
-    // Checks to see if tilt reached its destination with a ?1.5 degree tolerance
-    boolean tiltReachedDestination( double targetAngle){
-        boolean reachedDestination = false;
-        // if within tolerance we set reachedDestination to true
-        if(Math.abs(robot.armTiltAngle - targetAngle) < 1.5) {
-            reachedDestination = true;
-        }
-        return reachedDestination;
-    }
-
-    // Returns true if the tilt motor is moving. Passes in the targetTiltAngle and a specified timeout
-    boolean autoTiltMotorMoving(double targetTiltAngle, double timeout) {
-        boolean tiltMoving = true;
-        // Did the movement finish?
-        if( !robot.wormTiltMotor.isBusy() || tiltReachedDestination(targetTiltAngle)) {
-            tiltMoving = false;
- //         robot.wormTiltMotor.setPower( 0.0 );
-        }
-        // Did we timeout?
-        else if( autoTiltMotorTimer.milliseconds() > timeout ) {
-            tiltMoving = false;
-//            robot.wormTiltMotor.setPower( 0.0 );
-        }
-        else {
-            // wait a little longer
-        }
-        return tiltMoving;
-    } // autoTiltMotorMoving
-
-    // Returns true if the tilt motor is moving. Passes in the targetEncoderCount and sets the timeout to 4000
-    boolean autoTiltMotorMoving(double targetTiltAngle) {
-        boolean tiltMoving = true;
-        // Did the movement finish?
-        if( !robot.wormTiltMotor.isBusy() || tiltReachedDestination(targetTiltAngle)) {
-            tiltMoving = false;
-//          robot.wormTiltMotor.setPower( 0.0 );
-        }
-        // Did we timeout?
-        else if( autoTiltMotorTimer.milliseconds() > 4000 ) {
-            tiltMoving = false;
-//          robot.wormTiltMotor.setPower( 0.0 );
-        }
-        else {
-            // wait a little longer
-        }
-        return tiltMoving;
-    } // autoTiltMotorMoving
-
-    // (OLD) Returns true if the tilt motor is moving.
-    // No parameters (meaning it does not call tiltReachedDestination and sets the timeout to 4000)
-    boolean autoTiltMotorMoving() {
-        boolean tiltMoving = true;
-        // Did the movement finish?
-        if( !robot.wormTiltMotor.isBusy() ) {
-            tiltMoving = false;
-//          robot.wormTiltMotor.setPower( 0.0 );
-        }
-        // Did we timeout?
-        else if( autoTiltMotorTimer.milliseconds() > 6000 ) {
-            tiltMoving = false;
-//          robot.wormTiltMotor.setPower( 0.0 );
-        }
-        else {
-            // wait a little longer
-        }
-        return tiltMoving;
-    } // autoTiltMotorMoving
-
-    /*---------------------------------------------------------------------------------*/
-    void autoPanMotorMoveToTarget(int targetEncoderCount )
-    {
-        // Configure target encoder count
-        robot.snorkleLMotor.setTargetPosition( targetEncoderCount );
-        // Enable RUN_TO_POSITION mode
-        robot.snorkleLMotor.setMode(  DcMotor.RunMode.RUN_TO_POSITION );
-        // Begin our timer and start the movement
-        autoPanMotorTimer.reset();
-        robot.snorkleLMotor.setPower( 0.80 );
-    } // autoPanMotorMoveToTarget
-
-    boolean autoPanMotorMoving() {
-        boolean panMoving = true;
-        // Did the movement finish?
-        if( !robot.snorkleLMotor.isBusy() ) {
-            panMoving = false;
-//          robot.snorkleLMotor.setPower( 0.0 );
-        }
-        // Did we timeout?
-        else if( autoPanMotorTimer.milliseconds() > 5000 ) {
-            panMoving = false;
-//          robot.snorkleLMotor.setPower( 0.0 );
-        }
-        else {
-            // wait a little longer
-        }
-        return panMoving;
-    } // autoPanMotorMoving
 
     /*---------------------------------------------------------------------------------*/
     void driveAndRotate(double drivePower, double turnPower) {
@@ -761,7 +289,7 @@ public abstract class AutonomousBase extends LinearOpMode {
      */
     protected double getAngleError(double targetAngle) {
         // calculate error in -179 to +180 range  (
-        double robotError = targetAngle - robot.imuHeadingAngle;
+        double robotError = targetAngle - robot.headingIMU();
         while (robotError >  180.0)  robotError -= 360.0;
         while (robotError <= -180.0) robotError += 360.0;
         return robotError;
@@ -915,122 +443,6 @@ public abstract class AutonomousBase extends LinearOpMode {
         }
         return scaleFactor;
     }
-
-    /**
-     * @param leftWall - true strafe to left wall, false strafe to right wall
-     * @param maxSpeed - The speed to use when going large distances
-     * @param distanceFromWall - The distance to make the robot parallel to the wall in cm
-     * @param timeout - The maximum amount of time to wait until giving up
-     * @return true if reached distance, false if timeout occurred first
-     */
-    public boolean strafeToWall(boolean leftWall, double maxSpeed, int distanceFromWall, int timeout) {
-        double maxPower = Math.abs(maxSpeed);
-        boolean reachedDestination = false;
-        int allowedError = 2; // in cm
-        double angleErrorMult = 0.014;
-        double distanceErrorMult = 0.014;
-        ElapsedTime timer = new ElapsedTime();
-        int sensorDistance;
-        int distanceError;
-        performEveryLoop();
-        double driveAngle = robot.headingIMU();
-        double angleError;
-        double rotatePower;
-        double drivePower;
-        double fl, fr, bl, br;
-        double scaleFactor;
-        timer.reset();
-        while(opModeIsActive() && !reachedDestination && (timer.milliseconds() < timeout)) {
-            performEveryLoop();
-            //sensorDistance = leftWall ? robot.singleSonarRangeL() : robot.singleSonarRangeR();
-            sensorDistance = 10;
-            distanceError = sensorDistance - distanceFromWall;
-            if(Math.abs(distanceError) > allowedError) {
-                // Right is negative angle, left positive
-                angleError = getError(driveAngle);
-                rotatePower = angleError * angleErrorMult;
-                drivePower = distanceError * distanceErrorMult;
-                drivePower = leftWall ? drivePower : -drivePower;
-                drivePower = Math.copySign(Math.min(Math.max(Math.abs(drivePower), Hardware2025Bot.MIN_STRAFE_POW), maxPower), drivePower);
-                fl = -drivePower + rotatePower;
-                fr = drivePower - rotatePower;
-                bl = drivePower + rotatePower;
-                br = -drivePower - rotatePower;
-                scaleFactor = scalePower(fl, fr, bl, br);
-                robot.driveTrainMotors(scaleFactor*fl,
-                        scaleFactor*fr,
-                        scaleFactor*bl,
-                        scaleFactor*br);
-            } else {
-                robot.driveTrainMotorsZero();
-                reachedDestination = true;
-            }
-        }
-        // Timed out
-        if(!reachedDestination) {
-            robot.driveTrainMotorsZero();
-        }
-
-        return reachedDestination;
-    } // strafeToWall
-
-    /**
-     * @param frontWall - true drive to front wall, false drive to back wall
-     * @param maxSpeed - The speed to use when going large distances
-     * @param distanceFromWall - The distance to make the robot parallel to the wall in cm
-     * @param timeout - The maximum amount of time to wait until giving up
-     * @return true if reached distance, false if timeout occurred first
-     */
-    public boolean driveToWall(boolean frontWall, double maxSpeed, int distanceFromWall, int timeout) {
-        double maxPower = Math.abs(maxSpeed);
-        boolean reachedDestination = false;
-        int allowedError = 2; // in cm
-        double angleErrorMult = 0.014;
-        double distanceErrorMult = 0.014;
-        ElapsedTime timer = new ElapsedTime();
-        int sensorDistance;
-        int distanceError;
-        performEveryLoop();
-        double driveAngle = robot.headingIMU();
-        double angleError;
-        double rotatePower;
-        double drivePower;
-        double fl, fr, bl, br;
-        double scaleFactor;
-        timer.reset();
-        while(opModeIsActive() && !reachedDestination && (timer.milliseconds() < timeout)) {
-            performEveryLoop();
- //         sensorDistance = frontWall ? robot.singleSonarRangeF() : robot.singleSonarRangeB();
-            sensorDistance = 10;
-
-            distanceError = sensorDistance - distanceFromWall;
-            if(Math.abs(distanceError) > allowedError) {
-                angleError = getError(driveAngle);
-                rotatePower = angleError * angleErrorMult;
-                drivePower = distanceError * distanceErrorMult;
-                drivePower = frontWall ? drivePower : -drivePower;
-                drivePower = Math.copySign(Math.min(Math.max(Math.abs(drivePower), robot.MIN_DRIVE_POW), maxPower), drivePower);
-                fl = drivePower + rotatePower;
-                fr = drivePower - rotatePower;
-                bl = drivePower + rotatePower;
-                br = drivePower - rotatePower;
-                scaleFactor = scalePower(fl, fr, bl, br);
-                robot.driveTrainMotors(scaleFactor*fl,
-                        scaleFactor*fr,
-                        scaleFactor*bl,
-                        scaleFactor*br);
-            } else {
-                robot.driveTrainMotorsZero();
-                reachedDestination = true;
-            }
-        }
-        // Timed out
-        if(!reachedDestination) {
-            robot.driveTrainMotorsZero();
-        }
-
-        return reachedDestination;
-    } // driveToWall
 
     //============================ TIME-BASED NAVIGATION FUNCTIONS ============================
 
@@ -1642,5 +1054,68 @@ public abstract class AutonomousBase extends LinearOpMode {
         return angleDegrees;
     } // AngleWrapDegrees
 
+    /*--------------------------------------------------------------------------------------------*/
+    public void scorePreloadBallsFromFar(int obeliskID, boolean isRed, double shooterPower ) {
+        if( opModeIsActive() ) {
+            telemetry.addData("Motion", "Flywheel Ramp Up");
+            telemetry.update();
+            // Start to ramp up the shooter
+            robot.shooterMotor1.setPower( shooterPower );
+            robot.shooterMotor2.setPower( shooterPower );
+            // Back up 12" (assumes robot starts facing the wall, not the obelisk)
+            driveToPosition(-12.0, 0.0, 0.0, DRIVE_SPEED_10, TURN_SPEED_15, DRIVE_TO);
+            // Swivel the turret toward the RED or BLUE goal
+            robot.shooterServo.setPosition(0.5);  // NOT ACTUALLY USED
+            robot.turretServo1.setPosition( (isRed)? 0.55 : 0.43 ); // right toward RED or left toward BLUE
+            // Turn on collector to help retain balls during spindexing
+            robot.intakeMotor.setPower(0.90);
+            sleep(4000 ); // Wait a bit longer for flywheels to reach speed
+            // Convert the obelisk value into a shooting order
+            HardwareSwyftBot.SpindexerState[] shootOrder = getObeliskShootOrder(obeliskID);
+            // Shoot all 3 preloaded balls
+            for(int i=0; i<shootOrder.length; i++) {
+                // rotate (if necessary) to the next position
+                robot.spinServoSetPosition( shootOrder[i] );
+                // wait for the rotation to complete, then launch that ball
+                sleep(2000 );
+                launchBall();
+                if( !opModeIsActive() ) break;
+            }
+        } // opModeIsActive
+    } // scorePreloadBalls
+
+    //--------------------------------------------------------------------------------------------
+    HardwareSwyftBot.SpindexerState[] getObeliskShootOrder(int obeliskID) {
+        // Note: common OBELISK april tags for both RED & BLUE alliance
+        //  21 = GPP (green purple purple)
+        //  22 = PGP (purple green purple)
+        //  23 = PPG (purple purple green)
+
+        // Based on our preload pattern:
+        // SPIN_P2 = purple
+        // SPIN_P1 = purple
+        // SPIN_P3 = green
+
+        switch (obeliskID) {
+            case 21:
+                return new HardwareSwyftBot.SpindexerState[] {SPIN_P3, SPIN_P2, SPIN_P1};
+            case 22:
+                return new HardwareSwyftBot.SpindexerState[] {SPIN_P2, SPIN_P3, SPIN_P1};
+            case 23:
+                return new HardwareSwyftBot.SpindexerState[] {SPIN_P2, SPIN_P1, SPIN_P3};
+            default:
+                return new HardwareSwyftBot.SpindexerState[0];
+        }
+    } // getObeliskShootOrder
+
+    //--------------------------------------------------------------------------------------------
+    public void launchBall(){
+        robot.startInjectionStateMachine();
+        do {
+            sleep(50);
+            if( !opModeIsActive() ) break;
+            performEveryLoop();
+        } while (robot.liftServoBusyU || robot.liftServoBusyD);
+    } // launchBall
 
 } // AutonomousBase

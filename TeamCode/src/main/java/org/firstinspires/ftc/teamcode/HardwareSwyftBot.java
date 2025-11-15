@@ -78,6 +78,7 @@ public class HardwareSwyftBot
 
     protected DcMotorEx shooterMotor1   = null;  // upper 
     protected DcMotorEx shooterMotor2   = null;  // lower
+    public    double    shooterMotorVel = 0.0; // encoder counts per second
 
     public final static double SHOOTER_MOTOR_FAR  = 0.55;
     public final static double SHOOTER_MOTOR_MID  = 0.45;
@@ -116,7 +117,7 @@ public class HardwareSwyftBot
     public final static double SPIN_SERVO_P2 = 0.50;    // position 2 (also the INIT position)
     public final static double SPIN_SERVO_P3 = 0.88;    // position 3
 
-    public enum spindexerStateEnum {
+    public enum SpindexerState {
         SPIN_P1,
         SPIN_P2,
         SPIN_P3,
@@ -124,7 +125,7 @@ public class HardwareSwyftBot
         SPIN_DECREMENT
     }
     
-    public spindexerStateEnum spinServoCurPos = spindexerStateEnum.SPIN_P2;
+    public SpindexerState spinServoCurPos = SpindexerState.SPIN_P2;
 
     //====== INJECTOR/LIFTER SERVO =====
     public Servo       liftServo      = null;
@@ -139,14 +140,14 @@ public class HardwareSwyftBot
 
     /* local OpMode members. */
     protected HardwareMap hwMap = null;
-    private ElapsedTime period  = new ElapsedTime();
+    private final ElapsedTime period  = new ElapsedTime();
 
     /* Constructor */
     public HardwareSwyftBot(){
     }
 
     /* Initialize standard Hardware interfaces */
-    public void init(HardwareMap ahwMap, boolean isAutonomous ) {
+    public void init(HardwareMap ahwMap, boolean isAutonomous ) throws InterruptedException {
         // Save reference to Hardware map
         hwMap = ahwMap;
 
@@ -161,20 +162,21 @@ public class HardwareSwyftBot
         }
 
         // Locate the odometry controller in our hardware settings
-        odom = hwMap.get(GoBildaPinpointDriver.class,"odom");      // Expansion Hub I2C port 1
-//      odom.setOffsets(-144.00, +88.00, DistanceUnit.MM); // odometry pod x,y locations relative center of robot
-        odom.setOffsets(0.00, 0.00, DistanceUnit.MM);      // odometry pod x,y locations relative center of robot  2 2
+        odom = hwMap.get(GoBildaPinpointDriver.class,"odom");    // Expansion Hub I2C port 1
+        odom.setOffsets(0.0, 0.0, DistanceUnit.MM);   // odometry pod x,y locations relative center of robot
+//      odom.setOffsets(0.00, 0.00, DistanceUnit.MM);      // odometry pod x,y locations relative center of robot  2 2
         odom.setEncoderResolution( GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD ); // 4bar pods
-        odom.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.REVERSED, GoBildaPinpointDriver.EncoderDirection.FORWARD);
+        odom.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.REVERSED,
+                                  GoBildaPinpointDriver.EncoderDirection.REVERSED);
         if( isAutonomous ) {
             odom.resetPosAndIMU();
         }
 
         // Define and Initialize drivetrain motors
-        frontLeftMotor  = hwMap.get(DcMotorEx.class,"FrontLeft");  // Expansion Hub port 0 (REVERSE)
-        frontRightMotor = hwMap.get(DcMotorEx.class,"FrontRight"); // Control Hub   port 0 (forward)
-        rearLeftMotor   = hwMap.get(DcMotorEx.class,"RearLeft");   // Expansion Hub port 1 (REVERSE)
-        rearRightMotor  = hwMap.get(DcMotorEx.class,"RearRight");  // Control Hub   port 1 (forward)
+        frontLeftMotor  = hwMap.get(DcMotorEx.class,"FrontLeft");  // Expansion Hub port 0 (FORWARD)
+        frontRightMotor = hwMap.get(DcMotorEx.class,"FrontRight"); // Control Hub   port 0 (reverse)
+        rearLeftMotor   = hwMap.get(DcMotorEx.class,"RearLeft");   // Expansion Hub port 1 (FORWARD)
+        rearRightMotor  = hwMap.get(DcMotorEx.class,"RearRight");  // Control Hub   port 1 (reverse)
 
         frontLeftMotor.setDirection(DcMotor.Direction.FORWARD);
         frontRightMotor.setDirection(DcMotor.Direction.REVERSE);
@@ -230,10 +232,12 @@ public class HardwareSwyftBot
         shooterMotor2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         shooterMotor1.setZeroPowerBehavior( DcMotor.ZeroPowerBehavior.FLOAT);
         shooterMotor2.setZeroPowerBehavior( DcMotor.ZeroPowerBehavior.FLOAT);
-        // NOTE ON PIDF CONTROL:  The PID coefficnets (10/3/0) are the defaults.
+        // NOTE ON PIDF CONTROL:  The PID coefficients (10/3/0) are the defaults.
+        // Proportional (P) is increased to 200 as a result of the large shooter mass.
         // The feed-forward value of 12 is used to maintain speed control under
         // load (meaning when the ball enters the shooter and slows down the flywheel)
-        PIDFCoefficients shooterPIDF = new PIDFCoefficients( 10.0, 3.0, 0.0, 12.0 );
+//      PIDFCoefficients shooterPIDF = new PIDFCoefficients( 10.0, 3.0, 0.0, 12.0 );
+        PIDFCoefficients shooterPIDF = new PIDFCoefficients( 200.0, 3.0, 0.0, 0.0 );
         shooterMotor1.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, shooterPIDF);
         shooterMotor2.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, shooterPIDF);
 
@@ -266,14 +270,14 @@ public class HardwareSwyftBot
     } /* init */
 
     /*--------------------------------------------------------------------------------------------*/
-    public void resetEncoders()
-    {
+    public void resetEncoders() throws InterruptedException {
         // Initialize the injector servo first! (so it's out of the way for spindexer rotation)
         liftServo.setPosition(LIFT_SERVO_INIT);
         turretServo1.setPosition(TURRET_SERVO_INIT);
 //      turretServo2.setPosition(TURRET_SERVO_INIT);
         shooterServo.setPosition(SHOOTER_SERVO_INIT);
-        spinServoSetPosition(spindexerStateEnum.SPIN_P2);
+        sleep(250);
+        spinServoSetPosition(SpindexerState.SPIN_P3); // allows autonomous progression 3-2-1
     } // resetEncoders
 
     /*--------------------------------------------------------------------------------------------*/
@@ -391,11 +395,11 @@ public class HardwareSwyftBot
         // Get a fresh set of values for this cycle
         //   getCurrentPosition() / getTargetPosition() / getTargetPositionTolerance()
         //   getPower() / getVelocity() / getCurrent()
-
-
+        shooterMotorVel = shooterMotor1.getVelocity();
         // NOTE: motor mA data is NOT part of the bulk-read, so increases cycle time!
-//      viperMotorAmps      = viperMotor.getCurrent(MILLIAMPS);
+//      shooterMotorAmps = shooterMotor1.getCurrent(MILLIAMPS);
     } // readBulkData
+
     /*--------------------------------------------------------------------------------------------*/
     public void driveTrainMotors( double frontLeft, double frontRight, double rearLeft, double rearRight )
     {
@@ -452,40 +456,39 @@ public class HardwareSwyftBot
     } // setRunToPosition
 
     /*--------------------------------------------------------------------------------------------*/
-    public void spinServoSetPosition( spindexerStateEnum position )
+    public void spinServoSetPosition( SpindexerState position )
     {
         switch( position ) {
             case SPIN_P1 : spinServo.setPosition(SPIN_SERVO_P1);
-                           spinServoCurPos = spindexerStateEnum.SPIN_P1;
-                           break;
+                spinServoCurPos = SpindexerState.SPIN_P1;
+                break;
             case SPIN_P2 : spinServo.setPosition(SPIN_SERVO_P2);
-                           spinServoCurPos = spindexerStateEnum.SPIN_P2;
-                           break;
+                spinServoCurPos = SpindexerState.SPIN_P2;
+                break;
             case SPIN_P3 : spinServo.setPosition(SPIN_SERVO_P3);
-                           spinServoCurPos = spindexerStateEnum.SPIN_P3;
-                           break;
+                spinServoCurPos = SpindexerState.SPIN_P3;
+                break;
             case SPIN_INCREMENT :
-                           if( spinServoCurPos == spindexerStateEnum.SPIN_P1 ) {
-                               spinServo.setPosition(SPIN_SERVO_P2);
-                               spinServoCurPos = spindexerStateEnum.SPIN_P2;
-                           }
-                           else if( spinServoCurPos == spindexerStateEnum.SPIN_P2 ) {
-                               spinServo.setPosition(SPIN_SERVO_P3);
-                               spinServoCurPos = spindexerStateEnum.SPIN_P3;
-                           } // else no room to increment further!
-                           break;
+                if( spinServoCurPos == SpindexerState.SPIN_P1 ) {
+                    spinServo.setPosition(SPIN_SERVO_P2);
+                    spinServoCurPos = SpindexerState.SPIN_P2;
+                }
+                else if( spinServoCurPos == SpindexerState.SPIN_P2 ) {
+                    spinServo.setPosition(SPIN_SERVO_P3);
+                    spinServoCurPos = SpindexerState.SPIN_P3;
+                } // else no room to increment further!
+                break;
             case SPIN_DECREMENT :
-                           if( spinServoCurPos == spindexerStateEnum.SPIN_P3 ) {
-                               spinServo.setPosition(SPIN_SERVO_P2);
-                               spinServoCurPos = spindexerStateEnum.SPIN_P2;
-                           }
-                           else if( spinServoCurPos == spindexerStateEnum.SPIN_P2 ) {
-                               spinServo.setPosition(SPIN_SERVO_P1);
-                               spinServoCurPos = spindexerStateEnum.SPIN_P1;
-                           } // else no room to increment further!
-            
-                           break;
-        default:
+                if( spinServoCurPos == SpindexerState.SPIN_P3 ) {
+                    spinServo.setPosition(SPIN_SERVO_P2);
+                    spinServoCurPos = SpindexerState.SPIN_P2;
+                }
+                else if( spinServoCurPos == SpindexerState.SPIN_P2 ) {
+                    spinServo.setPosition(SPIN_SERVO_P1);
+                    spinServoCurPos = SpindexerState.SPIN_P1;
+                } // else no room to increment further!
+                break;
+            default:
                 break;
         } // switch()
     } // spinServoSetPosition
