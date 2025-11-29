@@ -312,11 +312,11 @@ public class HardwareSwyftBot
     static double STARTING_HEADING = 90;
     static double TEST_LAUNCH_X = 6;
     static double TEST_LAUNCH_Y = 2;
-    static double X_BIN_L = 0.1666; // in feet
-    static double Y_BIN_L = 10;   // in feet
+    static double X_BIN_L = 0.6667; // in feet
+    static double Y_BIN_L = 12;   // in feet
     static double LAUNCH_EXIT_SPEED = 22;
     static double Z_BIN = 3.23;
-    static double Z_SHOOTER = 0;
+    static double Z_SHOOTER = 0.5;  // get actual measurement
     static double TURRET_SERVO_RELATIVE_0_ANGLE = 0; // offset from robot heading and turret servo. (if robot is straight and turret is to the left, this angle is 90)
     static double TURRET_SERVO_HORIZONTAL_POSITION = TURRET_SERVO_INIT;
     static double SHOOTER_SERVO_POS_VERTICAL = 0.64;
@@ -324,11 +324,11 @@ public class HardwareSwyftBot
     static double SHOOTER_SERVO_HORIZONTAL_POSITION = 0.39;
     public double computeAlignedTurretPos() {
         double deltaServoPos = (computeTurretAngle())/(thetaMaxTurret - thetaMinTurret) + TURRET_SERVO_HORIZONTAL_POSITION; // servo 0->1 is clockwise
-        deltaServoPos += TURRET_SERVO_INIT;
         return (deltaServoPos > TURRET_SERVO_P90 || deltaServoPos < TURRET_SERVO_N90)? turretServo1.getPosition() : deltaServoPos;
     }
 
     public double computeTurretAngle() {
+        // absolute heading of the robot relative to the field. 90 is facing forward (ccw is positive)
         double driveTrainHeading = -1*headingIMU() + STARTING_HEADING;
         //double xR = odom.getPosY(DistanceUnit.MM);
         //double yR = odom.getPosX(DistanceUnit.MM);
@@ -345,10 +345,9 @@ public class HardwareSwyftBot
     public double calculateHeadingChange(double xR, double yR, double xB, double yB, double heading) {
         double angleToTarget = Math.atan2(yB- yR, xB- xR); // in radians
         // in radians. servo clockwise direction is positive need to multiply by negative one.
-        double delta = -(angleToTarget - (Math.toRadians(heading) + TURRET_SERVO_RELATIVE_0_ANGLE));
+        double delta = -(angleToTarget - (Math.toRadians(heading)));
         // determine angle that the turret servo needs
         // to turn to and account for the offset of the angle of the turret servo from the robot.
-        delta = TURRET_SERVO_RELATIVE_0_ANGLE + delta;
         // Normalize to [0, 360]
         //if(delta < 0) delta += 360;
         return delta;
@@ -356,7 +355,8 @@ public class HardwareSwyftBot
 
     public double computeAlignedFlapperPos() {
         double deltaServoPos = computeLaunchAngle()/(thetaMaxFlapper - thetaMinFlapper) + SHOOTER_SERVO_HORIZONTAL_POSITION;
-        return (deltaServoPos > SHOOTER_SERVO_POS_VERTICAL || deltaServoPos < SHOOTER_SERVO_HORIZONTAL_POSITION)? shooterServo.getPosition() : deltaServoPos;
+        return SHOOTER_SERVO_INIT;
+        //return (deltaServoPos > SHOOTER_SERVO_POS_VERTICAL || deltaServoPos < SHOOTER_SERVO_HORIZONTAL_POSITION)? shooterServo.getPosition() : deltaServoPos;
     }
 
     public double computeLaunchAngle() {

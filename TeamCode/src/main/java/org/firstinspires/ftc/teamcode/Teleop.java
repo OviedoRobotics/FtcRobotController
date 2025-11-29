@@ -175,6 +175,14 @@ public abstract class Teleop extends LinearOpMode {
                 }
             }
 
+            if (gamepad1_l_bumper_now && !gamepad1_l_bumper_last) {
+                robot.turretServo1.setPosition(robot.computeAlignedTurretPos());
+            }
+
+            if (gamepad1_r_bumper_now && !gamepad1_r_bumper_last) {
+                robot.shooterServo.setPosition(robot.computeAlignedFlapperPos());
+            }
+
             telemetry.addData("cross","Toggle Intake");
             telemetry.addData("triangle","Single Wheel Control");
             telemetry.addData("circle","Robot-centric (fwd/back modes)");
@@ -227,6 +235,10 @@ public abstract class Teleop extends LinearOpMode {
             telemetry.addData("Shooter RPM", "%.1f", robot.shooterMotorVel );
 //          telemetry.addData("Angles", "IMU %.2f, Pinpoint %.2f deg)", robot.headingIMU(), curAngle );
             telemetry.addData("CycleTime", "%.1f msec (%.1f Hz)", cycleTimeElapsed, cycleTimeHz);
+            telemetry.addData("TurretAngle", robot.computeTurretAngle());
+            telemetry.addData("FlapperAngle", robot.computeLaunchAngle());
+            telemetry.addData("Turret Position", robot.computeAlignedTurretPos());
+            telemetry.addData("Flapper Position", robot.computeAlignedFlapperPos());
             telemetry.update();
 
             // Pause for metronome tick.  40 mS each cycle = update 25 times a second.
