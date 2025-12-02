@@ -1,15 +1,15 @@
 package org.firstinspires.ftc.teamcode;
 
-import com.qualcomm.hardware.bosch.BNO055IMU;
-import com.qualcomm.hardware.bosch.JustLoggingAccelerationIntegrator;
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.LLStatus;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
+import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.IMU;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
@@ -18,6 +18,9 @@ import org.firstinspires.ftc.robotcore.external.navigation.Position;
 
 import java.util.List;
 
+import static com.qualcomm.hardware.rev.RevHubOrientationOnRobot.LogoFacingDirection;
+import static com.qualcomm.hardware.rev.RevHubOrientationOnRobot.UsbFacingDirection;
+
 /**
  * Test program to compare localization results from Limelight with GoBilda Pinpoint
  */
@@ -25,7 +28,7 @@ import java.util.List;
 //@Disabled
 public class TestPinpointLimelight3A extends LinearOpMode {
     //====== INERTIAL MEASUREMENT UNIT (IMU) =====
-    protected BNO055IMU imu = null;
+    protected IMU imu = null;
 
     //====== MECANUM DRIVETRAIN MOTORS (RUN_USING_ENCODER) =====
     DcMotorEx frontLeftMotor = null;
@@ -71,16 +74,12 @@ public class TestPinpointLimelight3A extends LinearOpMode {
 
     public void initIMU() {
         // Define and initialize REV Expansion Hub IMU
-        BNO055IMU.Parameters imu_params = new BNO055IMU.Parameters();
-        imu_params.angleUnit = BNO055IMU.AngleUnit.DEGREES;
-        imu_params.accelUnit = BNO055IMU.AccelUnit.METERS_PERSEC_PERSEC;
-        imu_params.calibrationDataFile = "BNO055IMUCalibration.json"; // located in FIRST/settings folder
-        imu_params.loggingEnabled = false;
-        imu_params.loggingTag = "IMU";
-        imu_params.accelerationIntegrationAlgorithm = new JustLoggingAccelerationIntegrator();
-
-        imu = hardwareMap.get(BNO055IMU.class, "imu");
-        imu.initialize(imu_params);
+        // This needs to be changed to match the orientation on the robot
+        LogoFacingDirection logoDirection = LogoFacingDirection.UP;
+        UsbFacingDirection usbDirection = UsbFacingDirection.FORWARD;
+        RevHubOrientationOnRobot orientationOnRobot = new RevHubOrientationOnRobot(logoDirection, usbDirection);
+        imu = hardwareMap.get(IMU.class, "imu");
+        imu.initialize(new IMU.Parameters(orientationOnRobot));
     }
 
     void initDrivetrain() {
@@ -137,7 +136,7 @@ public class TestPinpointLimelight3A extends LinearOpMode {
             telemetry.addData("Limelight Latency (msec)", captureLatency + targetingLatency);
             telemetry.addData("Parse Latency (msec)", parseLatency);
             // Better to use controller or pinpoint IMU?
-            double robotYaw = imu.getAngularOrientation().firstAngle;
+            double robotYaw = imu.getRobotYawPitchRollAngles().getYaw();
             limelight.updateRobotOrientation(robotYaw);
             Pose3D botpose = llResult.getBotpose_MT2();
             if (botpose != null) {

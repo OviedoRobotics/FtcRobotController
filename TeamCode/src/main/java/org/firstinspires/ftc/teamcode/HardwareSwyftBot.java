@@ -1,14 +1,16 @@
 package org.firstinspires.ftc.teamcode;
 
+import static com.qualcomm.hardware.rev.RevHubOrientationOnRobot.LogoFacingDirection;
+import static com.qualcomm.hardware.rev.RevHubOrientationOnRobot.UsbFacingDirection;
 import static java.lang.Thread.sleep;
 
-import com.qualcomm.hardware.bosch.BNO055IMU;
-import com.qualcomm.hardware.bosch.JustLoggingAccelerationIntegrator;
 import com.qualcomm.hardware.lynx.LynxModule;
+import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -29,7 +31,7 @@ public class HardwareSwyftBot
     LynxModule expansionHub;
 
     //====== INERTIAL MEASUREMENT UNIT (IMU) =====
-    protected BNO055IMU imu    = null;
+    protected IMU imu          = null;
     public double headingAngle = 0.0;
     public double tiltAngle    = 0.0;
 
@@ -284,22 +286,18 @@ public class HardwareSwyftBot
     public void initIMU()
     {
         // Define and initialize REV Expansion Hub IMU
-        BNO055IMU.Parameters imu_params = new BNO055IMU.Parameters();
-        imu_params.angleUnit = BNO055IMU.AngleUnit.DEGREES;
-        imu_params.accelUnit = BNO055IMU.AccelUnit.METERS_PERSEC_PERSEC;
-        imu_params.calibrationDataFile = "BNO055IMUCalibration.json"; // located in FIRST/settings folder
-        imu_params.loggingEnabled = false;
-        imu_params.loggingTag = "IMU";
-        imu_params.accelerationIntegrationAlgorithm = new JustLoggingAccelerationIntegrator();
-
-        imu = hwMap.get(BNO055IMU.class, "imu");
-        imu.initialize( imu_params );
+        // This needs to be changed to match the orientation on the robot
+        LogoFacingDirection logoDirection = LogoFacingDirection.UP;
+        UsbFacingDirection usbDirection = UsbFacingDirection.FORWARD;
+        RevHubOrientationOnRobot orientationOnRobot = new RevHubOrientationOnRobot(logoDirection, usbDirection);
+        imu = hwMap.get(IMU.class, "imu");
+        imu.initialize(new IMU.Parameters(orientationOnRobot));
     } // initIMU()
 
     /*--------------------------------------------------------------------------------------------*/
     public double headingIMU()
     {
-        Orientation angles = imu.getAngularOrientation( AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES );
+        Orientation angles = imu.getRobotOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
         headingAngle = angles.firstAngle;
         tiltAngle = angles.secondAngle;
         return -headingAngle;  // degrees (+90 is CW; -90 is CCW)
