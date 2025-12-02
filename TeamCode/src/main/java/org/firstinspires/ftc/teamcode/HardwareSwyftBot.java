@@ -287,7 +287,11 @@ public class HardwareSwyftBot
     {
         // Define and initialize REV Expansion Hub IMU
         // This needs to be changed to match the orientation on the robot
-        LogoFacingDirection logoDirection = LogoFacingDirection.UP;
+        // robot v1:
+//        LogoFacingDirection logoDirection = LogoFacingDirection.RIGHT;
+//        UsbFacingDirection usbDirection = UsbFacingDirection.UP;
+        // robot v2:
+        LogoFacingDirection logoDirection = LogoFacingDirection.LEFT;
         UsbFacingDirection usbDirection = UsbFacingDirection.FORWARD;
         RevHubOrientationOnRobot orientationOnRobot = new RevHubOrientationOnRobot(logoDirection, usbDirection);
         imu = hwMap.get(IMU.class, "imu");
