@@ -178,16 +178,16 @@ public class HardwareSwyftBot
         // Locate the odometry controller in our hardware settings
         odom = hwMap.get(GoBildaPinpointDriver.class,"odom");    // Expansion Hub I2C port 1
 //      odom.setOffsets(0.0, 0.0, DistanceUnit.MM);   // odometry pod x,y locations relative center of robot
-        odom.setOffsets(-74.6, -210.0, DistanceUnit.MM);      // odometry pod x,y locations relative center of robot  2 2
+        odom.setOffsets(-80.0, -180.0, DistanceUnit.MM);      // odometry pod x,y locations relative center of robot  2 2
         odom.setEncoderResolution( GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD ); // 4bar pods
         odom.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.REVERSED,
-                                  GoBildaPinpointDriver.EncoderDirection.FORWARD);
+                                GoBildaPinpointDriver.EncoderDirection.FORWARD);
         if( isAutonomous ) {
             odom.resetPosAndIMU();
         }
 
         // defines initial pose of robot on field.  white tip of far tape facing obelisk: x = 72in., y = 24in., orientation = 90deg.
-        odom.setPosition(startingPos);
+        //odom.setPosition(startingPos);
 
         // Define and Initialize drivetrain motors
         frontLeftMotor  = hwMap.get(DcMotorEx.class,"FrontLeft");  // Expansion Hub port 0 (FORWARD)
@@ -290,9 +290,9 @@ public class HardwareSwyftBot
     // Resets odometry starting position and angle to zero accumulated encoder counts
     public void resetGlobalCoordinatePosition(){
 //      robot.odom.resetPosAndIMU();   // don't need a full recalibration, just reset for any movement
-        odom.setOffsets(0.0, 0.0, DistanceUnit.MM);
+        //odom.setOffsets(0.0, 0.0, DistanceUnit.MM);
 //      robot.odom.setHeading( 180.0, AngleUnit.DEGREES ); // start pointing backward!
-        odom.resetPosAndIMU();
+        //odom.resetPosAndIMU();
         robotGlobalXCoordinatePosition = 0.0;  // This will get overwritten the first time
         robotGlobalYCoordinatePosition = 0.0;  // we call robot.odom.update()!
         robotOrientationDegrees        = 0.0;
