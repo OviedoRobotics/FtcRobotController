@@ -111,6 +111,7 @@ public abstract class Teleop extends LinearOpMode {
             // Normally autonomous resets encoders.  Do we need to for teleop??
             if( gamepad1_cross_now && !gamepad1_cross_last) {
                 robot.resetEncoders();
+                robot.resetGlobalCoordinatePosition();
             }
             // Pause briefly before looping
             idle();
@@ -125,6 +126,7 @@ public abstract class Teleop extends LinearOpMode {
 
             // Bulk-refresh the Control/Expansion Hub device status (motor status, digital I/O) -- FASTER!
             robot.readBulkData();
+            robot.performEveryLoop();
 
             // Request an update from the Pinpoint odometry computer (single I2C read)
             if( enableOdometry ) {
@@ -239,6 +241,10 @@ public abstract class Teleop extends LinearOpMode {
             telemetry.addData("FlapperAngle", robot.computeLaunchAngle());
             telemetry.addData("Turret Position", robot.computeAlignedTurretPos());
             telemetry.addData("Flapper Position", robot.computeAlignedFlapperPos());
+            telemetry.addData("Robot Global X", robot.robotGlobalXCoordinatePosition);
+            telemetry.addData("Robot Global Y", robot.robotGlobalYCoordinatePosition);
+            telemetry.addData("Robot Global Orientation", robot.robotOrientationDegrees);
+            telemetry.addData("Robot Global Orientation Pinpoint", robot.odom.getPosition().getHeading(AngleUnit.DEGREES));
             telemetry.update();
 
             // Pause for metronome tick.  40 mS each cycle = update 25 times a second.

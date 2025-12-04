@@ -18,6 +18,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
+import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
 
 /*
  * Hardware class for Swyft Robotics SWYFT DRIVE V2 chassis with 86mm mecanum wheels
@@ -72,6 +73,19 @@ public class HardwareSwyftBot
     protected double COUNTS_PER_INCH       = (COUNTS_PER_MOTOR_REV * DRIVE_GEAR_REDUCTION * MECANUM_SLIPPAGE) / (WHEEL_DIAMETER_INCHES * 3.1415);
     // The math above assumes motor encoders.  For REV odometry pods, the counts per inch is different
     protected double COUNTS_PER_INCH2      = 1738.4;  // 8192 counts-per-rev / (1.5" omni wheel * PI)
+
+    // Left Corner is (0,0) Facing obelisk is 90deg
+    double startingRobotGlobalXPosition = 0; // x inches
+    double startingRobotGlobalYPosition = 0; // y inches
+    double startingRobotOrientationDegrees = 0; // field orientation in deg
+
+    Pose2D startingPos = new Pose2D(DistanceUnit.INCH, startingRobotGlobalXPosition, startingRobotGlobalYPosition, AngleUnit.DEGREES, startingRobotOrientationDegrees);
+
+
+    // Absolute Position of Robot on the field.
+    double robotGlobalXCoordinatePosition       = 0;   // inches
+    double robotGlobalYCoordinatePosition       = 0;   // inches
+    double robotOrientationDegrees              = 0;   // degrees 90deg (facing obelisk)
 
     //====== 2025 DECODE SEASON MECHANISM MOTORS (RUN_USING_ENCODER) =====
     protected DcMotorEx intakeMotor     = null;
@@ -163,14 +177,17 @@ public class HardwareSwyftBot
 
         // Locate the odometry controller in our hardware settings
         odom = hwMap.get(GoBildaPinpointDriver.class,"odom");    // Expansion Hub I2C port 1
-        odom.setOffsets(0.0, 0.0, DistanceUnit.MM);   // odometry pod x,y locations relative center of robot
-//      odom.setOffsets(0.00, 0.00, DistanceUnit.MM);      // odometry pod x,y locations relative center of robot  2 2
+//      odom.setOffsets(0.0, 0.0, DistanceUnit.MM);   // odometry pod x,y locations relative center of robot
+        odom.setOffsets(-74.6, -210.0, DistanceUnit.MM);      // odometry pod x,y locations relative center of robot  2 2
         odom.setEncoderResolution( GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD ); // 4bar pods
         odom.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.REVERSED,
-                                  GoBildaPinpointDriver.EncoderDirection.REVERSED);
+                                  GoBildaPinpointDriver.EncoderDirection.FORWARD);
         if( isAutonomous ) {
             odom.resetPosAndIMU();
         }
+
+        // defines initial pose of robot on field.  white tip of far tape facing obelisk: x = 72in., y = 24in., orientation = 90deg.
+        odom.setPosition(startingPos);
 
         // Define and Initialize drivetrain motors
         frontLeftMotor  = hwMap.get(DcMotorEx.class,"FrontLeft");  // Expansion Hub port 0 (FORWARD)
@@ -270,6 +287,42 @@ public class HardwareSwyftBot
     } /* init */
 
     /*--------------------------------------------------------------------------------------------*/
+    // Resets odometry starting position and angle to zero accumulated encoder counts
+    public void resetGlobalCoordinatePosition(){
+//      robot.odom.resetPosAndIMU();   // don't need a full recalibration, just reset for any movement
+        odom.setOffsets(0.0, 0.0, DistanceUnit.MM);
+//      robot.odom.setHeading( 180.0, AngleUnit.DEGREES ); // start pointing backward!
+        odom.resetPosAndIMU();
+        robotGlobalXCoordinatePosition = 0.0;  // This will get overwritten the first time
+        robotGlobalYCoordinatePosition = 0.0;  // we call robot.odom.update()!
+        robotOrientationDegrees        = 0.0;
+    } // resetGlobalCoordinatePosition
+
+    /*---------------------------------------------------------------------------------*/
+    public void performEveryLoop() {
+        readBulkData();  // 7.3 msec for readBulkData
+        odom.update();   // 6.9 msec for odom.update + odom.getPosition (14 msec total)
+        Pose2D pos = odom.getPosition();  // x,y pos in inch; heading in degrees
+        robotGlobalXCoordinatePosition = pos.getX(DistanceUnit.INCH);
+        robotGlobalYCoordinatePosition = pos.getY(DistanceUnit.INCH);
+        robotOrientationDegrees        = pos.getHeading(AngleUnit.DEGREES);
+        processInjectionStateMachine();
+    } // performEveryLoop
+
+    /*--------------------------------------------------------------------------------------------*/
+    public void readBulkData() {
+        // For MANUAL mode, we must clear the BulkCache once per control cycle
+        expansionHub.clearBulkCache();
+        controlHub.clearBulkCache();
+        // Get a fresh set of values for this cycle
+        //   getCurrentPosition() / getTargetPosition() / getTargetPositionTolerance()
+        //   getPower() / getVelocity() / getCurrent()
+        shooterMotorVel = shooterMotor1.getVelocity();
+        // NOTE: motor mA data is NOT part of the bulk-read, so increases cycle time!
+//      shooterMotorAmps = shooterMotor1.getCurrent(MILLIAMPS);
+    } // readBulkData
+
+    /*--------------------------------------------------------------------------------------------*/
     public void resetEncoders() throws InterruptedException {
         // Initialize the injector servo first! (so it's out of the way for spindexer rotation)
         liftServo.setPosition(LIFT_SERVO_INIT);
@@ -318,7 +371,7 @@ public class HardwareSwyftBot
     static double Z_BIN = 3.23;
     static double Z_SHOOTER = 0.5;  // get actual measurement
     static double TURRET_SERVO_RELATIVE_0_ANGLE = 0; // offset from robot heading and turret servo. (if robot is straight and turret is to the left, this angle is 90)
-    static double TURRET_SERVO_HORIZONTAL_POSITION = TURRET_SERVO_INIT;
+    static double TURRET_SERVO_HORIZONTAL_POSITION = TURRET_SERVO_INIT; // position of turret servo when turret is aligned with the back of the robot
     static double SHOOTER_SERVO_POS_VERTICAL = 0.64;
 
     static double SHOOTER_SERVO_HORIZONTAL_POSITION = 0.39;
@@ -328,12 +381,10 @@ public class HardwareSwyftBot
     }
 
     public double computeTurretAngle() {
-        // absolute heading of the robot relative to the field. 90 is facing forward (ccw is positive)
-        double driveTrainHeading = -1*headingIMU() + STARTING_HEADING;
-        //double xR = odom.getPosY(DistanceUnit.MM);
-        //double yR = odom.getPosX(DistanceUnit.MM);
-        double xR = TEST_LAUNCH_X;
-        double yR = TEST_LAUNCH_Y;
+        // absolute heading of the robot relative to the field. 90 is facing obelisk (ccw is positive)
+        double driveTrainHeading = robotOrientationDegrees;
+        double xR = robotGlobalXCoordinatePosition/12.0; // convert to feet
+        double yR = robotGlobalYCoordinatePosition/12.0; // convert to feet
         double xB = X_BIN_L;
         double yB = Y_BIN_L;
 
@@ -343,7 +394,7 @@ public class HardwareSwyftBot
     }
 
     public double calculateHeadingChange(double xR, double yR, double xB, double yB, double heading) {
-        double angleToTarget = Math.atan2(yB- yR, xB- xR); // in radians
+        double angleToTarget = Math.atan2(yB-yR, xB-xR); // in radians
         // in radians. servo clockwise direction is positive need to multiply by negative one.
         double delta = -(angleToTarget - (Math.toRadians(heading)));
         // determine angle that the turret servo needs
@@ -361,7 +412,7 @@ public class HardwareSwyftBot
 
     public double computeLaunchAngle() {
         double v = LAUNCH_EXIT_SPEED;
-        double d = Math.sqrt((Math.pow((X_BIN_L - TEST_LAUNCH_X), 2) + Math.pow((Y_BIN_L - TEST_LAUNCH_Y),2)));
+        double d = Math.sqrt((Math.pow((X_BIN_L - robotGlobalXCoordinatePosition/12.0), 2) + Math.pow((Y_BIN_L - robotGlobalYCoordinatePosition/12.0),2)));
         double h = Z_BIN - Z_SHOOTER;
         double g = 32.174;  // ft/sec/sec gravitational constant
 
@@ -376,7 +427,7 @@ public class HardwareSwyftBot
         double tanTheta1 = (v * v + sqrtTerm) / (g * d);
         double tanTheta2 = (v * v - sqrtTerm) / (g * d);
 
-        // Compute angles in radians
+        // Compute angles in radians (2 of them)
         double theta1 = Math.atan(tanTheta1);
         double theta2 = Math.atan(tanTheta2);
 
@@ -386,19 +437,6 @@ public class HardwareSwyftBot
 
         return Math.toDegrees(thetaUp);
     } // computeAbsoluteAngle
-
-    /*--------------------------------------------------------------------------------------------*/
-    public void readBulkData() {
-        // For MANUAL mode, we must clear the BulkCache once per control cycle
-        expansionHub.clearBulkCache();
-        controlHub.clearBulkCache();
-        // Get a fresh set of values for this cycle
-        //   getCurrentPosition() / getTargetPosition() / getTargetPositionTolerance()
-        //   getPower() / getVelocity() / getCurrent()
-        shooterMotorVel = shooterMotor1.getVelocity();
-        // NOTE: motor mA data is NOT part of the bulk-read, so increases cycle time!
-//      shooterMotorAmps = shooterMotor1.getCurrent(MILLIAMPS);
-    } // readBulkData
 
     /*--------------------------------------------------------------------------------------------*/
     public void driveTrainMotors( double frontLeft, double frontRight, double rearLeft, double rearRight )
