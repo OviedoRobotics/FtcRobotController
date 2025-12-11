@@ -1,13 +1,14 @@
 package org.firstinspires.ftc.teamcode;
 
-import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
+import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
 /**
  * goBilda Pinpoint Odometry Computer offset callibration. Run this OpMode to 
@@ -96,9 +97,9 @@ public class TestPinpointOffsets extends LinearOpMode {
         // Locate the odometry controller in our hardware settings
         odom = hardwareMap.get(GoBildaPinpointDriver.class,"odom");   // Expansion Hub I2C port 1
         if( fineTuneOnly ) { // assume we've run this before and only need to fine-tune
-            odom.setOffsets(59.25, -171.28, DistanceUnit.MM);  // odometry pod x,y offsets relative center of robot
-           startXoffset = 59.25; // mm
-           startYoffset = -171.28; // mm
+           odom.setOffsets(-84.88, -169.47, DistanceUnit.MM);  // odometry pod x,y offsets relative center of robot
+           startXoffset = -84.88; // mm
+           startYoffset = -69.47; // mm
         } else { // assume we're starting with complete unknowns
            odom.setOffsets( 0.0, 0.0, DistanceUnit.MM);      // odometry pod x,y offsets relative center of robot
            startXoffset = 0.0; // mm
@@ -106,7 +107,7 @@ public class TestPinpointOffsets extends LinearOpMode {
         }
         odom.setEncoderResolution( GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD );
         odom.setEncoderDirections( GoBildaPinpointDriver.EncoderDirection.REVERSED,
-                                  GoBildaPinpointDriver.EncoderDirection.FORWARD);
+                                   GoBildaPinpointDriver.EncoderDirection.REVERSED);
         odom.resetPosAndIMU();
 
         // Query hardware info
@@ -162,9 +163,9 @@ public class TestPinpointOffsets extends LinearOpMode {
         prevXinches = currXinches;
         prevYinches = currYinches;
         prevAngle   = currAngle;
-        // Shift drivetrain FORWARD at 25% power for 1/2 second
-        driveTrainFwdRev( 0.25 );
-        sleep(500 );  // 500 msec
+        // Shift drivetrain LEFT at 25% power for 1/2 second
+        driveTrainLeftRight( 0.25 );
+        sleep(500);  // 500 msec
         driveTrainMotorsZero();
         // Note our new position
         readPinpointUpdateVariables();
@@ -202,8 +203,8 @@ public class TestPinpointOffsets extends LinearOpMode {
         prevXinches = currXinches;
         prevYinches = currYinches;
         prevAngle   = currAngle;
-        // Shift drivetrain RIGHT at 25% power for 1/2 second
-        driveTrainRightLeft( 0.25 );
+        // Shift drivetrain FWD at 25% power for 1/2 second
+        driveTrainFwdRev( 0.25 );
         sleep(500 );  // 500 msec
         driveTrainMotorsZero();
         // Note our new position
@@ -512,8 +513,8 @@ public class TestPinpointOffsets extends LinearOpMode {
     } // checkWithUser
 
     /*--------------------------------------------------------------------------------------------*/
-    /* Set all 4 motor powers to strafe RIGHT (Ex: +0.10) or LEFT (Ex: -0.10)                     */
-    public void driveTrainRightLeft( double motorPower )
+    /* Set all 4 motor powers to drive +X straight FORWARD (Ex: +0.10) or REVERSE (Ex: -0.10)     */
+    public void driveTrainFwdRev( double motorPower )
     {
         frontLeftMotor.setPower(  motorPower );
         frontRightMotor.setPower( motorPower );
@@ -522,14 +523,14 @@ public class TestPinpointOffsets extends LinearOpMode {
     } // driveTrainFwdRev
 
     /*--------------------------------------------------------------------------------------------*/
-    /* Set all 4 motor powers to drive straight FORWARD (Ex: +0.10) or REVERSE (Ex: -0.10)        */
-    public void driveTrainFwdRev( double motorPower )
+    /* Set all 4 motor powers to strafe +Y LEFT (Ex: +0.10) or LEFT (Ex: -0.10)                     */
+    public void driveTrainLeftRight( double motorPower )
     {
-        frontLeftMotor.setPower(   -motorPower );
-        frontRightMotor.setPower( motorPower );
-        rearLeftMotor.setPower(   motorPower );
-        rearRightMotor.setPower(   -motorPower );
-    } // driveTrainRightLeft
+        frontLeftMotor.setPower(  -motorPower );
+        frontRightMotor.setPower(  motorPower );
+        rearLeftMotor.setPower(    motorPower );
+        rearRightMotor.setPower(  -motorPower );
+    } // driveTrainLeftRight
 
     /*--------------------------------------------------------------------------------------------*/
     /* Set all 4 motor powers to turn clockwise (Ex: +0.10) or counterclockwise (Ex: -0.10)       */

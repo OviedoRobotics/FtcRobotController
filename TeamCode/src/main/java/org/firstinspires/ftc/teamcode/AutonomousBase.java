@@ -82,9 +82,61 @@ public abstract class AutonomousBase extends LinearOpMode {
     boolean     redAlliance      = true;  // Is alliance BLUE (true) or RED (false)?
     boolean     forceAlliance    = false; // Override vision pipeline? (toggled during init phase of autonomous)
     int         initMenuSelected = 1;    // start on the first entry
-    int         initMenuMax      = 6;    // we have 6 total entries
+    int         initMenuMax      = 2;    // we have 6 total entries
     int         startDelaySec    = 0;     // 1: wait [seconds] at startup -- applies to both left/rigth starting positions
     int         scoringZones     = 0;
+
+    //---------------------------------------------------------------------------------------
+    // When to open the gate and release classified balls during autonomous is a function
+    // of many factors.  This setting controls when our robot will open the gate.  It could
+    // be NEVER, if we either only score 9 balls total and want them to get scored at the
+    // end of autonomous, or if we plan to score more than 9 total but our alliance partner
+    // tasked with opening the gate.  Similiarly, after the first pre-loaded 3 balls, or 6
+    // balls or all 9 balls, depending upon other factors.  This allows dynamic selection
+    // during init.
+    public enum GateOptions {
+       GATE_NEVER("NEVER"),    // NEVER open the gate during Autonomous
+       GATE_AFTER3("After 3"), // Open the gate after scoring 3 balls
+       GATE_AFTER6("After 6"), // Open the gate after scoring 6 balls
+       GATE_AFTER9("After 9"); // Open the gate after scoring 9 balls
+
+       private final String description;
+
+       // Private constructor - called for each enum constant above
+       private GateOptions(String description) {
+           this.description = description;
+       }
+
+       // Description Getter
+       public String getDescription() {
+           return description;
+       }
+
+       // Nice string representation
+       @Override
+       public String toString() {
+           return name() + " (" + description + ")";
+       }
+
+       // Increment (next) with wrap-around back to start
+       public GateOptions next() {
+           GateOptions[] values = values();
+           return values[(this.ordinal() + 1) % values.length];
+       }
+
+       // Decrement (previous) with wrap-around back to end
+       public GateOptions prev() {
+           GateOptions[] values = values();
+           int prevIndex = (this.ordinal() - 1 + values.length) % values.length;
+           // the +values.length guarantees non-negative result when ordinal() == 0
+           return values[prevIndex];
+       }
+
+    } // enum
+
+    GateOptions gateOption = GateOptions.GATE_NEVER;
+
+    //---------------------------------------------------------------------------------------
 
     ElapsedTime autonomousTimer     = new ElapsedTime();  // overall
     ElapsedTime motionTimer         = new ElapsedTime();  // for driving
@@ -112,6 +164,9 @@ public abstract class AutonomousBase extends LinearOpMode {
     } // captureGamepad1Buttons
 
     protected void processAutonomousInitMenu(boolean auto5) {
+        // Refresh the gamepad controls
+        captureGamepad1Buttons();
+
         boolean nextEntry = (gamepad1_dpad_down_now  && !gamepad1_dpad_down_last);
         boolean prevEntry = (gamepad1_dpad_up_now    && !gamepad1_dpad_up_last);
         boolean nextValue = (gamepad1_dpad_right_now && !gamepad1_dpad_right_last);
@@ -140,7 +195,7 @@ public abstract class AutonomousBase extends LinearOpMode {
         if( nextEntry ) {
             initMenuSelected++;
             if (initMenuSelected > initMenuMax) {
-                initMenuSelected = 1;
+                initMenuSelected = 1;  // wrap back to the start
             }
         } // next
 
@@ -148,22 +203,32 @@ public abstract class AutonomousBase extends LinearOpMode {
         if( prevEntry ) {
             initMenuSelected--;
             if (initMenuSelected < 1) {
-                initMenuSelected = initMenuMax;
+                initMenuSelected = initMenuMax;  // wrap down to the end
             }
         } // prev
 
         switch( initMenuSelected ) {
-            case 1 : // START DELAY [sec]
+            //-------------- START DELAY [sec] --------------
+            case 1 :
                 if( nextValue ) {
                     if (startDelaySec < 9) {
                         startDelaySec++;
                     }
                 } // next
-
                 if( prevValue ) {
                     if (startDelaySec > 0) {
                         startDelaySec--;
                     }
+                } // prev
+                break;
+            //-------------- GATE OPTIONS [never, etc]  --------------
+            case 2 :
+                if( nextValue ) {
+                  gateOption = gateOption.next();
+                } // next
+
+                if( prevValue ) {
+                  gateOption = gateOption.prev();
                 } // prev
                 break;
             default : // recover from bad state
@@ -174,9 +239,10 @@ public abstract class AutonomousBase extends LinearOpMode {
         // Update our telemetry
         performEveryLoop();
         telemetry.addData("Start Delay",  "%d sec %s", startDelaySec, ((initMenuSelected==1)? "<-":"  ") );
+        telemetry.addData("Open Gate", "%s %s", gateOption.getDescription(), ((initMenuSelected==2)? "<-":"  ") );
         telemetry.addData("Odometry","x=%.2f y=%.2f  %.2f deg",
                 robotGlobalXCoordinatePosition, robotGlobalYCoordinatePosition, Math.toDegrees(robotOrientationRadians) );
-        telemetry.addLine("<LIST CONTROLS HERE TO PRE-LOAD 3 BALLS>");
+        telemetry.addLine("Preload=PPG (Green in front right!)");
         telemetry.addData(">","version 100" );
         telemetry.update();
     } // processAutonomousInitMenu
@@ -1066,7 +1132,7 @@ public abstract class AutonomousBase extends LinearOpMode {
             driveToPosition(-12.0, 0.0, 0.0, DRIVE_SPEED_10, TURN_SPEED_15, DRIVE_TO);
             // Swivel the turret toward the RED or BLUE goal
             robot.shooterServo.setPosition(0.5);  // NOT ACTUALLY USED
-            robot.turretServo1.setPosition( (isRed)? 0.55 : 0.43 ); // right toward RED or left toward BLUE
+            robot.turretServo.setPosition( (isRed)? 0.55 : 0.43 ); // right toward RED or left toward BLUE
             // Turn on collector to help retain balls during spindexing
             robot.intakeMotor.setPower(0.90);
             sleep(4000 ); // Wait a bit longer for flywheels to reach speed

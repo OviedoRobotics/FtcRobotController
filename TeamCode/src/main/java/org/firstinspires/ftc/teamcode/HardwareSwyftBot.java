@@ -1,17 +1,21 @@
 package org.firstinspires.ftc.teamcode;
 
+import static com.qualcomm.hardware.rev.RevHubOrientationOnRobot.LogoFacingDirection;
+import static com.qualcomm.hardware.rev.RevHubOrientationOnRobot.UsbFacingDirection;
 import static java.lang.Thread.sleep;
 
-import com.qualcomm.hardware.bosch.BNO055IMU;
-import com.qualcomm.hardware.bosch.JustLoggingAccelerationIntegrator;
 import com.qualcomm.hardware.lynx.LynxModule;
+import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.AnalogInput;
+import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
+import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
@@ -19,7 +23,6 @@ import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
-
 /*
  * Hardware class for Swyft Robotics SWYFT DRIVE V2 chassis with 86mm mecanum wheels
  */
@@ -29,8 +32,11 @@ public class HardwareSwyftBot
     LynxModule controlHub;
     LynxModule expansionHub;
 
+    public boolean isRobot1 = false;  // see IMU initialization below
+    public boolean isRobot2 = false;
+
     //====== INERTIAL MEASUREMENT UNIT (IMU) =====
-    protected BNO055IMU imu    = null;
+    protected IMU imu          = null;
     public double headingAngle = 0.0;
     public double tiltAngle    = 0.0;
 
@@ -92,7 +98,10 @@ public class HardwareSwyftBot
 
     protected DcMotorEx shooterMotor1   = null;  // upper 
     protected DcMotorEx shooterMotor2   = null;  // lower
-    public    double    shooterMotorVel = 0.0; // encoder counts per second
+    public    double    shooterMotor1Vel = 0.0; // encoder counts per second
+    public    double    shooterMotor2Vel = 0.0; // encoder counts per second
+    public    double    shooterMotor1Amps= 0.0; // mA
+    public    double    shooterMotor2Amps= 0.0; // mA
 
     public final static double SHOOTER_MOTOR_FAR  = 0.55;
     public final static double SHOOTER_MOTOR_MID  = 0.45;
@@ -112,24 +121,54 @@ public class HardwareSwyftBot
     public double shooterServoCurPos = SHOOTER_SERVO_INIT;
 
     //====== TURRET 5-turn SERVOS =====
-    public Servo       turretServo1    = null;
-    public Servo       turretServo2    = null;
-    public AnalogInput turretServoPos1 = null;
-    public AnalogInput turretServoPos2 = null;
+    public Servo       turretServo    = null;  // 1 servos! (controlled together via Y cable)
+    public AnalogInput turretServoPos = null;
 
-    public final static double TURRET_SERVO_INIT = 0.49;
-    public final static double TURRET_SERVO_P90 = 0.73;
-    public final static double TURRET_SERVO_N90 = 0.29;
-    public final static double TURRET_SERVO_MAX = 0.93; // +180
-    public final static double TURRET_SERVO_MIN = 0.07; // -180
+    // NOTE: Although the turret can spin to +180deg, the cable blocks the shooter hood exit
+    // once you reach +55deg, so that's our effect MAX turret angle on the right side.
+    public final static double TURRET_SERVO_MAX2 = 0.93; // +180 deg (turret max)
+    public final static double TURRET_SERVO_P90  = 0.73; // +90 deg
+    public final static double TURRET_SERVO_MAX  = 0.64; // +55deg
+    public final static double TURRET_SERVO_INIT = 0.49; //   0 deg
+    public final static double TURRET_SERVO_N90  = 0.29; // -90 deg
+    public final static double TURRET_SERVO_MIN  = 0.06; // -180deg
 
     //====== SPINDEXER SERVO =====
     public Servo       spinServo    = null;
+    public CRServo     spinServoCR  = null;
     public AnalogInput spinServoPos = null;
 
-    public final static double SPIN_SERVO_P1 = 0.13;    // position 1
-    public final static double SPIN_SERVO_P2 = 0.50;    // position 2 (also the INIT position)
-    public final static double SPIN_SERVO_P3 = 0.88;    // position 3
+    public enum SpindexerTargetPosition {
+        P1(47),
+        P2(167),
+        P3(287);
+
+        public final double degrees;
+
+        SpindexerTargetPosition(double degrees) {
+            this.degrees = degrees;
+        }
+    }
+
+    public SpindexerTargetPosition currentSpindexerTarget = SpindexerTargetPosition.P1;
+
+    public double spindexerPowerSetting = 0.0;
+
+    private void cycleSpindexerTarget(int direction) {
+        // direction: +1 increments, -1 decrements (with wraparound)
+        SpindexerTargetPosition[] values = SpindexerTargetPosition.values();
+        int index = currentSpindexerTarget.ordinal() + direction;
+        if (index < 0) index = values.length - 1;
+        if (index >= values.length) index = 0;
+        currentSpindexerTarget = values[index];
+    }
+
+  public final static double SPIN_SERVO_P1 = 0.13;    // position 1 ROBOT1
+  public final static double SPIN_SERVO_P2 = 0.50;    // position 2 (also the INIT position)
+  public final static double SPIN_SERVO_P3 = 0.88;    // position 3
+//    public final static double SPIN_SERVO_P1 = 0.12;    // position 1 ROBOT2
+//    public final static double SPIN_SERVO_P2 = 0.49;    // position 2 (also the INIT position)
+//    public final static double SPIN_SERVO_P3 = 0.87;    // position 3
 
     public enum SpindexerState {
         SPIN_P1,
@@ -148,9 +187,17 @@ public class HardwareSwyftBot
     public boolean     liftServoBusyD = false;  // busy going DOWN (resetting)
     public ElapsedTime liftServoTimer = new ElapsedTime();
 
-    public final static double LIFT_SERVO_INIT   = 0.49;
-    public final static double LIFT_SERVO_RESET  = 0.49;
-    public final static double LIFT_SERVO_INJECT = 0.31;
+  public final static double LIFT_SERVO_INIT   = 0.490;  // ROBOT1
+  public final static double LIFT_SERVO_RESET  = 0.490;
+//    public final static double LIFT_SERVO_INIT   = 0.507;  // ROBOT2
+//    public final static double LIFT_SERVO_RESET  = 0.507;
+    public final static double LIFT_SERVO_INJECT = 0.310;
+
+    public enum MotifOptions {
+        MOTIF_GPP,  // GREEN, PURPLE, PURPLE
+        MOTIF_PGP,  // PURPLE, GREEN, PURPLE
+        MOTIF_PPG   // PURPLE, PURPLE, GREEN
+    }
 
     /* local OpMode members. */
     protected HardwareMap hwMap = null;
@@ -175,13 +222,16 @@ public class HardwareSwyftBot
             module.setBulkCachingMode(LynxModule.BulkCachingMode.MANUAL);
         }
 
+        // Initialize REV Control Hub IMU
+        // NOTE: call this first so it defines whether we're ROBOT1 or ROBOT2
+        initIMU();
+
         // Locate the odometry controller in our hardware settings
-        odom = hwMap.get(GoBildaPinpointDriver.class,"odom");    // Expansion Hub I2C port 1
-//      odom.setOffsets(0.0, 0.0, DistanceUnit.MM);   // odometry pod x,y locations relative center of robot
-        odom.setOffsets(-84.88, -169.47, DistanceUnit.MM);      // odometry pod x,y locations relative center of robot  2 2
+        odom = hwMap.get(GoBildaPinpointDriver.class,"odom");  // Expansion Hub I2C port 1
+        odom.setOffsets(-84.88, -169.47, DistanceUnit.MM);     // odometry pod x,y offsets relative center of robot
         odom.setEncoderResolution( GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD ); // 4bar pods
         odom.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.REVERSED,
-                                GoBildaPinpointDriver.EncoderDirection.REVERSED);
+                                  GoBildaPinpointDriver.EncoderDirection.REVERSED);
         if( isAutonomous ) {
             odom.resetPosAndIMU();
         }
@@ -220,9 +270,9 @@ public class HardwareSwyftBot
         rearLeftMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rearRightMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        // Define and Initialize intake motor
+        // Define and Initialize intake motor (left side on ROBOT1, right side on ROBOT2)
         intakeMotor  = hwMap.get(DcMotorEx.class,"IntakeMotor");  // Expansion Hub port 2
-        intakeMotor.setDirection(DcMotor.Direction.FORWARD);
+        intakeMotor.setDirection( (isRobot2)? DcMotor.Direction.REVERSE :  DcMotor.Direction.FORWARD);
         intakeMotor.setPower( 0.0 );
         intakeMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         intakeMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
@@ -263,26 +313,22 @@ public class HardwareSwyftBot
 //      shooterServoPos = hwMap.analogInput.get("shooterServoPos"); // Analog port ? (Control Hub)
 
         // Initialize the servos that rotate the turret
-        turretServo1    = hwMap.servo.get("turretServo");          // servo port 2 (Control Hub)
-//      turretServoPos1 = hwMap.analogInput.get("turretServoPos1"); // Analog port ? (Control Hub)
-//      turretServo2    = hwMap.servo.get("turretServo2");          // servo port ? (Control Hub)
-//      turretServoPos1 = hwMap.analogInput.get("turretServoPos2"); // Analog port ? (Control Hub)
+        turretServo    = hwMap.servo.get("turretServo");            // servo port 2 (Control Hub)
+//      turretServoPos = hwMap.analogInput.get("turretServoPos");   // Analog port ? (Control Hub)
 
         // Initialize the servo on the spindexer
-        spinServo    = hwMap.servo.get("spinServo");                // servo port 4 (Control Hub)
-//      spinServoPos = hwMap.analogInput.get("spinServoPos");       // Analog port ? (Control Hub)
+        if( isRobot1 ) spinServo   = hwMap.tryGet(Servo.class, "spinServo");
+        if( isRobot2 ) spinServoCR = hwMap.tryGet(CRServo.class, "spinServo");
+        spinServoPos = hwMap.analogInput.get("spinServoPos");       // Analog port 1 (Control Hub)
 
         // Initialize the servo for the injector/lifter
         liftServo    = hwMap.servo.get("liftServo");                // servo port 0 Expansion Hub)
-//      liftServoPos = hwMap.analogInput.get("liftServoPos");       // Analog port ? (Expansion Hub)
+        liftServoPos = hwMap.analogInput.get("liftServoPos");       // Analog port 1 (Control Hub)
 
         // Ensure all servos are in the initialize position (YES for auto; NO for teleop)
         if( isAutonomous ) {
            resetEncoders();
         }
-
-        // Initialize REV Control Hub IMU
-        initIMU();
 
     } /* init */
 
@@ -326,38 +372,60 @@ public class HardwareSwyftBot
     public void resetEncoders() throws InterruptedException {
         // Initialize the injector servo first! (so it's out of the way for spindexer rotation)
         liftServo.setPosition(LIFT_SERVO_INIT);
-        turretServo1.setPosition(TURRET_SERVO_INIT);
-//      turretServo2.setPosition(TURRET_SERVO_INIT);
+        turretServo.setPosition(TURRET_SERVO_INIT);
         shooterServo.setPosition(SHOOTER_SERVO_INIT);
         sleep(250);
-        spinServoSetPosition(SpindexerState.SPIN_P3); // allows autonomous progression 3-2-1
+        if( isRobot1 )  spinServoSetPosition(SpindexerState.SPIN_P3); // allows autonomous progression 3-2-1
+        if( isRobot2 )  spinServoSetPositionCR(SpindexerState.SPIN_P2); // The 0.5 default position on init
+        // Also reset our odometry starting position
+        odom.resetPosAndIMU();
     } // resetEncoders
 
     /*--------------------------------------------------------------------------------------------*/
     public void initIMU()
     {
-        // Define and initialize REV Expansion Hub IMU
-        BNO055IMU.Parameters imu_params = new BNO055IMU.Parameters();
-        imu_params.angleUnit = BNO055IMU.AngleUnit.DEGREES;
-        imu_params.accelUnit = BNO055IMU.AccelUnit.METERS_PERSEC_PERSEC;
-        imu_params.calibrationDataFile = "BNO055IMUCalibration.json"; // located in FIRST/settings folder
-        imu_params.loggingEnabled = false;
-        imu_params.loggingTag = "IMU";
-        imu_params.accelerationIntegrationAlgorithm = new JustLoggingAccelerationIntegrator();
-
-        imu = hwMap.get(BNO055IMU.class, "imu-robot1");
-        imu.initialize( imu_params );
+        // Determine if we're running on ROBOT1 (7592-C) or ROBOT2 (7592-D) based on IMU name
+        // (we use tryGet() instead of the standard get() to avoid an exception when not found)
+        imu = hwMap.tryGet(IMU.class, "imu-robot1");
+        if( imu != null ) {
+            isRobot1 = true;
+        } // imu_robot1
+        else {
+            imu = hwMap.tryGet(IMU.class, "imu-robot2");
+            if( imu != null ) {
+                isRobot2 = true;
+            }
+        } // imu_robot2
+        // Define and initialize REV Expansion Hub IMU                     ROBOT2 : ROBOT1
+        LogoFacingDirection logoDirection = (isRobot2)?  LogoFacingDirection.LEFT : LogoFacingDirection.RIGHT;
+        UsbFacingDirection  usbDirection = (isRobot2)? UsbFacingDirection.FORWARD : UsbFacingDirection.UP;
+        RevHubOrientationOnRobot orientationOnRobot = new RevHubOrientationOnRobot(logoDirection, usbDirection);
+        imu.initialize(new IMU.Parameters(orientationOnRobot));
     } // initIMU()
 
     /*--------------------------------------------------------------------------------------------*/
     public double headingIMU()
     {
-        Orientation angles = imu.getAngularOrientation( AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES );
+        Orientation angles = imu.getRobotOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
         headingAngle = angles.firstAngle;
         tiltAngle = angles.secondAngle;
         return -headingAngle;  // degrees (+90 is CW; -90 is CCW)
     } // headingIMU
 
+    /*--------------------------------------------------------------------------------------------*/
+    public void readBulkData() {
+        // For MANUAL mode, we must clear the BulkCache once per control cycle
+        expansionHub.clearBulkCache();
+        controlHub.clearBulkCache();
+        // Get a fresh set of values for this cycle
+        //   getCurrentPosition() / getTargetPosition() / getTargetPositionTolerance()
+        //   getPower() / getVelocity() / getCurrent()
+        shooterMotor1Vel = shooterMotor1.getVelocity();
+        shooterMotor2Vel = shooterMotor2.getVelocity();
+        // NOTE: motor mA data is NOT part of the bulk-read, so increases cycle time!
+//      shooterMotor1Amps = shooterMotor1.getCurrent(MILLIAMPS);
+//      shooterMotor2Amps = shooterMotor1.getCurrent(MILLIAMPS);
+    } // readBulkData
     static double thetaMaxTurret = 375;
     static double thetaMinTurret = 0;
     static double thetaMaxFlapper = 355;
@@ -378,7 +446,7 @@ public class HardwareSwyftBot
     static double SHOOTER_SERVO_HORIZONTAL_POSITION = 0.39;
     public double computeAlignedTurretPos() {
         double deltaServoPos = (computeTurretAngle())/(thetaMaxTurret - thetaMinTurret); // servo 0->1 is clockwise
-        return (deltaServoPos > TURRET_SERVO_P90 || deltaServoPos < TURRET_SERVO_N90)? turretServo1.getPosition() : deltaServoPos;
+        return (deltaServoPos > TURRET_SERVO_P90 || deltaServoPos < TURRET_SERVO_N90)? turretServo.getPosition() : deltaServoPos;
     }
 
     public double computeTurretAngle() {
@@ -498,6 +566,70 @@ public class HardwareSwyftBot
     } // setRunToPosition
 
     /*--------------------------------------------------------------------------------------------*/
+    public double computeAxonAngle( double measuredVoltage )
+    {
+        final double DEGREES_PER_ROTATION = 360.0;  // One full rotation measures 360 degrees
+        final double MAX_ANALOG_VOLTAGE   = 3.3;    // 3.3V maximum analog feedback output
+        // NOTE: when vertical the angle is 38.1deg, when horizontal 129.0 (prior to offset below)
+        double measuredAngle = (measuredVoltage / MAX_ANALOG_VOLTAGE) * DEGREES_PER_ROTATION;
+        // Enforce that any wrap-around remains in the range of 0 to 360 degrees
+        while( measuredAngle <   0.0 ) measuredAngle += 360.0;
+        while( measuredAngle > 360.0 ) measuredAngle -= 360.0;
+        return measuredAngle;
+    } // computeAxonAngle
+
+    /*--------------------------------------------------------------------------------------------*/
+    public double getSpindexerAngle()
+    {
+      return computeAxonAngle( spinServoPos.getVoltage() );
+    } // getSpindexerAngle
+
+    /*--------------------------------------------------------------------------------------------*/
+    public double computeSpindexerError(double targetDeg, double actualDeg) {
+        // Shortest angular error considering wrap-around at 360°
+        double diff = targetDeg - actualDeg;
+        // Normalize to -180..+180
+        while (diff > 180) diff -= 360;
+        while (diff <= -180) diff += 360;
+        return diff;
+    } // getSpindexerError
+
+    /*--------------------------------------------------------------------------------------------*/
+    double spindexerProportionalControl(double errorDeg) {
+        final double MIN_POWER_TO_ROTATE = 0.08; // 8% servo power
+        double rawPower;
+        if (Math.abs(errorDeg) <= 3.0 )  {
+            return 0.0;  // we're within our 3deg tolerance; stop
+        }
+        // If we're far away, scale with a higher proportional control
+        if( Math.abs(errorDeg) >= 60.0 )
+            rawPower = errorDeg * 0.008;   // 120deg error = 0.97 power
+        else
+            rawPower = errorDeg * 0.004;   // 60deg error = 0.24 power
+        // Ensure minimum power to overcome stiction
+        if( Math.abs(rawPower) < MIN_POWER_TO_ROTATE ) {
+            rawPower = Math.signum(rawPower) * MIN_POWER_TO_ROTATE;
+        }
+        return Range.clip(rawPower, -0.97, 0.97 );
+    } // spindexerProportionalControl
+
+    public void processSpindexerControl() {
+        // read current angle (0 to 360)
+        double currentDegrees = getSpindexerAngle();
+        // compute angular error from our target
+        double error = computeSpindexerError(currentSpindexerTarget.degrees, currentDegrees);
+        // convert the angular error to a proportional servo power
+        spindexerPowerSetting = spindexerProportionalControl(error);
+        spinServoCR.setPower( spindexerPowerSetting );
+    } // processSpindexerControl
+
+    /*--------------------------------------------------------------------------------------------*/
+    public double getInjectorAngle()
+    {
+      return computeAxonAngle( liftServoPos.getVoltage() );
+    } // getInjectorAngle
+
+    /*--------------------------------------------------------------------------------------------*/
     public void spinServoSetPosition( SpindexerState position )
     {
         switch( position ) {
@@ -534,6 +666,30 @@ public class HardwareSwyftBot
                 break;
         } // switch()
     } // spinServoSetPosition
+
+    /*--------------------------------------------------------------------------------------------*/
+    public void spinServoSetPositionCR( SpindexerState position )
+    {
+        switch( position ) {
+            case SPIN_P1 :
+                currentSpindexerTarget = SpindexerTargetPosition.P1;
+                break;
+            case SPIN_P2 :
+                currentSpindexerTarget = SpindexerTargetPosition.P2;
+                break;
+            case SPIN_P3 :
+                currentSpindexerTarget = SpindexerTargetPosition.P3;
+                break;
+            case SPIN_INCREMENT :
+                cycleSpindexerTarget(+1);
+                break;
+            case SPIN_DECREMENT :
+                cycleSpindexerTarget(-1);
+                break;
+            default:
+                break;
+        } // switch()
+    } // spinServoSetPositionCR
 
     /*--------------------------------------------------------------------------------------------*/
     public void startInjectionStateMachine()
