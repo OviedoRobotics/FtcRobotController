@@ -127,7 +127,6 @@ public abstract class Teleop extends LinearOpMode {
 
             // Bulk-refresh the Control/Expansion Hub device status (motor status, digital I/O) -- FASTER!
             robot.readBulkData();
-            robot.performEveryLoop();
 
             // Request an update from the Pinpoint odometry computer (single I2C read)
             if( enableOdometry ) {
@@ -259,14 +258,12 @@ public abstract class Teleop extends LinearOpMode {
 
     /*---------------------------------------------------------------------------------*/
     void performEveryLoopTeleop() {
+        robot.odom.update();   // 6.9 msec for odom.update + odom.getPosition (14 msec total)
+        Pose2D pos = robot.odom.getPosition();  // x,y pos in inch; heading in degrees
+        robot.robotGlobalXCoordinatePosition = pos.getX(DistanceUnit.INCH);
+        robot.robotGlobalYCoordinatePosition = pos.getY(DistanceUnit.INCH);
+        robot.robotOrientationDegrees        = pos.getHeading(AngleUnit.DEGREES);
         robot.processInjectionStateMachine();
-//      robot.processViperSlideExtension();
-//      robot.processWormTilt();
-//      processHoverArm();
-//      processSecureArm();
-//      processScoreArm();
-//      processScoreArmSpec();
-//      processSweeper();
     } // performEveryLoopTeleop
 
     /*---------------------------------------------------------------------------------*/

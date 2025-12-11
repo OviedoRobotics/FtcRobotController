@@ -335,38 +335,10 @@ public class HardwareSwyftBot
     /*--------------------------------------------------------------------------------------------*/
     // Resets odometry starting position and angle to zero accumulated encoder counts
     public void resetGlobalCoordinatePosition(){
-//      robot.odom.resetPosAndIMU();   // don't need a full recalibration, just reset for any movement
-        //odom.setOffsets(0.0, 0.0, DistanceUnit.MM);
-//      robot.odom.setHeading( 180.0, AngleUnit.DEGREES ); // start pointing backward!
-        //odom.resetPosAndIMU();
         robotGlobalXCoordinatePosition = 0.0;  // This will get overwritten the first time
         robotGlobalYCoordinatePosition = 0.0;  // we call robot.odom.update()!
         robotOrientationDegrees        = 0.0;
     } // resetGlobalCoordinatePosition
-
-    /*---------------------------------------------------------------------------------*/
-    public void performEveryLoop() {
-        readBulkData();  // 7.3 msec for readBulkData
-        odom.update();   // 6.9 msec for odom.update + odom.getPosition (14 msec total)
-        Pose2D pos = odom.getPosition();  // x,y pos in inch; heading in degrees
-        robotGlobalXCoordinatePosition = pos.getX(DistanceUnit.INCH);
-        robotGlobalYCoordinatePosition = pos.getY(DistanceUnit.INCH);
-        robotOrientationDegrees        = pos.getHeading(AngleUnit.DEGREES);
-        processInjectionStateMachine();
-    } // performEveryLoop
-
-    /*--------------------------------------------------------------------------------------------*/
-    public void readBulkData() {
-        // For MANUAL mode, we must clear the BulkCache once per control cycle
-        expansionHub.clearBulkCache();
-        controlHub.clearBulkCache();
-        // Get a fresh set of values for this cycle
-        //   getCurrentPosition() / getTargetPosition() / getTargetPositionTolerance()
-        //   getPower() / getVelocity() / getCurrent()
-        shooterMotorVel = shooterMotor1.getVelocity();
-        // NOTE: motor mA data is NOT part of the bulk-read, so increases cycle time!
-//      shooterMotorAmps = shooterMotor1.getCurrent(MILLIAMPS);
-    } // readBulkData
 
     /*--------------------------------------------------------------------------------------------*/
     public void resetEncoders() throws InterruptedException {
