@@ -75,9 +75,9 @@ public class HardwareSwyftBot
     protected double COUNTS_PER_INCH2      = 1738.4;  // 8192 counts-per-rev / (1.5" omni wheel * PI)
 
     // Left Corner is (0,0) Facing obelisk is 90deg
-    double startingRobotGlobalXPosition = 0; // x inches
-    double startingRobotGlobalYPosition = 0; // y inches
-    double startingRobotOrientationDegrees = 0; // field orientation in deg
+    double startingRobotGlobalXPosition = 72; // x inches
+    double startingRobotGlobalYPosition = 24; // y inches
+    double startingRobotOrientationDegrees = 90; // field orientation in deg
 
     Pose2D startingPos = new Pose2D(DistanceUnit.INCH, startingRobotGlobalXPosition, startingRobotGlobalYPosition, AngleUnit.DEGREES, startingRobotOrientationDegrees);
 
@@ -178,16 +178,16 @@ public class HardwareSwyftBot
         // Locate the odometry controller in our hardware settings
         odom = hwMap.get(GoBildaPinpointDriver.class,"odom");    // Expansion Hub I2C port 1
 //      odom.setOffsets(0.0, 0.0, DistanceUnit.MM);   // odometry pod x,y locations relative center of robot
-        odom.setOffsets(-80.0, -180.0, DistanceUnit.MM);      // odometry pod x,y locations relative center of robot  2 2
+        odom.setOffsets(-84.88, -169.47, DistanceUnit.MM);      // odometry pod x,y locations relative center of robot  2 2
         odom.setEncoderResolution( GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD ); // 4bar pods
         odom.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.REVERSED,
-                                GoBildaPinpointDriver.EncoderDirection.FORWARD);
+                                GoBildaPinpointDriver.EncoderDirection.REVERSED);
         if( isAutonomous ) {
             odom.resetPosAndIMU();
         }
 
         // defines initial pose of robot on field.  white tip of far tape facing obelisk: x = 72in., y = 24in., orientation = 90deg.
-        //odom.setPosition(startingPos);
+        odom.setPosition(startingPos);
 
         // Define and Initialize drivetrain motors
         frontLeftMotor  = hwMap.get(DcMotorEx.class,"FrontLeft");  // Expansion Hub port 0 (FORWARD)
@@ -263,7 +263,7 @@ public class HardwareSwyftBot
 //      shooterServoPos = hwMap.analogInput.get("shooterServoPos"); // Analog port ? (Control Hub)
 
         // Initialize the servos that rotate the turret
-        turretServo1    = hwMap.servo.get("turretServo1");          // servo port 2 (Control Hub)
+        turretServo1    = hwMap.servo.get("turretServo");          // servo port 2 (Control Hub)
 //      turretServoPos1 = hwMap.analogInput.get("turretServoPos1"); // Analog port ? (Control Hub)
 //      turretServo2    = hwMap.servo.get("turretServo2");          // servo port ? (Control Hub)
 //      turretServoPos1 = hwMap.analogInput.get("turretServoPos2"); // Analog port ? (Control Hub)
@@ -345,7 +345,7 @@ public class HardwareSwyftBot
         imu_params.loggingTag = "IMU";
         imu_params.accelerationIntegrationAlgorithm = new JustLoggingAccelerationIntegrator();
 
-        imu = hwMap.get(BNO055IMU.class, "imu");
+        imu = hwMap.get(BNO055IMU.class, "imu-robot1");
         imu.initialize( imu_params );
     } // initIMU()
 
@@ -370,13 +370,14 @@ public class HardwareSwyftBot
     static double LAUNCH_EXIT_SPEED = 22;
     static double Z_BIN = 3.23;
     static double Z_SHOOTER = 0.5;  // get actual measurement
-    static double TURRET_SERVO_RELATIVE_0_ANGLE = 0; // offset from robot heading and turret servo. (if robot is straight and turret is to the left, this angle is 90)
+    static double TURRET_SERVO_RELATIVE_0_ANGLE = 180; // TODO: change for version 2 robot (should be zero: turret init position faces front of robot) // offset from robot heading and turret servo. (if robot is straight and turret is to the left, this angle is 90)
     static double TURRET_SERVO_HORIZONTAL_POSITION = TURRET_SERVO_INIT; // position of turret servo when turret is aligned with the back of the robot
+    static double TURRET_SERVO_HORIZONTAL_ANGLE_INIT = TURRET_SERVO_INIT*(thetaMaxTurret - thetaMinTurret);
     static double SHOOTER_SERVO_POS_VERTICAL = 0.64;
 
     static double SHOOTER_SERVO_HORIZONTAL_POSITION = 0.39;
     public double computeAlignedTurretPos() {
-        double deltaServoPos = (computeTurretAngle())/(thetaMaxTurret - thetaMinTurret) + TURRET_SERVO_HORIZONTAL_POSITION; // servo 0->1 is clockwise
+        double deltaServoPos = (computeTurretAngle())/(thetaMaxTurret - thetaMinTurret); // servo 0->1 is clockwise
         return (deltaServoPos > TURRET_SERVO_P90 || deltaServoPos < TURRET_SERVO_N90)? turretServo1.getPosition() : deltaServoPos;
     }
 
@@ -390,17 +391,20 @@ public class HardwareSwyftBot
 
         double deltaHeading = calculateHeadingChange(xR, yR, xB, yB, driveTrainHeading);
 
-        return Math.toDegrees(deltaHeading);
+        return deltaHeading;
     }
 
     public double calculateHeadingChange(double xR, double yR, double xB, double yB, double heading) {
         double angleToTarget = Math.atan2(yB-yR, xB-xR); // in radians
         // in radians. servo clockwise direction is positive need to multiply by negative one.
-        double delta = -(angleToTarget - (Math.toRadians(heading)));
+        double delta = -(angleToTarget - (Math.toRadians(heading) + Math.toRadians(TURRET_SERVO_RELATIVE_0_ANGLE)));
         // determine angle that the turret servo needs
         // to turn to and account for the offset of the angle of the turret servo from the robot.
+        delta = Math.toDegrees(delta);
+        delta += TURRET_SERVO_HORIZONTAL_ANGLE_INIT;
         // Normalize to [0, 360]
-        //if(delta < 0) delta += 360;
+        if(delta < 0) delta += 360;
+        if(delta > 360) delta -= 360;
         return delta;
     }
 
