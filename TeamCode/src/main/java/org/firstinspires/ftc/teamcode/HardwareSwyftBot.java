@@ -31,7 +31,7 @@ public class HardwareSwyftBot
     //====== REV CONTROL/EXPANSION HUBS =====
     LynxModule controlHub;
     LynxModule expansionHub;
-
+    
     public boolean isRobot1 = false;  // see IMU initialization below
     public boolean isRobot2 = false;
 
@@ -549,7 +549,7 @@ public class HardwareSwyftBot
         while( measuredAngle > 360.0 ) measuredAngle -= 360.0;
         return measuredAngle;
     } // computeAxonAngle
-
+    
     /*--------------------------------------------------------------------------------------------*/
     public double getSpindexerAngle()
     {

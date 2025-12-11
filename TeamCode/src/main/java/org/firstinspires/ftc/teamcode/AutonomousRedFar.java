@@ -22,9 +22,6 @@ public class AutonomousRedFar extends AutonomousBase {
 
     double pos_y=robotGlobalYCoordinatePosition, pos_x=robotGlobalXCoordinatePosition, pos_angle=robotOrientationRadians;  // Allows us to specify movement ABSOLUTELY
 
-    private Limelight3A limelight;
-    private int         obeliskID=23; // if we can't see it, default to PPG (purple purple green)
-
     @Override
     public void runOpMode() throws InterruptedException {
 
@@ -43,22 +40,8 @@ public class AutonomousRedFar extends AutonomousBase {
         while (!isStarted()) {
             // Do we need to change any of the other autonomous options?
             processAutonomousInitMenu(false);  // not auto5 start position
-            LLResult result = limelight.getLatestResult();
-            if (result.isValid()) {
-                // Access fiducial results
-                List<LLResultTypes.FiducialResult> fiducialResults = result.getFiducialResults();
-                for (LLResultTypes.FiducialResult fr : fiducialResults) {
-                    int limelightID = fr.getFiducialId();
-                    // Note: common OBELISK april tags for both RED & BLUE alliance
-                    //  21 = GPP (green purple purple)
-                    //  22 = PGP (purple green purple)
-                    //  23 = PPG (purple purple green)
-                    if( (limelightID >= 21) && (limelightID <= 23) ) {
-                        telemetry.addData("Obelisk", "ID: %d", limelightID);
-                        obeliskID = limelightID;
-                    }
-                } // fiducialResults
-            } // isValid
+            // Process limelight for obelisk detection
+            processLimelightObelisk();
             // Pause briefly before looping
             idle();
         } // !isStarted
@@ -72,9 +55,12 @@ public class AutonomousRedFar extends AutonomousBase {
 
         //---------------------------------------------------------------------------------
         // AUTONOMOUS ROUTINE:  The following method is our main autonomous.
-        // Assume turret position, flapper, and flywheel motor power is in position
+//      unitTestOdometryDrive();
         mainAutonomous( obeliskID );
         //---------------------------------------------------------------------------------
+
+        // Ensure spindexer servo stops in case we exit while the spindexer is rotating
+        robot.spinServoCR.setPower(0.0);
 
         telemetry.addData("Program", "Complete");
         telemetry.update();
@@ -95,17 +81,38 @@ public class AutonomousRedFar extends AutonomousBase {
     /*--------------------------------------------------------------------------------------------*/
     // TEST CODE: Verify odometry-based motion functions against a tape measure
     private void unitTestOdometryDrive() {
-        telemetry.addData("Target", "x=24.0, y=0.0f, 0.00 deg (100%)");
+        double driveTime;
+        telemetry.addData("Target", "x=24.0, y=0.0f, 0.00 deg (50%)");
         // reset our timer and drive forward 20"
         autonomousTimer.reset();
-        driveToPosition(24.0, 0.0, 0.0, DRIVE_SPEED_100, TURN_SPEED_80, DRIVE_TO);
-        double driveTime = autonomousTimer.milliseconds() / 1000.0;
+        driveToPosition(24.0, 0.0, 0.0, DRIVE_SPEED_50, TURN_SPEED_40, DRIVE_TO);
+        driveTime = autonomousTimer.milliseconds() / 1000.0;
         performEveryLoop();  // ensure our odometry is updated
         telemetry.addData("Odometry", "x=%.2f, y=%.2f, %.2f deg", robotGlobalXCoordinatePosition, robotGlobalYCoordinatePosition, Math.toDegrees(robotOrientationRadians));
         telemetry.addData("Drive Time", "%.3f sec", driveTime);
         telemetry.update();
-        sleep(30000);
-    }
+        sleep(3000);
+        telemetry.addData("Target", "x=24.0, y=24.0f, 0.00 deg (50%)");
+        // reset our timer and drive forward 20"
+        autonomousTimer.reset();
+        driveToPosition(24.0, 240, 0.0, DRIVE_SPEED_50, TURN_SPEED_40, DRIVE_TO);
+        driveTime = autonomousTimer.milliseconds() / 1000.0;
+        performEveryLoop();  // ensure our odometry is updated
+        telemetry.addData("Odometry", "x=%.2f, y=%.2f, %.2f deg", robotGlobalXCoordinatePosition, robotGlobalYCoordinatePosition, Math.toDegrees(robotOrientationRadians));
+        telemetry.addData("Drive Time", "%.3f sec", driveTime);
+        telemetry.update();
+        sleep(3000);
+        telemetry.addData("Target", "x=24.0, y=24.0f, 90 deg (50%)");
+        // reset our timer and drive forward 20"
+        autonomousTimer.reset();
+        driveToPosition(24.0, 240, 90.0, DRIVE_SPEED_50, TURN_SPEED_50, DRIVE_TO);
+        driveTime = autonomousTimer.milliseconds() / 1000.0;
+        performEveryLoop();  // ensure our odometry is updated
+        telemetry.addData("Odometry", "x=%.2f, y=%.2f, %.2f deg", robotGlobalXCoordinatePosition, robotGlobalYCoordinatePosition, Math.toDegrees(robotOrientationRadians));
+        telemetry.addData("Drive Time", "%.3f sec", driveTime);
+        telemetry.update();
+        sleep(24000);
+    } // unitTestOdometryDrive
 
     /*--------------------------------------------------------------------------------------------*/
     /* Autonomous Red Far:                                                                        */
@@ -124,11 +131,21 @@ public class AutonomousRedFar extends AutonomousBase {
 
         // Score Preload Balls from the FAR zone
         scorePreloadBallsFromFar( obeliskID, redAlliance, 0.55 );
-//      driveToFirstTickMark();
-//      scorePreloadBalls();
+        
+        // Collect and Score 1st spike mark
+        collectSpikemarkFromFar( 1, redAlliance );
+        scoreThreeBallsFromFar( obeliskID, redAlliance, 0.55 );
+
+        // Collect and Score 2nd spike mark
+        collectSpikemarkFromFar( 2, redAlliance );
+        scoreThreeBallsFromFar( obeliskID, redAlliance, 0.55 );
+            
+        // Collect and Score 3rd spike mark
+        collectSpikemarkFromFar( 3, redAlliance );
+        scoreThreeBallsFromFar( obeliskID, redAlliance, 0.55 );
 
         // Drive away from the score line for the MOVEMENT points
-        driveToPosition(-32.0, 0.0, 0.0, DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_TO);
+        driveToPosition(32.0, 0.0, 0.0, DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_TO);
 
         // ensure motors are turned off even if we run out of time
         robot.driveTrainMotorsZero();

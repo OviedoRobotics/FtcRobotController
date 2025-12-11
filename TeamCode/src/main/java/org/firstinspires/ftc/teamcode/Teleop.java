@@ -107,6 +107,8 @@ public abstract class Teleop extends LinearOpMode {
 
         // Wait for the game to start (driver presses PLAY)
         while (!isStarted()) {
+            //  Send our spindexer continuous rotation servo to the starting point
+            robot.processSpindexerControl();
             // Check for operator input that changes Autonomous options
             captureGamepad1Buttons();
             // Normally autonomous resets encoders.  Do we need to for teleop??
@@ -117,6 +119,9 @@ public abstract class Teleop extends LinearOpMode {
             // Pause briefly before looping
             idle();
         } // !isStarted
+
+        // Ensure turret is initialized
+        robot.turretServo.setPosition(robot.TURRET_SERVO_INIT);
 
         // run until the end of the match (driver presses STOP)
         while (opModeIsActive())

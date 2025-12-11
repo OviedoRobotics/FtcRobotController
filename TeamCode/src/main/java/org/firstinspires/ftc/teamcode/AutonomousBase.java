@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode;
 
+import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState.SPIN_DECREMENT;
 import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState.SPIN_P1;
 import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState.SPIN_P2;
 import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState.SPIN_P3;
@@ -9,6 +10,9 @@ import static java.lang.Math.toRadians;
 import android.os.Environment;
 import android.os.SystemClock;
 
+import com.qualcomm.hardware.limelightvision.LLResult;
+import com.qualcomm.hardware.limelightvision.LLResultTypes;
+import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -21,6 +25,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 
 public abstract class AutonomousBase extends LinearOpMode {
@@ -62,6 +67,9 @@ public abstract class AutonomousBase extends LinearOpMode {
     static final double MIN_DRIVE_MAGNITUDE = Math.sqrt(MIN_DRIVE_POW*MIN_DRIVE_POW+MIN_DRIVE_POW*MIN_DRIVE_POW);
     static final double FIRST_SPIKE_MARK_RED_POS_X = 0.0; // TODO: Find real position
     static final double FIRST_SPIKE_MARK_RED_POS_Y = 0.0; // TODO: Find real position
+
+    public Limelight3A limelight;
+    public int         obeliskID=23; // if we can't see it, default to PPG (purple purple green)
 
     // NOTE: Initializing the odometry global X-Y and ANGLE to 0-0 and 0deg means the frame of reference for all movements is
     // the starting positiong/orientation of the robot.  An alternative is to make the bottom-left corner of the field the 0-0
@@ -166,30 +174,13 @@ public abstract class AutonomousBase extends LinearOpMode {
     protected void processAutonomousInitMenu(boolean auto5) {
         // Refresh the gamepad controls
         captureGamepad1Buttons();
+        // Update  mechanisms (including bulkread, spindexer & odometry)
+        performEveryLoop();
 
         boolean nextEntry = (gamepad1_dpad_down_now  && !gamepad1_dpad_down_last);
         boolean prevEntry = (gamepad1_dpad_up_now    && !gamepad1_dpad_up_last);
         boolean nextValue = (gamepad1_dpad_right_now && !gamepad1_dpad_right_last);
         boolean prevValue = (gamepad1_dpad_left_now  && !gamepad1_dpad_left_last);
-
-        // Force RED alliance?
-        if( gamepad1_circle_now && !gamepad1_circle_last ) {
-            redAlliance = true;  // gamepad circle is colored RED
-            forceAlliance = true;
-        }
-        // Force BLUE alliance?
-        else if( gamepad1_cross_now && !gamepad1_cross_last ) {
-            redAlliance = false;   // gamepad cross is colored BLUE
-            forceAlliance = true;
-        }
-        // If we've not FORCED a red/blue alliance, report real-time detection
-//        if( !forceAlliance ) {
-//            redAlliance = pipelineBack.redAlliance;
-//        }
-//        telemetry.addData("STARTING", "%s", (pipelineBack.leftSide)? "LEFT" : "RIGHT");
-
-        telemetry.addData("ALLIANCE", "%s %c (X=blue O=red)",
-                ((redAlliance)? "RED":"BLUE"), ((forceAlliance)? '*':' '));
 
         // Shift DOWN one menu entry?
         if( nextEntry ) {
@@ -237,7 +228,7 @@ public abstract class AutonomousBase extends LinearOpMode {
         } // switch()
 
         // Update our telemetry
-        performEveryLoop();
+        telemetry.addData("ALLIANCE", "%s", ((redAlliance)? "RED":"BLUE"));
         telemetry.addData("Start Delay",  "%d sec %s", startDelaySec, ((initMenuSelected==1)? "<-":"  ") );
         telemetry.addData("Open Gate", "%s %s", gateOption.getDescription(), ((initMenuSelected==2)? "<-":"  ") );
         telemetry.addData("Odometry","x=%.2f y=%.2f  %.2f deg",
@@ -267,7 +258,28 @@ public abstract class AutonomousBase extends LinearOpMode {
         robotGlobalYCoordinatePosition = pos.getY(DistanceUnit.INCH);
         robotOrientationRadians        = pos.getHeading(AngleUnit.RADIANS);
         robot.processInjectionStateMachine();
+        robot.processSpindexerControl();
     } // performEveryLoop
+
+    public void processLimelightObelisk() {
+        LLResult result = limelight.getLatestResult();
+        if (result.isValid()) {
+            // Access fiducial results
+            List<LLResultTypes.FiducialResult> fiducialResults = result.getFiducialResults();
+            for (LLResultTypes.FiducialResult fr : fiducialResults) {
+                int limelightID = fr.getFiducialId();
+                // Note: common OBELISK april tags for both RED & BLUE alliance
+                //  21 = GPP (green purple purple)
+                //  22 = PGP (purple green purple)
+                //  23 = PPG (purple purple green)
+                if( (limelightID >= 21) && (limelightID <= 23) ) {
+                    telemetry.addData("Obelisk", "ID: %d", limelightID);
+                    obeliskID = limelightID;
+                }
+            } // fiducialResults
+        } // isValid
+
+    } // processLimelightObelisk
 
     /*---------------------------------------------------------------------------------*/
     // Create a time stamped folder in the Robot Control flash file storage
@@ -672,11 +684,11 @@ public abstract class AutonomousBase extends LinearOpMode {
     } // gyroDrive()
 
     //============================ ODOMETRY-BASED NAVIGATION FUNCTIONS ============================
-    public void driveToPosition(double yTarget, double xTarget, double angleTarget,
+    public void driveToPosition(double xTarget, double yTarget, double angleTarget,
                                 double speedMax, double turnMax, int driveType) {
         // Loop until we get to destination.
         performEveryLoop();
-        while(!driveToXY(yTarget, xTarget, angleTarget,
+        while(!driveToXY(-yTarget, xTarget, angleTarget,
                 speedMax, driveType)
                 && opModeIsActive()) {
             performEveryLoop();
@@ -1121,17 +1133,91 @@ public abstract class AutonomousBase extends LinearOpMode {
     } // AngleWrapDegrees
 
     /*--------------------------------------------------------------------------------------------*/
+    public void collectSpikemarkFromFar( int spikeMark, boolean isRed ) {
+        double x, y0,y1,y2,y3, ang;   // drive-to coordinates
+        // Define field location X value for selected spikemark (COMMON to both RED and BLUE)
+        switch( spikeMark ) {
+           case 1  : x = 25.5; break;
+           case 2  : x = 49.3; break;
+           case 3  : x = 73.0; break;
+           default : x = 25.5; break;
+        } // switch()
+        // Define Y locations and angle (MIRRORED for RED vs. BLUE)
+        y0  = (isRed)? -12.6 : +12.6;
+        y1  = (isRed)? -17.7 : +17.7;
+        y2  = (isRed)? -22.9 : +22.9;
+        y3  = (isRed)? -29.9 : +29.9;
+        ang = (isRed)? -90.0 : +90.0;
+        // Begin to execute the collection movements
+        if( opModeIsActive() ) {
+            // Drive to starting position
+            driveToPosition( x,y0,ang, DRIVE_SPEED_20, TURN_SPEED_15, DRIVE_TO);
+            // Turn on collector
+            robot.intakeMotor.setPower(0.90);
+            // Drive into the 1st ball to collect it
+            driveToPosition( x,y1,ang, DRIVE_SPEED_20, TURN_SPEED_15, DRIVE_TO);
+            // Spindex it
+            if( robot.isRobot2 ) {
+              robot.spinServoSetPositionCR(SPIN_DECREMENT);
+            } else {
+              robot.spinServoSetPosition(SPIN_DECREMENT);
+            }
+            // Drive into the 2nd ball to collect it
+            driveToPosition( x,y2,ang, DRIVE_SPEED_20, TURN_SPEED_15, DRIVE_TO);
+            // Spindex it
+            if( robot.isRobot2 ) {
+              robot.spinServoSetPositionCR(SPIN_DECREMENT);
+            } else {
+                robot.spinServoSetPosition(SPIN_DECREMENT);
+            }
+            // Drive into the 3rd ball to collect it
+            driveToPosition( x,y3,ang, DRIVE_SPEED_20, TURN_SPEED_15, DRIVE_TO);
+        } // opModeIsActive
+    } // collectSpikemarkFromFar
+
+    /*--------------------------------------------------------------------------------------------*/
+    // TODO: we can/should merge this with scorePreloadBallsFromFar()
+    public void scoreThreeBallsFromFar( int obeliskID, boolean isRed, double shooterPower ) {
+        if( opModeIsActive() ) {
+            // Drive to shooting location
+            if( isRed ) {
+              driveToPosition( 10.8, -0.4, -142.3, DRIVE_SPEED_20, TURN_SPEED_15, DRIVE_TO);
+            } else {
+              driveToPosition( 10.8, +0.4, +142.3, DRIVE_SPEED_20, TURN_SPEED_15, DRIVE_TO);
+            }
+            // Start to ramp up the shooter
+            robot.shooterMotor1.setPower( shooterPower );
+            robot.shooterMotor2.setPower( shooterPower );
+            // Swivel the turret toward the RED or BLUE goal (do this instead of parking at 142deg??)
+//          robot.turretServo.setPosition( (isRed)? 0.55 : 0.43 ); // right toward RED or left toward BLUE
+            sleep(2000); // Wait for flywheels to reach speed
+            // Convert the obelisk value into a shooting order
+            HardwareSwyftBot.SpindexerState[] shootOrder = getObeliskShootOrder(obeliskID);
+            // Shoot all 3 balls
+            for(int i=0; i<shootOrder.length; i++) {
+                // rotate (if necessary) to the next position
+               if( robot.isRobot2 ) {
+                 robot.spinServoSetPositionCR( shootOrder[i] );
+               } else {
+                 robot.spinServoSetPosition( shootOrder[i] );
+               }
+               // wait for the rotation to complete, then launch that ball
+               sleep(2000 );
+              launchBall();
+              if( !opModeIsActive() ) break;
+              }
+        } // opModeIsActive
+    } // scoreThreeBallsFromFar
+
+    /*--------------------------------------------------------------------------------------------*/
     public void scorePreloadBallsFromFar(int obeliskID, boolean isRed, double shooterPower ) {
         if( opModeIsActive() ) {
-            telemetry.addData("Motion", "Flywheel Ramp Up");
-            telemetry.update();
             // Start to ramp up the shooter
             robot.shooterMotor1.setPower( shooterPower );
             robot.shooterMotor2.setPower( shooterPower );
             // Back up 12" (assumes robot starts facing the wall, not the obelisk)
             driveToPosition(-12.0, 0.0, 0.0, DRIVE_SPEED_10, TURN_SPEED_15, DRIVE_TO);
             // Swivel the turret toward the RED or BLUE goal
-            robot.shooterServo.setPosition(0.5);  // NOT ACTUALLY USED
             robot.turretServo.setPosition( (isRed)? 0.55 : 0.43 ); // right toward RED or left toward BLUE
             // Turn on collector to help retain balls during spindexing
             robot.intakeMotor.setPower(0.90);
