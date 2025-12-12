@@ -2,8 +2,6 @@ package org.firstinspires.ftc.teamcode;
 
 import static com.qualcomm.hardware.rev.RevHubOrientationOnRobot.LogoFacingDirection;
 import static com.qualcomm.hardware.rev.RevHubOrientationOnRobot.UsbFacingDirection;
-import static org.firstinspires.ftc.teamcode.GoBildaPinpointDriver.EncoderDirection;
-import static org.firstinspires.ftc.teamcode.GoBildaPinpointDriver.GoBildaOdometryPods;
 
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
@@ -43,7 +41,8 @@ public class TestPinpointLimelight3A extends LinearOpMode {
     GoBildaPinpointDriver odom = null;
 
     //====== Limelight Camera ======
-    Limelight3A limelight;
+    Limelight3A limelight = null;
+    LimelightFusedPinpointOdometry llodo;
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -51,13 +50,17 @@ public class TestPinpointLimelight3A extends LinearOpMode {
         initDrivetrain();
         initLimelight();
         initPinpointOdometry();
-        alignPinpointToLimelight();
+        llodo = new LimelightFusedPinpointOdometry(limelight, odom, telemetry, 0.0);
+        llodo.startPipeline(7);
+        llodo.alignPinpointToLimelightEveryLoop(true);
+//        alignPinpointToLimelight();
 
         telemetry.addData(">", "Robot Ready.  Press Play.");
         telemetry.update();
         waitForStart();
 
-        alignPinpointToLimelight();
+        llodo.alignPinpointToLimelightEveryLoop(true);
+//        alignPinpointToLimelight();
 
         while (opModeIsActive()) {
             LLStatus status = limelight.getStatus();
@@ -73,7 +76,8 @@ public class TestPinpointLimelight3A extends LinearOpMode {
             telemetry.update();
         }
 
-        limelight.stop();
+        llodo.stop();
+//        limelight.stop();
         driveTrainMotorsZero();
     }
 
@@ -168,7 +172,7 @@ public class TestPinpointLimelight3A extends LinearOpMode {
                 double posY = -limelightPosition.y;
                 double angDeg = rotate180Yaw(limelightOrientation.getYaw(AngleUnit.DEGREES));
 
-                telemetry.addData("Limelight(Apriltag)", "x=%.2f y=%.2f %.2f deg",
+                telemetry.addData("Limelight(Apriltag)", "x=%.2f y=%.2f %.2fº",
                         limelightPosition.unit.toInches(posX),
                         limelightPosition.unit.toInches(posY),
                         angDeg);
@@ -180,7 +184,7 @@ public class TestPinpointLimelight3A extends LinearOpMode {
                 // Read back Pinpoint data
                 odom.update();
                 Pose2D pos = odom.getPosition();  // x,y pos in inch; heading in degrees
-                telemetry.addData("Pinpoint Odometry", "x=%.2f y=%.2f  %.2f deg",
+                telemetry.addData("Pinpoint Odometry", "x=%.2f y=%.2f  %.2fº",
                         pos.getX(DistanceUnit.INCH), pos.getY(DistanceUnit.INCH), pos.getHeading(AngleUnit.DEGREES));
             }
         } else {
@@ -196,7 +200,7 @@ public class TestPinpointLimelight3A extends LinearOpMode {
         double odomX = pos.getX(DistanceUnit.INCH);
         double odomY = pos.getY(DistanceUnit.INCH);
         double odomAngle = pos.getHeading(AngleUnit.DEGREES);
-        telemetry.addData("Pinpoint location", "x=%.2f y=%.2f  %.2f deg", odomX, odomY, odomAngle);
+        telemetry.addData("Pinpoint location", "x=%.2f y=%.2f  %.2fº", odomX, odomY, odomAngle);
         // TODO: Until the REV Control Hub IMU angles are set to align with the field/robot, use the
         //  Pinpoint odometry heading to inform the limelight camera of it's orientation
 //      double robotYaw = imu.getRobotYawPitchRollAngles().getYaw();
@@ -216,11 +220,13 @@ public class TestPinpointLimelight3A extends LinearOpMode {
                 double posX   = -limelightPosition.unit.toInches(limelightPosition.x);  // Pinpoint +X (forward) matches Limelight +X (forward)
                 double posY   = -limelightPosition.unit.toInches(limelightPosition.y);  // Pinpoint +Y (left) opposite of Limelight +Y (right)
                 double angDeg = rotate180Yaw(limelightOrientation.getYaw(AngleUnit.DEGREES));
-                telemetry.addData("Limelight(Apriltag)", "x=%.2f y=%.2f %.2f deg", posX, posY, angDeg);
+                double[] stddev = llResult.getStddevMt2();
+                telemetry.addData("Limelight(Apriltag)", "x=%.2f y=%.2f %.2fº", posX, posY, angDeg);
+                telemetry.addData("LL StdDev (x,y,yaw)", "x=%.2f y=%.2f %.2fº", stddev[0], stddev[1], stddev[5]);
             }
             List<LLResultTypes.FiducialResult> fiducialResults = llResult.getFiducialResults();
             for (LLResultTypes.FiducialResult fr : fiducialResults) {
-                telemetry.addData("Fiducial", "ID: %d, Family: %s, X: %.2f, Y: %.2f", fr.getFiducialId(), fr.getFamily(), fr.getTargetXDegrees(), fr.getTargetYDegrees());
+                telemetry.addData("Fiducial", "ID: %d: %s, X: %.2fº, Y: %.2fº", fr.getFiducialId(), fr.getTargetXDegrees(), fr.getTargetYDegrees());
             }
             double captureLatency   = llResult.getCaptureLatency();
             double targetingLatency = llResult.getTargetingLatency();
