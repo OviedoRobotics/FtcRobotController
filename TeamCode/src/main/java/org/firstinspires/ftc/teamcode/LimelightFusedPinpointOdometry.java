@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.hardware.limelightvision.LLResult;
+import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
@@ -10,6 +11,8 @@ import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 import org.firstinspires.ftc.robotcore.external.navigation.Position;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
+
+import java.util.List;
 
 /**
  * Class that uses a Limelight localization pipeline to keep the pinpoint odometry location accurate.
@@ -27,6 +30,7 @@ public class LimelightFusedPinpointOdometry {
     private final GoBildaPinpointDriver odom;
     private final Telemetry telemetry;
     private final double robotStartingYawDegrees;
+    private Alliance alliance;
 
     private LLResult lastUsedResult;
 
@@ -40,9 +44,10 @@ public class LimelightFusedPinpointOdometry {
         this.robotStartingYawDegrees = robotStartingYawDegrees;
     }
 
-    public void startPipeline(int apriltagLocalizationPipeline) {
-        assert apriltagLocalizationPipeline >= 0 && apriltagLocalizationPipeline <= 7;
-        boolean result = limelight.pipelineSwitch(apriltagLocalizationPipeline);
+    public void startPipeline(Alliance alliance) {
+        assert alliance != null;
+        int allianceLocalizationPipeline = alliance == Alliance.BLUE ? 6 : 7;
+        boolean result = limelight.pipelineSwitch(allianceLocalizationPipeline);
         assert result;
         // limelight.setPollRateHz(100); // default is every 10ms
         limelight.start();
@@ -54,11 +59,30 @@ public class LimelightFusedPinpointOdometry {
     }
 
     /**
+     * Using the latest limelight data, (which may not have targeting info if the camera isn't facing the target) return details for where to shoot for the configured alliance.
+     *
+     * @return FiducialResult for target which includes targetXDegrees for aiming and targetYDegrees for adjusting motor speed.
+     */
+    public LLResultTypes.FiducialResult getShootTarget() {
+        LLResult llResult = limelight.getLatestResult();
+        if (llResult != null && llResult.isValid()) {
+            int targetApriltag = alliance == Alliance.BLUE ? 20 : 24;
+            List<LLResultTypes.FiducialResult> fiducialResults = llResult.getFiducialResults();
+            for (LLResultTypes.FiducialResult fr : fiducialResults) {
+                if (fr.getFiducialId() == targetApriltag) {
+                    return fr;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
      * Should be called on every loop. Actual updates will be rate limited and only happen if a valid location is identified.
      */
     void alignPinpointToLimelightEveryLoop(boolean forceUpdateOdometry) {
         // Query Pinpoint Odometry field location
-        if(forceUpdateOdometry)
+        if (forceUpdateOdometry)
             odom.update(); // Assume this is already called earlier this loop?
         Pose2D pos = odom.getPosition();  // x,y pos in inch; heading in degrees
         double odomX = pos.getX(DistanceUnit.INCH);

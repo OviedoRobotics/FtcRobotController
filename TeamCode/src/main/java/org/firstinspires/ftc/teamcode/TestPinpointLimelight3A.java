@@ -13,6 +13,7 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
@@ -32,10 +33,10 @@ public class TestPinpointLimelight3A extends LinearOpMode {
     protected IMU imu = null;
 
     //====== MECANUM DRIVETRAIN MOTORS (RUN_USING_ENCODER) =====
-    DcMotorEx frontLeftMotor  = null;
+    DcMotorEx frontLeftMotor = null;
     DcMotorEx frontRightMotor = null;
-    DcMotorEx rearLeftMotor   = null;
-    DcMotorEx rearRightMotor  = null;
+    DcMotorEx rearLeftMotor = null;
+    DcMotorEx rearRightMotor = null;
 
     //====== GOBILDA PINPOINT ODOMETRY COMPUTER ======
     GoBildaPinpointDriver odom = null;
@@ -51,7 +52,8 @@ public class TestPinpointLimelight3A extends LinearOpMode {
         initLimelight();
         initPinpointOdometry();
         llodo = new LimelightFusedPinpointOdometry(limelight, odom, telemetry, 0.0);
-        llodo.startPipeline(7);
+        llodo.startPipeline(Alliance.BLUE);
+//        llodo.startPipeline(Alliance.RED);
         llodo.alignPinpointToLimelightEveryLoop(true);
 //        alignPinpointToLimelight();
 
@@ -90,18 +92,18 @@ public class TestPinpointLimelight3A extends LinearOpMode {
 //      UsbFacingDirection usbDirection = UsbFacingDirection.FORWARD;  // robot2
         RevHubOrientationOnRobot orientationOnRobot = new RevHubOrientationOnRobot(logoDirection, usbDirection);
         imu = hardwareMap.tryGet(IMU.class, "imu-robot1");
-        if( imu == null )
-           imu = hardwareMap.tryGet(IMU.class, "imu-robot2");
+        if (imu == null)
+            imu = hardwareMap.tryGet(IMU.class, "imu-robot2");
         imu.initialize(new IMU.Parameters(orientationOnRobot));
     } // initIMU
 
     //----------------------------------------------------------------------------------------------
     void initDrivetrain() {
         // Query hardware info
-        frontLeftMotor  = hardwareMap.get(DcMotorEx.class, "FrontLeft");  // REVERSE
+        frontLeftMotor = hardwareMap.get(DcMotorEx.class, "FrontLeft");  // REVERSE
         frontRightMotor = hardwareMap.get(DcMotorEx.class, "FrontRight"); // forward
-        rearLeftMotor   = hardwareMap.get(DcMotorEx.class, "RearLeft");   // REVERSE
-        rearRightMotor  = hardwareMap.get(DcMotorEx.class, "RearRight");  // forward
+        rearLeftMotor = hardwareMap.get(DcMotorEx.class, "RearLeft");   // REVERSE
+        rearRightMotor = hardwareMap.get(DcMotorEx.class, "RearRight");  // forward
 
         // Set motor position-power direction
         frontLeftMotor.setDirection(DcMotor.Direction.REVERSE);
@@ -139,7 +141,7 @@ public class TestPinpointLimelight3A extends LinearOpMode {
         odom.setOffsets(0.0, 0.0, DistanceUnit.MM); // odometry pod x,y offsets relative center of robot
         odom.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
         odom.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.REVERSED,
-                                  GoBildaPinpointDriver.EncoderDirection.REVERSED);
+                GoBildaPinpointDriver.EncoderDirection.REVERSED);
         odom.resetPosAndIMU();
     } // initPinpointOdometry
 
@@ -156,15 +158,15 @@ public class TestPinpointLimelight3A extends LinearOpMode {
         // Query Limelight for Apriltag-based field location data
         LLResult llResult = limelight.getLatestResult();
         if (llResult != null && llResult.isValid()) {
-            double captureLatency   = llResult.getCaptureLatency();
+            double captureLatency = llResult.getCaptureLatency();
             double targetingLatency = llResult.getTargetingLatency();
-            double parseLatency     = llResult.getParseLatency();
+            double parseLatency = llResult.getParseLatency();
             telemetry.addData("Limelight Latency (msec)", captureLatency + targetingLatency);
             telemetry.addData("Parse Latency (msec)", parseLatency);
             // Parse Limelight result for MegaTag2 robot pose data
             Pose3D limelightBotpose = llResult.getBotpose_MT2();
             if (limelightBotpose != null) {
-                Position           limelightPosition    = limelightBotpose.getPosition();
+                Position limelightPosition = limelightBotpose.getPosition();
                 YawPitchRollAngles limelightOrientation = limelightBotpose.getOrientation();
                 // https://ftc-docs.firstinspires.org/en/latest/game_specific_resources/field_coordinate_system/field-coordinate-system.html#square-field-inverted-alliance-area
                 // We want our pinpoint orientation rotated 180deg from standard FTC orientation, so negate everything from limelight.
@@ -213,12 +215,12 @@ public class TestPinpointLimelight3A extends LinearOpMode {
             // Parse Limelight result for MegaTag2 robot pose data
             Pose3D limelightBotpose = llResult.getBotpose_MT2();
             if (limelightBotpose != null) {
-                Position           limelightPosition    = limelightBotpose.getPosition();
+                Position limelightPosition = limelightBotpose.getPosition();
                 YawPitchRollAngles limelightOrientation = limelightBotpose.getOrientation();
                 // https://ftc-docs.firstinspires.org/en/latest/game_specific_resources/field_coordinate_system/field-coordinate-system.html#square-field-inverted-alliance-area
                 // We want our pinpoint orientation rotated 180� from standard FTC orientation, so negate everything from limelight.
-                double posX   = -limelightPosition.unit.toInches(limelightPosition.x);  // Pinpoint +X (forward) matches Limelight +X (forward)
-                double posY   = -limelightPosition.unit.toInches(limelightPosition.y);  // Pinpoint +Y (left) opposite of Limelight +Y (right)
+                double posX = -limelightPosition.unit.toInches(limelightPosition.x);  // Pinpoint +X (forward) matches Limelight +X (forward)
+                double posY = -limelightPosition.unit.toInches(limelightPosition.y);  // Pinpoint +Y (left) opposite of Limelight +Y (right)
                 double angDeg = rotate180Yaw(limelightOrientation.getYaw(AngleUnit.DEGREES));
                 double[] stddev = llResult.getStddevMt2();
                 telemetry.addData("Limelight(Apriltag)", "x=%.2f y=%.2f %.2fº", posX, posY, angDeg);
@@ -228,9 +230,9 @@ public class TestPinpointLimelight3A extends LinearOpMode {
             for (LLResultTypes.FiducialResult fr : fiducialResults) {
                 telemetry.addData("Fiducial", "ID: %d: %s, X: %.2fº, Y: %.2fº", fr.getFiducialId(), fr.getTargetXDegrees(), fr.getTargetYDegrees());
             }
-            double captureLatency   = llResult.getCaptureLatency();
+            double captureLatency = llResult.getCaptureLatency();
             double targetingLatency = llResult.getTargetingLatency();
-            double parseLatency     = llResult.getParseLatency();
+            double parseLatency = llResult.getParseLatency();
             telemetry.addData("Limelight Latency (msec)", captureLatency + targetingLatency);
             telemetry.addData("Parse Latency (msec)", parseLatency);
         } else {
