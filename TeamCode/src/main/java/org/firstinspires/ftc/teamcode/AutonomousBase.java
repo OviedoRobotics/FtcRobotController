@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
+import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.EyelidState.EYELID_CLOSED_BOTH;
+import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.EyelidState.EYELID_OPEN_BOTH;
 import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState.SPIN_DECREMENT;
 import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState.SPIN_P1;
 import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState.SPIN_P2;
@@ -89,8 +91,12 @@ public abstract class AutonomousBase extends LinearOpMode {
     String      storageDir;
     boolean     redAlliance      = true;  // Is alliance BLUE (true) or RED (false)?
     boolean     forceAlliance    = false; // Override vision pipeline? (toggled during init phase of autonomous)
+    boolean     doSpikeMark1     = true;
+    boolean     doSpikeMark2     = true;
+    boolean     doSpikeMark3     = false;
+    boolean     doSpikeMark0     = false;  // the 3 balls in the corner
     int         initMenuSelected = 1;    // start on the first entry
-    int         initMenuMax      = 2;    // we have 6 total entries
+    int         initMenuMax      = 4;    // we have 6 total entries
     int         startDelaySec    = 0;     // 1: wait [seconds] at startup -- applies to both left/rigth starting positions
     int         scoringZones     = 0;
 
@@ -174,8 +180,13 @@ public abstract class AutonomousBase extends LinearOpMode {
     protected void processAutonomousInitMenu(boolean auto5) {
         // Refresh the gamepad controls
         captureGamepad1Buttons();
-        // Update  mechanisms (including bulkread, spindexer & odometry)
+        // Update mechanisms (including bulkread, spindexer & odometry)
         performEveryLoop();
+
+        // Once 3 balls are loaded, press X to close eyelids
+        if( gamepad1_cross_now && !gamepad1_cross_last) {
+            robot.eyelidServoSetPosition( EYELID_CLOSED_BOTH );
+        }
 
         boolean nextEntry = (gamepad1_dpad_down_now  && !gamepad1_dpad_down_last);
         boolean prevEntry = (gamepad1_dpad_up_now    && !gamepad1_dpad_up_last);
@@ -222,6 +233,27 @@ public abstract class AutonomousBase extends LinearOpMode {
                   gateOption = gateOption.prev();
                 } // prev
                 break;
+            //-------------- COLLECT/SCORE SPIKEMARK 1 --------------
+            case 3 :
+                if( nextValue ) {
+                    doSpikeMark1 = !doSpikeMark1;
+                } // next
+
+                if( prevValue ) {
+                    doSpikeMark1 = !doSpikeMark1;
+                } // prev
+                break;
+            //-------------- COLLECT/SCORE SPIKEMARK 2 --------------
+            case 4 :
+                if( nextValue ) {
+                    doSpikeMark2 = !doSpikeMark2;
+                } // next
+
+                if( prevValue ) {
+                    doSpikeMark2 = !doSpikeMark2;
+                } // prev
+                break;
+            //-------------- SHOULDN'T GET HERE --------------
             default : // recover from bad state
                 initMenuSelected = 1;
                 break;
@@ -231,9 +263,12 @@ public abstract class AutonomousBase extends LinearOpMode {
         telemetry.addData("ALLIANCE", "%s", ((redAlliance)? "RED":"BLUE"));
         telemetry.addData("Start Delay",  "%d sec %s", startDelaySec, ((initMenuSelected==1)? "<-":"  ") );
         telemetry.addData("Open Gate", "%s %s", gateOption.getDescription(), ((initMenuSelected==2)? "<-":"  ") );
+        telemetry.addData("Do SpikeMark1", "%s %s", ((doSpikeMark1)?"yes":"no"), ((initMenuSelected==3)? "<-":"  ") );
+        telemetry.addData("Do SpikeMark2", "%s %s", ((doSpikeMark2)?"yes":"no"), ((initMenuSelected==4)? "<-":"  ") );
         telemetry.addData("Odometry","x=%.2f y=%.2f  %.2f deg",
                 robotGlobalXCoordinatePosition, robotGlobalYCoordinatePosition, Math.toDegrees(robotOrientationRadians) );
-        telemetry.addLine("Preload=PPG (Green in front right!)");
+        telemetry.addLine("Preload=GPP (Green down thru shooter!)");
+        telemetry.addLine("Press X to close eyelids");
         telemetry.addData(">","version 100" );
         telemetry.update();
     } // processAutonomousInitMenu
@@ -278,7 +313,6 @@ public abstract class AutonomousBase extends LinearOpMode {
                 }
             } // fiducialResults
         } // isValid
-
     } // processLimelightObelisk
 
     /*---------------------------------------------------------------------------------*/
@@ -1144,145 +1178,196 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
 
     /*--------------------------------------------------------------------------------------------*/
     public void collectSpikemark1FromFar( boolean isRed, double shooterPower ) {
-        double x1=16.0, x2=21.0, x3=24.0;
+        double x1=16.0, x2=21.0, x3=24.0;  // UNIQUE TO SPIKE1
         double xPos, yPos, angDeg;
+        // Reset the spindexer for collecting GPP
+        robot.spinServoSetPosition( SPIN_P2 );   // GPP goes into P3, P2, P1 (shooter position; not collect position)
         // Transition from shooting zone to spike-mark zone (spikemark #1)
         if( opModeIsActive() ) {
-           // drive away from the far shooting zone in a curved path toward the 1st spike mark
-           driveToPosition( x1, ((isRed)? 1.0:-1.0), ((isRed)? 22.5:-22.5), DRIVE_SPEED_40, TURN_SPEED_30, DRIVE_THRU);
-           driveToPosition( x2, ((isRed)? 3.0:-3.0), ((isRed)? 45.0:-45.0), DRIVE_SPEED_60, TURN_SPEED_30, DRIVE_THRU);
-           driveToPosition( x3, ((isRed)? 7.0:-7.0), ((isRed)? 70.0:-70.0), DRIVE_SPEED_70, TURN_SPEED_30, DRIVE_THRU);
+            // drive away from the far shooting zone in a curved path toward the 1st spike mark
+            driveToPosition( x1, ((isRed)? -1.0:1.0), ((isRed)? -22.5:22.5), DRIVE_SPEED_50, TURN_SPEED_30, DRIVE_THRU);
+            driveToPosition( x2, ((isRed)? -3.0:3.0), ((isRed)? -45.0:45.0), DRIVE_SPEED_80, TURN_SPEED_30, DRIVE_THRU);
+            driveToPosition( x3, ((isRed)? -7.0:7.0), ((isRed)? -70.0:70.0), DRIVE_SPEED_80, TURN_SPEED_30, DRIVE_THRU);
         }
         // Collect the 3 balls at that spike mark
         if( opModeIsActive() ) {
-           // Turn on collector
-           robot.intakeMotor.setPower(0.90);
-           // start relative movements
-           xPos   = (isRed)? 25.5 : 25.5;
-           yPos   = (isRed)? -12.6 : +12.6;
-           angDeg = (isRed)? -90.0 : +90.0;
-           driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_TO);
-           // Drive into the 1st ball to collect it
-           yPos   = (isRed)? -17.7 : +17.7;
-           driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_TO);
-           robot.spinServoSetPosition(SPIN_DECREMENT);
-//         robot.spinServoSetPositionCR(SPIN_DECREMENT);
+            // Command both eyelid open for 1st collecting
+            robot.eyelidServoSetPosition( EYELID_OPEN_BOTH );
+            // Turn on collector
+            robot.intakeMotor.setPower(0.90);
+            // Drive to the final location prior to actual ball collection
+            xPos   = (isRed)? 25.0 : 30.5;  // UNIQUE TO SPIKE1
+            yPos   = (isRed)? -12.6 : +12.6;
+            angDeg = (isRed)? -90.0 : +90.0;
+            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_THRU);
+            // Drive into the 1st ball to collect it
+            yPos   = (isRed)? -19.5 : +19.5;
+            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_TO);
+            sleep(250);  // let it fully collect
+            // EYELID Dance:  close, spindex, open
+            robot.eyelidServoSetPosition( EYELID_CLOSED_BOTH );
+            sleep(750);  // wait for closure
+            robot.spinServoSetPosition( SPIN_P1 );
+            sleep(750);  // wait for spindex
+            robot.eyelidServoSetPosition( EYELID_OPEN_BOTH );
             // Drive into the 2nd ball to collect it
-           yPos   = (isRed)? -22.9 : +22.9;
-           driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_TO);
-           // Spindex it
-           robot.spinServoSetPosition(SPIN_DECREMENT);
-//         robot.spinServoSetPositionCR(SPIN_DECREMENT);
-           // Drive into the 3rd ball to collect it
-           yPos   = (isRed)? -29.9 : +29.9;
-           driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_TO);
+            yPos   = (isRed)? -24.9 : +24.9;
+            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_TO);
+            sleep(250);  // let it fully collect
+            // EYELID Dance:  close, spindex, open
+            robot.eyelidServoSetPosition( EYELID_CLOSED_BOTH );
+            sleep(750);  // wait for closure
+            robot.spinServoSetPosition( SPIN_P3 );
+            sleep(750);  // wait for spindex
+            robot.eyelidServoSetPosition( EYELID_OPEN_BOTH );
+            // Drive into the 3rd ball to collect it
+            yPos   = (isRed)? -30.2 : +30.2;
+            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_TO);
+            sleep(250);  // let it fully collect
+            // Command both eyelid closed for transport
+            robot.eyelidServoSetPosition( EYELID_CLOSED_BOTH );
+            sleep(250);  // wait for start of closure
         } // opModeIsActive
         // Drive back to the shooting zone (back the way we came!)
         if( opModeIsActive() ) {
-           driveToPosition( x3, ((isRed)? 7.0:-7.0), ((isRed)? 70.0:-70.0), DRIVE_SPEED_70, TURN_SPEED_30, DRIVE_THRU);
-           // Start up the shooter motor so it can be at speed when we reach the shooting zone
-           robot.shooterMotorsSetPower( shooterPower );
-           driveToPosition( x2, ((isRed)? 3.0:-3.0), ((isRed)? 45.0:-45.0), DRIVE_SPEED_70, TURN_SPEED_30, DRIVE_THRU);
+            driveToPosition( x3, ((isRed)? -7.0:7.0), ((isRed)? -70.0:70.0), DRIVE_SPEED_70, TURN_SPEED_30, DRIVE_THRU);
+            // Start up the shooter motor so it can be at speed when we reach the shooting zone
+            robot.shooterMotorsSetPower( shooterPower );
+            driveToPosition( x2, ((isRed)? -3.0:3.0), ((isRed)? -45.0:45.0), DRIVE_SPEED_70, TURN_SPEED_30, DRIVE_THRU);
             // Swivel the turret toward the RED or BLUE goal (assumes field location of 11.0/0.0/0deg)
-            robot.turretServo.setPosition( (isRed)? 0.55 : 0.43 ); // right toward RED or left toward BLUE
-           driveToPosition( x1, ((isRed)? 1.0:-1.0), ((isRed)? 22.5:-22.5), DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_THRU);
-           driveToPosition( 10.0, ((isRed)? 0.0:0.0),  ((isRed)?  0.0:0.0),   DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_TO);
+            robot.turretServo.setPosition( (isRed)? 0.545 : 0.435 ); // right toward RED or left toward BLUE
+            driveToPosition( x1, ((isRed)? -1.0:1.0), ((isRed)? -22.5:22.5), DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_THRU);
+            driveToPosition( 10.0, ((isRed)? 0.0:0.0),  ((isRed)?  0.0:0.0),   DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_TO);
         } // opModeIsActive
     } // collectSpikemark1FromFar
 
     /*--------------------------------------------------------------------------------------------*/
     public void collectSpikemark2FromFar( boolean isRed, double shooterPower ) {
-        double x1=38.0, x2=43.0, x3=47.0;
+        double x1=38.0, x2=43.0, x3=47.0;  // UNIQUE TO SPIKE2
         double xPos, yPos, angDeg;
+        // Reset the spindexer for collecting PGP
+        robot.spinServoSetPosition( SPIN_P1 );   // PGP goes into P1, P3, P2
         // Transition from shooting zone to spike-mark zone (spikemark #1)
         if( opModeIsActive() ) {
-           // drive away from the far shooting zone in a curved path toward the 1st spike mark
-           driveToPosition( x1, ((isRed)? 1.0:-1.0), ((isRed)? 22.5:-22.5), DRIVE_SPEED_40, TURN_SPEED_30, DRIVE_THRU);
-           driveToPosition( x2, ((isRed)? 3.0:-3.0), ((isRed)? 45.0:-45.0), DRIVE_SPEED_60, TURN_SPEED_30, DRIVE_THRU);
-           driveToPosition( x3, ((isRed)? 7.0:-7.0), ((isRed)? 70.0:-70.0), DRIVE_SPEED_70, TURN_SPEED_30, DRIVE_THRU);
+            // drive away from the far shooting zone in a curved path toward the 1st spike mark
+            driveToPosition( x1, ((isRed)? -1.0:1.0), ((isRed)? -22.5:22.5), DRIVE_SPEED_50, TURN_SPEED_30, DRIVE_THRU);
+            driveToPosition( x2, ((isRed)? -3.0:3.0), ((isRed)? -45.0:45.0), DRIVE_SPEED_80, TURN_SPEED_30, DRIVE_THRU);
+            driveToPosition( x3, ((isRed)? -7.0:7.0), ((isRed)? -70.0:70.0), DRIVE_SPEED_80, TURN_SPEED_30, DRIVE_THRU);
         }
         // Collect the 3 balls at that spike mark
         if( opModeIsActive() ) {
-           // Turn on collector
-           robot.intakeMotor.setPower(0.90);
-           // start relative movements
-           xPos   = (isRed)? 49.3 : 49.3;
-           yPos   = (isRed)? -12.6 : +12.6;
-           angDeg = (isRed)? -90.0 : +90.0;
-           driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_TO);
-           // Drive into the 1st ball to collect it
-           yPos   = (isRed)? -17.7 : +17.7;
-           driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_TO);
-           robot.spinServoSetPosition(SPIN_DECREMENT);
-//         robot.spinServoSetPositionCR(SPIN_DECREMENT);
+            // Command both eyelid open for 1st collecting
+            robot.eyelidServoSetPosition( EYELID_OPEN_BOTH );
+            // Turn on collector
+            robot.intakeMotor.setPower(0.90);
+            // Drive to the final location prior to actual ball collection
+            xPos   = (isRed)? 49.3 : 54.8;  // UNIQUE TO SPIKE2
+            yPos   = (isRed)? -12.6 : +12.6;
+            angDeg = (isRed)? -90.0 : +90.0;
+            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_THRU);
+            // Drive into the 1st ball to collect it
+            yPos   = (isRed)? -19.5 : +19.5;
+            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_TO);
+            sleep(250);  // let it fully collect
+            // EYELID Dance:  close, spindex, open
+            robot.eyelidServoSetPosition( EYELID_CLOSED_BOTH );
+            sleep(750);  // wait for closure
+            robot.spinServoSetPosition( SPIN_P2 );
+            sleep(750);  // wait for spindex
+            robot.eyelidServoSetPosition( EYELID_OPEN_BOTH );
             // Drive into the 2nd ball to collect it
-           yPos   = (isRed)? -22.9 : +22.9;
-           driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_TO);
-           // Spindex it
-           robot.spinServoSetPosition(SPIN_DECREMENT);
-//         robot.spinServoSetPositionCR(SPIN_DECREMENT);
-           // Drive into the 3rd ball to collect it
-           yPos   = (isRed)? -29.9 : +29.9;
-           driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_TO);
+            yPos   = (isRed)? -24.9 : +24.9;
+            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_TO);
+            sleep(250);  // let it fully collect
+            // EYELID Dance:  close, spindex, open
+            robot.eyelidServoSetPosition( EYELID_CLOSED_BOTH );
+            sleep(750);  // wait for closure
+            robot.spinServoSetPosition( SPIN_P3 );
+            sleep(750);  // wait for spindex
+            robot.eyelidServoSetPosition( EYELID_OPEN_BOTH );
+            // Drive into the 3rd ball to collect it
+            yPos   = (isRed)? -30.2 : +30.2;
+            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_TO);
+            sleep(250);  // let it fully collect
+            // Command both eyelid closed for transport
+            robot.eyelidServoSetPosition( EYELID_CLOSED_BOTH );
+            sleep(250);  // wait for start of closure
         } // opModeIsActive
         // Drive back to the shooting zone (back the way we came!)
+/* DONT END WHILE DRIVING
         if( opModeIsActive() ) {
-           driveToPosition( x3, ((isRed)? 7.0:-7.0), ((isRed)? 70.0:-70.0), DRIVE_SPEED_70, TURN_SPEED_30, DRIVE_THRU);
-           // Start up the shooter motor so it can be at speed when we reach the shooting zone
-           robot.shooterMotorsSetPower( shooterPower );
-           driveToPosition( x2, ((isRed)? 3.0:-3.0), ((isRed)? 45.0:-45.0), DRIVE_SPEED_70, TURN_SPEED_30, DRIVE_THRU);
+            driveToPosition( x3, ((isRed)? -7.0:7.0), ((isRed)? -70.0:70.0), DRIVE_SPEED_70, TURN_SPEED_30, DRIVE_THRU);
+            // Start up the shooter motor so it can be at speed when we reach the shooting zone
+            robot.shooterMotorsSetPower( shooterPower );
+            driveToPosition( x2, ((isRed)? -3.0:3.0), ((isRed)? -45.0:45.0), DRIVE_SPEED_70, TURN_SPEED_30, DRIVE_THRU);
             // Swivel the turret toward the RED or BLUE goal (assumes field location of 11.0/0.0/0deg)
-            robot.turretServo.setPosition( (isRed)? 0.55 : 0.43 ); // right toward RED or left toward BLUE
-           driveToPosition( x1, ((isRed)? 1.0:-1.0), ((isRed)? 22.5:-22.5), DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_THRU);
-           driveToPosition( 10.0, ((isRed)? 0.0:0.0),  ((isRed)?  0.0:0.0),   DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_TO);
+            robot.turretServo.setPosition( (isRed)? 0.545 : 0.435 ); // right toward RED or left toward BLUE
+            driveToPosition( x1, ((isRed)? -1.0:1.0), ((isRed)? -22.5:22.5), DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_THRU);
+            driveToPosition( 10.0, ((isRed)? 0.0:0.0),  ((isRed)?  0.0:0.0),   DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_TO);
         } // opModeIsActive
+*/
     } // collectSpikemark2FromFar
 
     /*--------------------------------------------------------------------------------------------*/
     public void collectSpikemark3FromFar( boolean isRed, double shooterPower ) {
-        double x1=62.0, x2=67.0, x3=71.0;
+        double x1=62.0, x2=67.0, x3=71.0;  // UNIQUE TO SPIKE3
         double xPos, yPos, angDeg;
+        // Reset the spindexer for collecting PPG
+        robot.spinServoSetPosition( SPIN_P2 );   // PPG goes into P2, P1, P3
         // Transition from shooting zone to spike-mark zone (spikemark #1)
         if( opModeIsActive() ) {
-           // drive away from the far shooting zone in a curved path toward the 1st spike mark
-           driveToPosition( x1, ((isRed)? 1.0:-1.0), ((isRed)? 22.5:-22.5), DRIVE_SPEED_40, TURN_SPEED_30, DRIVE_THRU);
-           driveToPosition( x2, ((isRed)? 3.0:-3.0), ((isRed)? 45.0:-45.0), DRIVE_SPEED_60, TURN_SPEED_30, DRIVE_THRU);
-           driveToPosition( x3, ((isRed)? 7.0:-7.0), ((isRed)? 70.0:-70.0), DRIVE_SPEED_70, TURN_SPEED_30, DRIVE_THRU);
+            // drive away from the far shooting zone in a curved path toward the 1st spike mark
+            driveToPosition( x1, ((isRed)? -1.0:1.0), ((isRed)? -22.5:22.5), DRIVE_SPEED_40, TURN_SPEED_30, DRIVE_THRU);
+            driveToPosition( x2, ((isRed)? -3.0:3.0), ((isRed)? -45.0:45.0), DRIVE_SPEED_60, TURN_SPEED_30, DRIVE_THRU);
+            driveToPosition( x3, ((isRed)? -7.0:7.0), ((isRed)? -70.0:70.0), DRIVE_SPEED_70, TURN_SPEED_30, DRIVE_THRU);
         }
         // Collect the 3 balls at that spike mark
         if( opModeIsActive() ) {
-           // Turn on collector
-           robot.intakeMotor.setPower(0.90);
-           // start relative movements
-           xPos   = (isRed)? 73.0 : 73.0;
-           yPos   = (isRed)? -12.6 : +12.6;
-           angDeg = (isRed)? -90.0 : +90.0;
-           driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_TO);
-           // Drive into the 1st ball to collect it
-           yPos   = (isRed)? -17.7 : +17.7;
-           driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_TO);
-           robot.spinServoSetPosition(SPIN_DECREMENT);
-//         robot.spinServoSetPositionCR(SPIN_DECREMENT);
+            // Command both eyelid open for 1st collecting
+            robot.eyelidServoSetPosition( EYELID_OPEN_BOTH );
+            // Turn on collector
+            robot.intakeMotor.setPower(0.90);
+            // Drive to the final location prior to actual ball collection
+            xPos   = (isRed)? 73.0 : 78.5;  // UNIQUE TO SPIKE3
+            yPos   = (isRed)? -12.6 : +12.6;
+            angDeg = (isRed)? -90.0 : +90.0;
+            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_THRU);
+            // Drive into the 1st ball to collect it
+            yPos   = (isRed)? -17.7 : +17.7;
+            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_TO);
+            sleep(250);  // let it fully collect
+            // EYELID Dance:  close, spindex, open
+            robot.eyelidServoSetPosition( EYELID_CLOSED_BOTH );
+            sleep(750);  // wait for closure
+            robot.spinServoSetPosition( SPIN_P1 );
+            sleep(750);  // wait for spindex
+            robot.eyelidServoSetPosition( EYELID_OPEN_BOTH );
             // Drive into the 2nd ball to collect it
-           yPos   = (isRed)? -22.9 : +22.9;
-           driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_TO);
-           // Spindex it
-           robot.spinServoSetPosition(SPIN_DECREMENT);
-//         robot.spinServoSetPositionCR(SPIN_DECREMENT);
-           // Drive into the 3rd ball to collect it
-           yPos   = (isRed)? -29.9 : +29.9;
-           driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_TO);
+            yPos   = (isRed)? -22.9 : +22.9;
+            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_TO);
+            // EYELID Dance:  close, spindex, open
+            robot.eyelidServoSetPosition( EYELID_CLOSED_BOTH );
+            sleep(750);  // wait for closure
+            robot.spinServoSetPosition( SPIN_P3 );
+            sleep(750);  // wait for spindex
+            robot.eyelidServoSetPosition( EYELID_OPEN_BOTH );
+            // Drive into the 3rd ball to collect it
+            yPos   = (isRed)? -29.9 : +29.9;
+            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_TO);
+            // Command both eyelid closed for transport
+            robot.eyelidServoSetPosition( EYELID_CLOSED_BOTH );
+            sleep(250);  // wait for start of closure
         } // opModeIsActive
         // Drive back to the shooting zone (back the way we came!)
         if( opModeIsActive() ) {
-           driveToPosition( x3, ((isRed)? 7.0:-7.0), ((isRed)? 70.0:-70.0), DRIVE_SPEED_70, TURN_SPEED_30, DRIVE_THRU);
-           // Start up the shooter motor so it can be at speed when we reach the shooting zone
-           robot.shooterMotorsSetPower( shooterPower );
-           driveToPosition( x2, ((isRed)? 3.0:-3.0), ((isRed)? 45.0:-45.0), DRIVE_SPEED_70, TURN_SPEED_30, DRIVE_THRU);
+            driveToPosition( x3, ((isRed)? -7.0:7.0), ((isRed)? -70.0:70.0), DRIVE_SPEED_70, TURN_SPEED_30, DRIVE_THRU);
+            // Start up the shooter motor so it can be at speed when we reach the shooting zone
+            robot.shooterMotorsSetPower( shooterPower );
+            driveToPosition( x2, ((isRed)? -3.0:3.0), ((isRed)? -45.0:45.0), DRIVE_SPEED_70, TURN_SPEED_30, DRIVE_THRU);
             // Swivel the turret toward the RED or BLUE goal (assumes field location of 11.0/0.0/0deg)
-            robot.turretServo.setPosition( (isRed)? 0.55 : 0.43 ); // right toward RED or left toward BLUE
-           driveToPosition( x1, ((isRed)? 1.0:-1.0), ((isRed)? 22.5:-22.5), DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_THRU);
-           driveToPosition( 10.0, ((isRed)? 0.0:0.0),  ((isRed)?  0.0:0.0),   DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_TO);
+            robot.turretServo.setPosition( (isRed)? 0.545 : 0.435 ); // right toward RED or left toward BLUE
+            driveToPosition( x1, ((isRed)? -1.0:1.0), ((isRed)? -22.5:22.5), DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_THRU);
+            driveToPosition( 10.0, ((isRed)? 0.0:0.0),  ((isRed)?  0.0:0.0),   DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_TO);
         } // opModeIsActive
     } // collectSpikemark3FromFar
 
@@ -1301,7 +1386,7 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
                robot.spinServoSetPosition( shootOrder[i] );
 //             robot.spinServoSetPositionCR( shootOrder[i] );
                // wait for the rotation to complete, then launch that ball
-               sleep(1500);
+               sleep(900);
               launchBall();
               if( !opModeIsActive() ) break;
               }

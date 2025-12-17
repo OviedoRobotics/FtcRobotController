@@ -43,7 +43,7 @@ public class TestPinpointLimelight3A extends LinearOpMode {
 
     //====== Limelight Camera ======
     Limelight3A limelight = null;
-    LimelightFusedPinpointOdometry llodo;
+    LimelightFusedPinpointOdometry llodo = null;
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -223,12 +223,12 @@ public class TestPinpointLimelight3A extends LinearOpMode {
                 double posY = -limelightPosition.unit.toInches(limelightPosition.y);  // Pinpoint +Y (left) opposite of Limelight +Y (right)
                 double angDeg = rotate180Yaw(limelightOrientation.getYaw(AngleUnit.DEGREES));
                 double[] stddev = llResult.getStddevMt2();
-                telemetry.addData("Limelight(Apriltag)", "x=%.2f y=%.2f %.2fº", posX, posY, angDeg);
-                telemetry.addData("LL StdDev (x,y,yaw)", "x=%.2f y=%.2f %.2fº", stddev[0], stddev[1], stddev[5]);
+                telemetry.addData("Limelight(Apriltag)", "x=%.2f y=%.2f %.2f deg", posX, posY, angDeg);
+                telemetry.addData("LL StdDev (x,y,yaw)", "x=%.2f y=%.2f %.2f deg", stddev[0], stddev[1], stddev[5]);
             }
             List<LLResultTypes.FiducialResult> fiducialResults = llResult.getFiducialResults();
             for (LLResultTypes.FiducialResult fr : fiducialResults) {
-                telemetry.addData("Fiducial", "ID: %d: %s, X: %.2fº, Y: %.2fº", fr.getFiducialId(), fr.getTargetXDegrees(), fr.getTargetYDegrees());
+                telemetry.addData("Fiducial", "ID: %d: %s, X: %.2f deg, Y: %.2f deg", fr.getFiducialId(), fr.getTargetXDegrees(), fr.getTargetYDegrees());
             }
             double captureLatency = llResult.getCaptureLatency();
             double targetingLatency = llResult.getTargetingLatency();

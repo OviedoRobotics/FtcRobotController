@@ -11,19 +11,6 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 @TeleOp(name="Teleop-PositionTest", group="Test")
 //@Disabled
 public class TeleopPositionTest extends LinearOpMode {
-    boolean gamepad1_triangle_last,   gamepad1_triangle_now   = false;  //
-    boolean gamepad1_circle_last,     gamepad1_circle_now     = false;  //
-    boolean gamepad1_cross_last,      gamepad1_cross_now      = false;  //
-    boolean gamepad1_square_last,     gamepad1_square_now     = false;  //
-    boolean gamepad1_dpad_up_last,    gamepad1_dpad_up_now    = false;  // gamepad1.dpad_up used live/realtime
-    boolean gamepad1_dpad_down_last,  gamepad1_dpad_down_now  = false;  //   (see processDpadDriveMode() below)
-    boolean gamepad1_dpad_left_last,  gamepad1_dpad_left_now  = false;
-    boolean gamepad1_dpad_right_last, gamepad1_dpad_right_now = false;
-    boolean gamepad1_l_bumper_last,   gamepad1_l_bumper_now   = false;
-    boolean gamepad1_r_bumper_last,   gamepad1_r_bumper_now   = false;
-    boolean gamepad1_touchpad_last,   gamepad1_touchpad_now   = false;
-    boolean gamepad1_l_trigger_last,  gamepad1_l_trigger_now  = false;
-    boolean gamepad1_r_trigger_last,  gamepad1_r_trigger_now  = false;
 
     // 0=shooter servo
     // 1=shooter motor
@@ -32,10 +19,11 @@ public class TeleopPositionTest extends LinearOpMode {
     // 4=lift/injecter servo
     // 5=lEyelidServo
     // 6=rEyelidServo 
-    int     selectedMechanism = 0;  
-    double  servoStepSize = 0.01;
-    double  shooterPos, turretPos, spinPos, liftPos, lEyelidPos, rEyelidPos;
-    double  shooterPower = 0.50;
+    int       selectedMechanism = 0;
+    double [] stepSizes = { 0.1, 0.01, 0.001, 0.0001 };
+    int       stepIndex = 0;
+    double    shooterPos, turretPos, spinPos, liftPos, lEyelidPos, rEyelidPos;
+    double    shooterPower = 0.50;
 
     long    nanoTimeCurr=0, nanoTimePrev=0;
     double  elapsedTime, elapsedHz;
@@ -84,15 +72,13 @@ public class TeleopPositionTest extends LinearOpMode {
         // run until the end of the match (driver presses STOP)
         while (opModeIsActive())
         {
-            // Refresh gamepad button status
-            captureGamepad1Buttons();
-
             // Bulk-refresh the Control/Expansion Hub device status (motor status, digital I/O) -- FASTER!
             robot.readBulkData();
 
             //================ Update telemetry with current state ================
             telemetry.addData("Use CROSS to toggle between mechanisms", " " );
             telemetry.addData("Use left/right BUMPERS to adjust setting lower/higher", " " );
+            telemetry.addData("Step Size", "%.4f (O button)", stepSizes[stepIndex]);
             switch( selectedMechanism ) { // 0=shooter servo
                 case 0 :
                     telemetry.addData("SELECTED:", "shooterServo" );
@@ -131,56 +117,60 @@ public class TeleopPositionTest extends LinearOpMode {
                     break;
             } // switch()
 
+            //================ CIRCLE SWITCHES OUR SERVO POSITION STEP SIZE ================
+            if( gamepad1.circleWasPressed() ) {
+                stepIndex = (stepIndex + 1) % stepSizes.length;
+            }
+
             //================ CROSS SWITCHES WHICH SERVO WE'RE CONTROLLING ================
-            if( gamepad1_cross_now && !gamepad1_cross_last)
+            if( gamepad1.crossWasPressed() )
             {
                 selectedMechanism += 1;
                 if( selectedMechanism > 6 ) selectedMechanism = 0;
             } // cross
 
             //================ LEFT BUMPER DECREASES SERVO POSITION ================
-            if( gamepad1_l_bumper_now && !gamepad1_l_bumper_last)
+            if( gamepad1.leftBumperWasPressed() )
             {
                 switch( selectedMechanism ) {
                     case 0 :
-                        shooterPos -= servoStepSize;
+                        shooterPos -= stepSizes[stepIndex];
                         if( shooterPos < 0.0 ) shooterPos = 0.0;
                         if( shooterPos > 1.0 ) shooterPos = 1.0;
                         robot.shooterServo.setPosition(shooterPos);
                         break;
                     case 1 :
-                        shooterPower -= 0.05;
+                        shooterPower -= stepSizes[stepIndex];
                         if( shooterPower < 0.0 ) shooterPower = 0.0;
                         if( shooterPower > 1.0 ) shooterPower = 1.0;
                         robot.shooterMotorsSetPower( shooterPower );
                         break;
                     case 2 :
-                        turretPos -= 0.02;
+                        turretPos -= stepSizes[stepIndex];
                         if( turretPos < 0.0 ) turretPos = 0.0;
                         if( turretPos > 1.0 ) turretPos = 1.0;
                         robot.turretServo.setPosition(turretPos);
-//                      robot.turretServo2.setPosition(turretPos);
                         break;
                     case 3 :
-                        spinPos -= servoStepSize;
+                        spinPos -= stepSizes[stepIndex];
                         if( spinPos < 0.0 ) spinPos = 0.0;
                         if( spinPos > 1.0 ) spinPos = 1.0;
                         robot.spinServo.setPosition(spinPos);
                         break;
                     case 4 :
-                        liftPos -= servoStepSize;
+                        liftPos -= stepSizes[stepIndex];
                         if( liftPos < 0.0 ) liftPos = 0.0;
                         if( liftPos > 1.0 ) liftPos = 1.0;
                         robot.liftServo.setPosition(liftPos);
                         break;
                     case 5 :
-                        lEyelidPos -= servoStepSize;
+                        lEyelidPos -= stepSizes[stepIndex];
                         if( lEyelidPos < 0.0 ) lEyelidPos = 0.0;
                         if( lEyelidPos > 1.0 ) lEyelidPos = 1.0;
                         robot.lEyelidServo.setPosition(lEyelidPos);
                         break;
                     case 6 :
-                        rEyelidPos -= servoStepSize;
+                        rEyelidPos -= stepSizes[stepIndex];
                         if( rEyelidPos < 0.0 ) rEyelidPos = 0.0;
                         if( rEyelidPos > 1.0 ) rEyelidPos = 1.0;
                         robot.rEyelidServo.setPosition(rEyelidPos);
@@ -191,11 +181,11 @@ public class TeleopPositionTest extends LinearOpMode {
             } // left bumper
 
             //================ RIGHT BUMPER INCREASES SERVO POSITION ================
-            else if( gamepad1_r_bumper_now && !gamepad1_r_bumper_last)
+            else if( gamepad1.rightBumperWasReleased() )
             {
                 switch( selectedMechanism ) {
                     case 0 :
-                        shooterPos += servoStepSize;
+                        shooterPos += stepSizes[stepIndex];
                         if( shooterPos < 0.0 ) shooterPos = 0.0;
                         if( shooterPos > 1.0 ) shooterPos = 1.0;
                         robot.shooterServo.setPosition(shooterPos);
@@ -213,25 +203,25 @@ public class TeleopPositionTest extends LinearOpMode {
                         robot.turretServo.setPosition(turretPos);
                         break;
                     case 3 :
-                        spinPos += servoStepSize;
+                        spinPos += stepSizes[stepIndex];
                         if( spinPos < 0.0 ) spinPos = 0.0;
                         if( spinPos > 1.0 ) spinPos = 1.0;
                         robot.spinServo.setPosition(spinPos);
                         break;
                     case 4 :
-                        liftPos += servoStepSize;
+                        liftPos += stepSizes[stepIndex];
                         if( liftPos < 0.0 ) liftPos = 0.0;
                         if( liftPos > 1.0 ) liftPos = 1.0;
                         robot.liftServo.setPosition(liftPos);
                         break;
                     case 5 :
-                        lEyelidPos += servoStepSize;
+                        lEyelidPos += stepSizes[stepIndex];
                         if( lEyelidPos < 0.0 ) lEyelidPos = 0.0;
                         if( lEyelidPos > 1.0 ) lEyelidPos = 1.0;
                         robot.lEyelidServo.setPosition(lEyelidPos);
                         break;
                     case 6 :
-                        rEyelidPos += servoStepSize;
+                        rEyelidPos += stepSizes[stepIndex];
                         if( rEyelidPos < 0.0 ) rEyelidPos = 0.0;
                         if( rEyelidPos > 1.0 ) rEyelidPos = 1.0;
                         robot.rEyelidServo.setPosition(rEyelidPos);
@@ -256,22 +246,5 @@ public class TeleopPositionTest extends LinearOpMode {
         } // opModeIsActive
 
     } // runOpMode
-
-    /*---------------------------------------------------------------------------------*/
-    void captureGamepad1Buttons() {
-        gamepad1_triangle_last   = gamepad1_triangle_now;    gamepad1_triangle_now   = gamepad1.triangle;
-        gamepad1_circle_last     = gamepad1_circle_now;      gamepad1_circle_now     = gamepad1.circle;
-        gamepad1_cross_last      = gamepad1_cross_now;       gamepad1_cross_now      = gamepad1.cross;
-        gamepad1_square_last     = gamepad1_square_now;      gamepad1_square_now     = gamepad1.square;
-        gamepad1_dpad_up_last    = gamepad1_dpad_up_now;     gamepad1_dpad_up_now    = gamepad1.dpad_up;
-        gamepad1_dpad_down_last  = gamepad1_dpad_down_now;   gamepad1_dpad_down_now  = gamepad1.dpad_down;
-        gamepad1_dpad_left_last  = gamepad1_dpad_left_now;   gamepad1_dpad_left_now  = gamepad1.dpad_left;
-        gamepad1_dpad_right_last = gamepad1_dpad_right_now;  gamepad1_dpad_right_now = gamepad1.dpad_right;
-        gamepad1_l_bumper_last   = gamepad1_l_bumper_now;    gamepad1_l_bumper_now   = gamepad1.left_bumper;
-        gamepad1_r_bumper_last   = gamepad1_r_bumper_now;    gamepad1_r_bumper_now   = gamepad1.right_bumper;
-//      gamepad1_touchpad_last   = gamepad1_touchpad_now;    gamepad1_touchpad_now   = gamepad1.touchpad;
-        gamepad1_l_trigger_last  = gamepad1_l_trigger_now;   gamepad1_l_trigger_now  = (gamepad1.left_trigger >= 0.5);
-        gamepad1_r_trigger_last  = gamepad1_r_trigger_now;   gamepad1_r_trigger_now  = (gamepad1.right_trigger >= 0.5);
-    } // captureGamepad1Buttons
 
 } // TeleopPositionTest

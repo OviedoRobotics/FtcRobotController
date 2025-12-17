@@ -2,6 +2,8 @@
  */
 package org.firstinspires.ftc.teamcode;
 
+import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.EyelidState.EYELID_CLOSED_BOTH;
+
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
@@ -50,6 +52,9 @@ public class AutonomousBlueFar extends AutonomousBase {
         resetGlobalCoordinatePosition();
         scoringZones = 0;
 
+        // If nobody pressed X during setup, ensure eyelids are closed.
+        robot.eyelidServoSetPosition( EYELID_CLOSED_BOTH );
+
         // Start the autonomous timer so we know how much time is remaining when cycling samples
         autonomousTimer.reset();
 
@@ -60,7 +65,7 @@ public class AutonomousBlueFar extends AutonomousBase {
         //---------------------------------------------------------------------------------
 
         // Ensure spindexer servo stops in case we exit while the spindexer is rotating
-        robot.spinServoCR.setPower(0.0);
+//      robot.spinServoCR.setPower(0.0);
 
         telemetry.addData("Program", "Complete");
         telemetry.update();
@@ -103,32 +108,32 @@ public class AutonomousBlueFar extends AutonomousBase {
         // Must not go so far we are no longer within the scoring zone!
         driveToPosition( 11.0, 0.0, 0.0, DRIVE_SPEED_40, TURN_SPEED_15, DRIVE_TO);
         // Swivel the turret toward the RED or BLUE goal (assumes field location of 11.0/0.0/0deg
-        robot.turretServo.setPosition( (redAlliance)? 0.55 : 0.43 ); // right toward RED or left toward BLUE
+        robot.turretServo.setPosition( (redAlliance)? 0.545 : 0.435 ); // right toward RED or left toward BLUE
         sleep( 1500 ); // Must cover both shooter spin up and turret rotation
         scoreThreeBallsFromFar( obeliskID );
 
         // Collect and Score 1st spike mark
-        collectSpikemark1FromFar( redAlliance,shooterPowerFar );
-        scoreThreeBallsFromFar( obeliskID );
+        if( doSpikeMark1 ) {
+            collectSpikemark1FromFar(redAlliance, shooterPowerFar);
+            scoreThreeBallsFromFar(obeliskID);
+        }
 
         // Collect and Score 2nd spike mark
-        collectSpikemark2FromFar( redAlliance,shooterPowerFar );
-        scoreThreeBallsFromFar( obeliskID );
-            
+        if( doSpikeMark2 ) {
+            collectSpikemark2FromFar(redAlliance, shooterPowerFar);
+            //scoreThreeBallsFromFar( obeliskID );    // NOT FAST ENOUGH FOR TOURNAMENT2 :-(
+        }
         // Collect and Score 3rd spike mark
-        collectSpikemark3FromFar( redAlliance,shooterPowerFar );
-        scoreThreeBallsFromFar( obeliskID );
+        if( doSpikeMark3 ) {
+            collectSpikemark3FromFar( redAlliance,shooterPowerFar );
+            scoreThreeBallsFromFar( obeliskID );
+        }
 
         // Drive away from the score line for the MOVEMENT points
-        driveToPosition(32.0, 0.0, 0.0, DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_TO);
+        //driveToPosition(32.0, 0.0, 0.0, DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_TO);
 
         // ensure motors are turned off even if we run out of time
         robot.driveTrainMotorsZero();
     } // mainAutonomous
-
-
-    private void driveToFirstTickMark() {
-//        driveToPosition()
-    }
 
 } /* AutonomousBlueFar */

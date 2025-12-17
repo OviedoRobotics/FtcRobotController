@@ -189,7 +189,9 @@ public abstract class Teleop extends LinearOpMode {
             }
 
             if (gamepad1_r_bumper_now && !gamepad1_r_bumper_last) {
-                robot.shooterServo.setPosition(robot.computeAlignedFlapperPos());
+                // RIGHT BUTTON resets turret to the center
+                robot.turretServo.setPosition(robot.TURRET_SERVO_INIT);
+//              robot.shooterServo.setPosition(robot.computeAlignedFlapperPos());
             }
             //BRODY!!
 
@@ -559,14 +561,14 @@ public abstract class Teleop extends LinearOpMode {
         {
             if (intakeMotorOnFwd == false){
                 // Command both eyelid open if we're collecting
-                robot.eyelidServoSetPosition( EYELID_OPEN_BOTH );
+                if( robot.isRobot2) robot.eyelidServoSetPosition( EYELID_OPEN_BOTH );
                 // Turn on collector in FORWARD
                 robot.intakeMotor.setPower(0.90);
                 intakeMotorOnFwd = true;
                 intakeMotorOnRev = false;
             } else{
                 // Command both eyelid CLOSED whenever we stop collecting
-                robot.eyelidServoSetPosition( EYELID_CLOSED_BOTH );
+                if( robot.isRobot2) robot.eyelidServoSetPosition( EYELID_CLOSED_BOTH );
                 // Shut OFF collector
                 robot.intakeMotor.setPower(0.00);
                 intakeMotorOnFwd = false;
@@ -578,14 +580,14 @@ public abstract class Teleop extends LinearOpMode {
         {
             if (intakeMotorOnRev == false){
                 // Command both eyelid open if we're anti-collecting
-                robot.eyelidServoSetPosition( EYELID_OPEN_BOTH );
+                if( robot.isRobot2) robot.eyelidServoSetPosition( EYELID_OPEN_BOTH );
                 // Turn on collector in REVERSE
                 robot.intakeMotor.setPower(-0.90);
                 intakeMotorOnFwd = false;
                 intakeMotorOnRev = true;
             } else{
                 // Command both eyelid CLOSED whenever we stop collecting
-                robot.eyelidServoSetPosition( EYELID_CLOSED_BOTH );
+                if( robot.isRobot2) robot.eyelidServoSetPosition( EYELID_CLOSED_BOTH );
                 // Shut OFF collector
                 robot.intakeMotor.setPower(0.00);
                 intakeMotorOnFwd = false;
