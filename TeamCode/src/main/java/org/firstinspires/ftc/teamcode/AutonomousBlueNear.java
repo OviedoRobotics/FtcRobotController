@@ -2,14 +2,11 @@
  */
 package org.firstinspires.ftc.teamcode;
 
-import com.qualcomm.hardware.limelightvision.LLResult;
-import com.qualcomm.hardware.limelightvision.LLResultTypes;
-import com.qualcomm.hardware.limelightvision.Limelight3A;
+import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.EyelidState.EYELID_CLOSED_BOTH;
+
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
 import org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState;
-
-import java.util.List;
 
 /**
  */
@@ -24,9 +21,6 @@ public class AutonomousBlueNear extends AutonomousBase {
 
     double pos_y=robotGlobalYCoordinatePosition, pos_x=robotGlobalXCoordinatePosition, pos_angle=robotOrientationRadians;  // Allows us to specify movement ABSOLUTELY
 
-    private Limelight3A limelight;
-    private int         obeliskID=23; // if we can't see it, default to PPG (purple purple green)
-
     @Override
     public void runOpMode() throws InterruptedException {
 
@@ -36,38 +30,25 @@ public class AutonomousBlueNear extends AutonomousBase {
         robot.init(hardwareMap,true);
         redAlliance  = false;
 
-        // NOTE: Control Hub is assigned eth0 address 172.29.0.1 by limelight DHCP server
-        limelight = hardwareMap.get(Limelight3A.class, "limelight");
-        limelight.pipelineSwitch(1);
-        limelight.start();  // Start polling for data (skipping this has getLatestResult() return null results)
+        robot.limelightPipelineSwitch( 1 );
+        robot.limelightStart();  // Start polling for data (skipping this has getLatestResult() return null results)
 
         // Wait for the game to start (driver presses PLAY).  While waiting, poll for options
         while (!isStarted()) {
             // Do we need to change any of the other autonomous options?
             processAutonomousInitMenu(false);  // not auto5 start position
-            LLResult result = limelight.getLatestResult();
-            if (result.isValid()) {
-                // Access fiducial results
-                List<LLResultTypes.FiducialResult> fiducialResults = result.getFiducialResults();
-                for (LLResultTypes.FiducialResult fr : fiducialResults) {
-                    int limelightID = fr.getFiducialId();
-                    // Note: common OBELISK april tags for both RED & BLUE alliance
-                    //  21 = GPP (green purple purple)
-                    //  22 = PGP (purple green purple)
-                    //  23 = PPG (purple purple green)
-                    if( (limelightID >= 21) && (limelightID <= 23) ) {
-                        telemetry.addData("Obelisk", "ID: %d", limelightID);
-                        obeliskID = limelightID;
-                    }
-                } // fiducialResults
-            } // isValid
+            // Process limelight for obelisk detection
+            processLimelightObelisk();
             // Pause briefly before looping
             idle();
         } // !isStarted
 
-        limelight.stop();
+        robot.limelightStop();
         resetGlobalCoordinatePosition();
         scoringZones = 0;
+
+        // If nobody pressed X during setup, ensure eyelids are closed.
+        robot.eyelidServoSetPosition( EYELID_CLOSED_BOTH );
 
         // Start the autonomous timer so we know how much time is remaining when cycling samples
         autonomousTimer.reset();

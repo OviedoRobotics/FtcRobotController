@@ -14,7 +14,6 @@ import android.os.SystemClock;
 
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
-import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -70,7 +69,6 @@ public abstract class AutonomousBase extends LinearOpMode {
     static final double FIRST_SPIKE_MARK_RED_POS_X = 0.0; // TODO: Find real position
     static final double FIRST_SPIKE_MARK_RED_POS_Y = 0.0; // TODO: Find real position
 
-    public Limelight3A limelight;
     public int         obeliskID=23; // if we can't see it, default to PPG (purple purple green)
 
     // NOTE: Initializing the odometry global X-Y and ANGLE to 0-0 and 0deg means the frame of reference for all movements is
@@ -297,7 +295,7 @@ public abstract class AutonomousBase extends LinearOpMode {
     } // performEveryLoop
 
     public void processLimelightObelisk() {
-        LLResult result = limelight.getLatestResult();
+        LLResult result = robot.limelight.getLatestResult();
         if (result.isValid()) {
             // Access fiducial results
             List<LLResultTypes.FiducialResult> fiducialResults = result.getFiducialResults();

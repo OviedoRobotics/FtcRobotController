@@ -1,8 +1,8 @@
 package org.firstinspires.ftc.teamcode;
 
-
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
+import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
@@ -44,6 +44,9 @@ public class HardwareSwyftBot
 
     //====== GOBILDA PINPOINT ODOMETRY COMPUTER ======
     GoBildaPinpointDriver odom;
+
+    //====== LIMELIGHT SMART CAMERA ======
+    public Limelight3A limelight;
 
     //====== MECANUM DRIVETRAIN MOTORS (RUN_USING_ENCODER) =====
     protected DcMotorEx frontLeftMotor     = null;
@@ -273,6 +276,11 @@ public class HardwareSwyftBot
         odom.setPosition(startingPos);  //BRODY!!
 
         //--------------------------------------------------------------------------------------------
+        // Locate the limelight3a camera in our hardware settings
+        // NOTE: Control Hub is assigned eth0 address 172.29.0.1 by limelight DHCP server
+        limelight = hwMap.get(Limelight3A.class, "limelight");
+
+        //--------------------------------------------------------------------------------------------
         // Define and Initialize drivetrain motors
         frontLeftMotor  = hwMap.get(DcMotorEx.class,"FrontLeft");  // Expansion Hub port 0 (FORWARD)
         frontRightMotor = hwMap.get(DcMotorEx.class,"FrontRight"); // Control Hub   port 0 (reverse)
@@ -453,6 +461,26 @@ public class HardwareSwyftBot
         shooterMotor1.setPower( shooterPower );
         shooterMotor2.setPower( shooterPower );
     } // shooterMotorsSetPower
+
+    /*--------------------------------------------------------------------------------------------*/
+    public void limelightPipelineSwitch( int pipeline_number )
+    {
+        limelight.pipelineSwitch( pipeline_number );
+    } // limelightPipelineSwitch
+
+    /*--------------------------------------------------------------------------------------------*/
+    public void limelightStart()
+    {
+        // Start polling for data (skipping this has getLatestResult() return null results)
+        limelight.start();
+    } // limelightStart
+
+    /*--------------------------------------------------------------------------------------------*/
+    public void limelightStop()
+    {
+        // Start polling for data (skipping this has getLatestResult() return null results)
+        limelight.stop();
+    } // limelightStop
 
     //BRODY!!
     static double thetaMaxTurret = 375;

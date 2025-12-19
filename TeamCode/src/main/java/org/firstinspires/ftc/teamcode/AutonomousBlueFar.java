@@ -4,12 +4,7 @@ package org.firstinspires.ftc.teamcode;
 
 import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.EyelidState.EYELID_CLOSED_BOTH;
 
-import com.qualcomm.hardware.limelightvision.LLResult;
-import com.qualcomm.hardware.limelightvision.LLResultTypes;
-import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
-
-import java.util.List;
 
 /**
  */
@@ -33,10 +28,8 @@ public class AutonomousBlueFar extends AutonomousBase {
         robot.init(hardwareMap,true);
         redAlliance  = false;
 
-        // NOTE: Control Hub is assigned eth0 address 172.29.0.1 by limelight DHCP server
-        limelight = hardwareMap.get(Limelight3A.class, "limelight");
-        limelight.pipelineSwitch(1);
-        limelight.start();  // Start polling for data (skipping this has getLatestResult() return null results)
+        robot.limelightPipelineSwitch( 1 );
+        robot.limelightStart();  // Start polling for data (skipping this has getLatestResult() return null results)
 
         // Wait for the game to start (driver presses PLAY).  While waiting, poll for options
         while (!isStarted()) {
@@ -48,7 +41,7 @@ public class AutonomousBlueFar extends AutonomousBase {
             idle();
         } // !isStarted
 
-        limelight.stop();
+        robot.limelightStop();
         resetGlobalCoordinatePosition();
         scoringZones = 0;
 
