@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
+import com.qualcomm.hardware.limelightvision.LLStatus;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
@@ -38,20 +39,22 @@ public class LimelightFusedPinpointOdometry {
         assert limelight != null;
         assert odom != null;
         assert telemetry != null;
+        assert limelight.isRunning();
+        assert limelight.isConnected();
         this.limelight = limelight;
         this.odom = odom;
         this.telemetry = telemetry;
         this.robotStartingYawDegrees = robotStartingYawDegrees;
+        // limelight.setPollRateHz(100); // default is every 10ms
+        limelight.updateRobotOrientation(rotate180Yaw(robotStartingYawDegrees));
     }
 
-    public void startPipeline(Alliance alliance) {
+    public void updatePipeline(Alliance alliance) {
         assert alliance != null;
         int allianceLocalizationPipeline = alliance == Alliance.BLUE ? 6 : 7;
         boolean result = limelight.pipelineSwitch(allianceLocalizationPipeline);
         assert result;
-        // limelight.setPollRateHz(100); // default is every 10ms
-        limelight.start();
-        limelight.updateRobotOrientation(rotate180Yaw(robotStartingYawDegrees));
+        if(!limelight.isRunning()) limelight.start(); // restart if paused/stopped.
     }
 
     public void stop() {
