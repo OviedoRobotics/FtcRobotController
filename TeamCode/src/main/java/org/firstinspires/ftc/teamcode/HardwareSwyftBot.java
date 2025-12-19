@@ -131,11 +131,11 @@ public class HardwareSwyftBot
     // once you reach +55deg, so that's our effect MAX turret angle on the right side.
     public final static double TURRET_SERVO_MAX2 = 0.93; // +180 deg (turret max)
     public final static double TURRET_SERVO_P90  = 0.73; // +90 deg
-    public final static double TURRET_SERVO_MAX  = 0.64; // +55deg
+    public final static double TURRET_SERVO_MAX  = 0.64; // +53deg
     public final static double TURRET_SERVO_INIT = 0.49; //   0 deg
     public final static double TURRET_SERVO_N90  = 0.29; // -90 deg
     public final static double TURRET_SERVO_MIN  = 0.06; // -180deg
-
+    public final static double TURRET_CTS_PER_DEG = (TURRET_SERVO_P90 - TURRET_SERVO_N90)/180.0;
     //====== SPINDEXER SERVO =====
     public Servo       spinServo    = null;
     public CRServo     spinServoCR  = null;
@@ -339,8 +339,7 @@ public class HardwareSwyftBot
         // Proportional (P) is increased to 200 as a result of the large shooter mass.
         // The feed-forward value of 12 is used to maintain speed control under
         // load (meaning when the ball enters the shooter and slows down the flywheel)
-//      PIDFCoefficients shooterPIDF = new PIDFCoefficients( 10.0, 3.0, 0.0, 12.0 );
-        PIDFCoefficients shooterPIDF = new PIDFCoefficients( 200.0, 3.0, 0.0, 0.0 );
+        PIDFCoefficients shooterPIDF = new PIDFCoefficients( 280.0, 0.0, 0.0, 16.0 );
         shooterMotor1.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, shooterPIDF);
         shooterMotor2.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, shooterPIDF);
 
@@ -596,6 +595,19 @@ public class HardwareSwyftBot
         rearLeftMotor.setMode(   DcMotor.RunMode.RUN_TO_POSITION );
         rearRightMotor.setMode(  DcMotor.RunMode.RUN_TO_POSITION );
     } // setRunToPosition
+
+    /*--------------------------------------------------------------------------------------------*/
+    // currently limited to +/- 90deg
+    public void setTurretAngle( double targetAngleDegrees )
+    {
+        // convert degrees into servo position setting
+        double targetAngleCounts = targetAngleDegrees * TURRET_CTS_PER_DEG;
+        // make sure it's within our safe range
+        if( targetAngleCounts < TURRET_SERVO_N90 ) targetAngleCounts = TURRET_SERVO_N90;
+        if( targetAngleCounts > TURRET_SERVO_MAX ) targetAngleCounts = TURRET_SERVO_MAX;
+        // set both turret servos (connected on Y cable)
+        turretServo.setPosition(computeAlignedTurretPos());
+    } // setTurretAngle
 
     /*--------------------------------------------------------------------------------------------*/
     public double computeAxonAngle( double measuredVoltage )

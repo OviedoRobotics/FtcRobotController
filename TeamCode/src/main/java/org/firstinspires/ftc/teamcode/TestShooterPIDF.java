@@ -16,9 +16,9 @@ public class TestShooterPIDF extends OpMode {
     public DcMotorEx shooterMotor2 = null;
     
     public double highVelocity = 1320; // power = 0.55 (varies 1300-1340)
-    public double lowVelocity = 900;
+    public double lowVelocity  = 1070; // power = 0.45 (varies 1060-1080)
     public double curTargetVelocity = highVelocity;
-    double P = 0; // 250 Proportional (multiplier for the current velocity "error")
+    double P = 0; // 280 Proportional (multiplier for the current velocity "error")
     double F = 0; // 16  Feedforward (minimum power to keep motor running at target velocity)
     
     double [] stepSizes = { 10.0, 1.0, 0.1, 0.01, 0.001, 0.0001 };
@@ -78,11 +78,15 @@ public class TestShooterPIDF extends OpMode {
         // set target velocity
         shooterMotor1.setVelocity( curTargetVelocity );
         shooterMotor2.setVelocity( curTargetVelocity );
-        
+
         double curVelocity1 = shooterMotor1.getVelocity();
         double curVelocity2 = shooterMotor2.getVelocity();
         double curVelocity = (curVelocity1 + curVelocity2)/2;
-        
+
+        double curPower1 = shooterMotor1.getPower();
+        double curPower2 = shooterMotor2.getPower();
+        double curPower = (curPower1 + curPower2)/2.0;
+
         double error = curVelocity - curTargetVelocity;
 
         // PROCESS:
@@ -93,6 +97,7 @@ public class TestShooterPIDF extends OpMode {
         //    velocity targets occur quickly (0.1 sec versus 3 seconds).
         // Due to high mass of the dual-wheel steel plate flywheel, and low torque of the 6000 rpm
         // motor, expect P values in excess of 250.
+        telemetry.addData("Target Power","%.2f", curPower );
         telemetry.addData("Target Velocity", "%.2f (X)", curTargetVelocity );
         telemetry.addData("Current Velocity","%.2f", curVelocity );
         telemetry.addData("Error", "%.2f", error );

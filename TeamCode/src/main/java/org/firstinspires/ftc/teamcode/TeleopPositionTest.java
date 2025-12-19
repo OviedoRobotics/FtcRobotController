@@ -86,8 +86,10 @@ public class TeleopPositionTest extends LinearOpMode {
                     break;
                 case 1 :
                     telemetry.addData("SELECTED:", "shooterMotor" );
-                    telemetry.addData("Upper Motor Power", "%.2f", robot.shooterMotor1.getPower() );
-                    telemetry.addData("Lower Motor Power", "%.2f", robot.shooterMotor2.getPower() );
+                    telemetry.addData("Upper Motor Power", "%.2f",    robot.shooterMotor1.getPower() );
+                    telemetry.addData("Upper Motor Velocity", "%.2f", robot.shooterMotor1.getVelocity() );
+                    telemetry.addData("Lower Motor Power", "%.2f",    robot.shooterMotor2.getPower() );
+                    telemetry.addData("Lower Motor Velocity", "%.2f", robot.shooterMotor2.getVelocity() );
                     break;
                 case 2 :
                     telemetry.addData("SELECTED:", "turretServo" );
