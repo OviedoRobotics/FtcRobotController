@@ -127,8 +127,9 @@ public class HardwareSwyftBot
     public double shooterServoCurPos = SHOOTER_SERVO_INIT;
 
     //====== TURRET 5-turn SERVOS =====
-    public Servo       turretServo    = null;  // 1 servos! (controlled together via Y cable)
-    public AnalogInput turretServoPos = null;
+    public Servo       turretServo     = null;  // 2 servos! (controlled together via Y cable)
+    public AnalogInput turretServoPos1 = null;
+    public AnalogInput turretServoPos2 = null;
 
     // NOTE: Although the turret can spin to +180deg, the cable blocks the shooter hood exit
     // once you reach +55deg, so that's our effect MAX turret angle on the right side.
@@ -169,12 +170,18 @@ public class HardwareSwyftBot
         currentSpindexerTarget = values[index];
     }
 
-//  public final static double SPIN_SERVO_P1 = 0.13;    // position 1 ROBOT1
-//  public final static double SPIN_SERVO_P2 = 0.50;    // position 2 (also the INIT position)
-//  public final static double SPIN_SERVO_P3 = 0.88;    // position 3
-    public final static double SPIN_SERVO_P1 = 0.105;   // position 1 ROBOT2
-    public final static double SPIN_SERVO_P2 = 0.49;    // position 2 (also the INIT position)
-    public final static double SPIN_SERVO_P3 = 0.87;    // position 3
+    //===== ROBOT1 spindexer servo positions:
+    public final static double SPIN_SERVO_P1_R1 = 0.130;  // position 1
+    public final static double SPIN_SERVO_P2_R1 = 0.500;  // position 2 (also the INIT position)
+    public final static double SPIN_SERVO_P3_R1 = 0.880;  // position 3
+    //===== ROBOT2 spindexer servo positions:
+    public final static double SPIN_SERVO_P1_R2 = 0.105;  // position 1
+    public final static double SPIN_SERVO_P2_R2 = 0.490;  // position 2 (also the INIT position)
+    public final static double SPIN_SERVO_P3_R2 = 0.870;  // position 3
+    //===== These get populated after IMU init, when we know if we're ROBOT1 or ROBOT2
+    public double SPIN_SERVO_P1;    // position 1
+    public double SPIN_SERVO_P2;    // position 2 (also the INIT position)
+    public double SPIN_SERVO_P3;    // position 3
 
     public enum SpindexerState {
         SPIN_P1,
@@ -189,12 +196,6 @@ public class HardwareSwyftBot
     //====== EYELID SERVOS =====
     public Servo       rEyelidServo      = null;   // right eyelid
     public Servo       lEyelidServo      = null;   // left eyelid
-    public boolean     rEyelidServoBusyU = false;  // busy going UP   (opening)
-    public boolean     lEyelidServoBusyU = false;  // busy going UP   (opening)
-    public boolean     rEyelidServoBusyD = false;  // busy going DOWN (closing)
-    public boolean     lEyelidServoBusyD = false;  // busy going DOWN (closing)
-    public ElapsedTime rEyelidServoTimer = new ElapsedTime();
-    public ElapsedTime lEyelidServoTimer = new ElapsedTime();
 
     public final static double R_EYELID_SERVO_INIT = 0.570;  // ROBOT2 only
     public final static double R_EYELID_SERVO_UP   = 0.570;
@@ -219,17 +220,29 @@ public class HardwareSwyftBot
     public boolean     liftServoBusyD = false;  // busy going DOWN (resetting)
     public ElapsedTime liftServoTimer = new ElapsedTime();
 
-//  public final static double LIFT_SERVO_INIT   = 0.490;  // ROBOT1
-//  public final static double LIFT_SERVO_RESET  = 0.490;
-    public final static double LIFT_SERVO_INIT   = 0.500;  // ROBOT2
-    public final static double LIFT_SERVO_RESET  = 0.500;
-    public final static double LIFT_SERVO_INJECT = 0.310;
-    //   179 (184)  . . .    (236)  241           <-- 5deg tolerance on RESET and INJECT
-    public final static double LIFT_SERVO_RESET_ANG  = 184.0;  // 0.500 = 179.5deg
-    public final static double LIFT_SERVO_INJECT_ANG = 236.0;  // 0.310 = 241.7deg
+    //===== ROBOT1 injector/lift servo positions:
+    public final static double LIFT_SERVO_INIT_R1   = 0.520;
+    public final static double LIFT_SERVO_RESET_R1  = 0.520;
+    public final static double LIFT_SERVO_INJECT_R1 = 0.330;
+      //   174 (179)  . . .    (229)  235           <-- 5deg tolerance on RESET and INJECT
+    public final static double LIFT_SERVO_RESET_ANG_R1  = 179.0;  // 0.520 = 174.0deg
+    public final static double LIFT_SERVO_INJECT_ANG_R1 = 229.8;  // 0.330 = 234.8deg
+    //===== ROBOT2 injector/lift servo positions:
+    public final static double LIFT_SERVO_INIT_R2   = 0.500;
+    public final static double LIFT_SERVO_RESET_R2  = 0.500;
+    public final static double LIFT_SERVO_INJECT_R2 = 0.310;
+      //   179 (184)  . . .    (236)  241           <-- 5deg tolerance on RESET and INJECT
+    public final static double LIFT_SERVO_RESET_ANG_R2  = 184.0;  // 0.500 = 179.5deg
+    public final static double LIFT_SERVO_INJECT_ANG_R2 = 236.0;  // 0.310 = 241.7deg
+    //===== These get populated after IMU init, when we know if we're ROBOT1 or ROBOT2
+    public double LIFT_SERVO_INIT;
+    public double LIFT_SERVO_RESET;
+    public double LIFT_SERVO_INJECT;
+    public double LIFT_SERVO_RESET_ANG;
+    public double LIFT_SERVO_INJECT_ANG;
 
     //====== LED CONTROLLERS (controlled via SERVO signals) =====
-    public Servo       ledServo = null;   // goBilda RGB LED
+    public Servo  ledServo = null;   // goBilda RGB LED
 
     public final static double LED_INIT   = 0.000;  // off
     public final static double LED_RED    = 0.279;
@@ -270,6 +283,18 @@ public class HardwareSwyftBot
         // Initialize REV Control Hub IMU
         // NOTE: call this first so it defines whether we're ROBOT1 or ROBOT2
         initIMU();
+
+        // define the spindexer servo positions (fine-tuned uniquely for each robot)
+        SPIN_SERVO_P1 = (isRobot1)? SPIN_SERVO_P1_R1 : SPIN_SERVO_P1_R2;
+        SPIN_SERVO_P2 = (isRobot1)? SPIN_SERVO_P2_R1 : SPIN_SERVO_P2_R2;
+        SPIN_SERVO_P3 = (isRobot1)? SPIN_SERVO_P3_R1 : SPIN_SERVO_P3_R2;
+
+        // define the shooter lift/injector servo positions (fine-tuned uniquely for each robot)
+        LIFT_SERVO_INIT       = (isRobot1)? LIFT_SERVO_INIT_R1 : LIFT_SERVO_INIT_R2;
+        LIFT_SERVO_RESET      = (isRobot1)? LIFT_SERVO_RESET_R1 : LIFT_SERVO_RESET_R2;
+        LIFT_SERVO_INJECT     = (isRobot1)? LIFT_SERVO_INJECT_R1 : LIFT_SERVO_INJECT_R2;
+        LIFT_SERVO_RESET_ANG  = (isRobot1)? LIFT_SERVO_RESET_ANG_R1 : LIFT_SERVO_RESET_ANG_R2;
+        LIFT_SERVO_INJECT_ANG = (isRobot1)? LIFT_SERVO_INJECT_ANG_R1 : LIFT_SERVO_INJECT_ANG_R2;
 
         //--------------------------------------------------------------------------------------------
         // Locate the odometry controller in our hardware settings
@@ -324,7 +349,7 @@ public class HardwareSwyftBot
 
         //--------------------------------------------------------------------------------------------
         // Define and Initialize intake motor (left side on ROBOT1, right side on ROBOT2)
-        intakeMotor  = hwMap.get(DcMotorEx.class,"IntakeMotor");  // Expansion Hub port 2
+        intakeMotor  = hwMap.get(DcMotorEx.class,"IntakeMotor");
         intakeMotor.setDirection( (isRobot2)? DcMotor.Direction.REVERSE :  DcMotor.Direction.FORWARD);
         intakeMotor.setPower( 0.0 );
         intakeMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -367,14 +392,15 @@ public class HardwareSwyftBot
 
         //--------------------------------------------------------------------------------------------
         // Initialize the servos that rotate the turret
-        turretServo    = hwMap.servo.get("turretServo");            // servo port 2 (Control Hub)
-//      turretServoPos = hwMap.analogInput.get("turretServoPos");   // Analog port ? (Control Hub)
+        turretServo     = hwMap.servo.get("turretServo");            // servo port 2 (Control Hub)
+        turretServoPos1 = hwMap.tryGet(AnalogInput.class, "turretServoPos1");
+        turretServoPos2 = hwMap.tryGet(AnalogInput.class, "turretServoPos2");
 
         //--------------------------------------------------------------------------------------------
         // Initialize the servo on the spindexer
 //      if( isRobot2 ) spinServoCR = hwMap.tryGet(CRServo.class, "spinServo");
-        spinServo   = hwMap.tryGet(Servo.class, "spinServo");  // both ROBOT1 and ROBOT2 !!
-        spinServoPos = hwMap.analogInput.get("spinServoPos");       // Analog port 1 (Control Hub)
+        spinServo   = hwMap.tryGet(Servo.class, "spinServo");
+        spinServoPos = hwMap.analogInput.get("spinServoPos");
 
         //--------------------------------------------------------------------------------------------
         // Initialize the servos for the spindexer eyelids
@@ -437,9 +463,9 @@ public class HardwareSwyftBot
                 isRobot2 = true;
             }
         } // imu_robot2
-        // Define and initialize REV Expansion Hub IMU                     ROBOT2 : ROBOT1
-        LogoFacingDirection logoDirection = (isRobot2)?  LogoFacingDirection.LEFT : LogoFacingDirection.RIGHT;
-        UsbFacingDirection  usbDirection = (isRobot2)? UsbFacingDirection.FORWARD : UsbFacingDirection.UP;
+        // Define and initialize REV Expansion Hub IMU (common for both ROBOT1 and ROBOT2)
+        LogoFacingDirection logoDirection = LogoFacingDirection.LEFT;
+        UsbFacingDirection  usbDirection  = UsbFacingDirection.FORWARD;
         RevHubOrientationOnRobot orientationOnRobot = new RevHubOrientationOnRobot(logoDirection, usbDirection);
         imu.initialize(new IMU.Parameters(orientationOnRobot));
     } // initIMU()
@@ -509,8 +535,7 @@ public class HardwareSwyftBot
     static double LAUNCH_EXIT_SPEED = 22;
     static double Z_BIN = 3.23;
     static double Z_SHOOTER = 0.5;  // get actual measurement
-//  static double TURRET_SERVO_RELATIVE_0_ANGLE = 180; // ROBOT1
-    static double TURRET_SERVO_RELATIVE_0_ANGLE = 0;   // ROBOT2
+    static double TURRET_SERVO_RELATIVE_0_ANGLE = 0;
     static double TURRET_SERVO_HORIZONTAL_POSITION = TURRET_SERVO_INIT; // position of turret servo when turret is aligned with the back of the robot
     static double TURRET_SERVO_HORIZONTAL_ANGLE_INIT = TURRET_SERVO_INIT*(thetaMaxTurret - thetaMinTurret);
     static double SHOOTER_SERVO_POS_VERTICAL = 0.64;
@@ -650,6 +675,33 @@ public class HardwareSwyftBot
         // set both turret servos (connected on Y cable)
         turretServo.setPosition(computeAlignedTurretPos());
     } // setTurretAngle
+
+    /*--------------------------------------------------------------------------------------------*/
+    public double getTurretAngle( boolean analog1 )
+    {   // NOTE: the analog position feedback for the 5-turn AndyMark servos differs from Axon 3.3V
+        final double DEGREES_PER_ROTATION = 404.0;  // Five full rotations covers +/- 202 degrees
+        final double MAX_ANALOG_VOLTAGE   = 2.88;   // maximum analog feedback output (1.0)
+        final double MIN_ANALOG_VOLTAGE   = 0.46;   // minimum analog feedback output (0.0) 1.66V = 0.5
+        double measuredVoltage, scaledVoltage, measuredAngle;  // 0.267 = -90   0.667 = +90
+        // Which feedback does the user want?
+        if( analog1 ) {
+            measuredVoltage = (turretServoPos1 == null)? 0.0 : turretServoPos1.getVoltage();
+        } else {
+            measuredVoltage = (turretServoPos2 == null)? 0.0 : turretServoPos2.getVoltage();
+        }
+        // Convert min..max voltage into a 0..1 scale
+        scaledVoltage = (measuredVoltage - MIN_ANALOG_VOLTAGE)/(MAX_ANALOG_VOLTAGE - MIN_ANALOG_VOLTAGE);
+        // Ensure we remain within the 0.0 to 1.0 range
+        scaledVoltage = Math.max(0.0, Math.min(1.0, scaledVoltage));
+        // Invert, since voltage goes down as the 0...1 servo setting goes up
+        scaledVoltage = 1.0 - scaledVoltage;
+        // Convert from 0..1 servo setting to 0..360 angle
+        // TODO: fix this!  close but not quite right yet...
+        measuredAngle = scaledVoltage * DEGREES_PER_ROTATION;
+        // Shift from 0..360 to -180..+180
+        measuredAngle = measuredAngle - 180.0;
+        return measuredAngle;
+    } // getTurretAngle
 
     /*--------------------------------------------------------------------------------------------*/
     public double computeAxonAngle( double measuredVoltage )
