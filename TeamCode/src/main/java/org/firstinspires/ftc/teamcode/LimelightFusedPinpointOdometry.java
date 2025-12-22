@@ -16,7 +16,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 import java.util.List;
 
 /**
- * Class that uses a Limelight localization pipeline to keep the pinpoint odometry location accurate.
+ * Support class that uses a Limelight localization pipeline to keep the pinpoint odometry location accurate.
  */
 public class LimelightFusedPinpointOdometry {
     /**
@@ -142,4 +142,4 @@ public class LimelightFusedPinpointOdometry {
         double shift = wrap - 180;
         return shift;
     }
-}
+} // LimelightFusedPinpointOdometry

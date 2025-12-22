@@ -27,6 +27,7 @@ public class TestPinpointLimelight3A extends LinearOpMode {
     @Override
     public void runOpMode() throws InterruptedException {
         robot.init(hardwareMap, false);
+        robot.limelight.start(); // must be started before next class is used
         llodo = new LimelightFusedPinpointOdometry(robot.limelight, robot.odom, telemetry, 0.0);
         llodo.updatePipeline(Alliance.BLUE); // DEFAULT
         llodo.alignPinpointToLimelightEveryLoop(true);
@@ -39,13 +40,13 @@ public class TestPinpointLimelight3A extends LinearOpMode {
 
         while (opModeIsActive()) {
 
-            // Press gamepad circle but not square to update to RED.
-            if ((gamepad1.circle || gamepad2.circle) && !(gamepad1.square || gamepad2.square)) {
+            // Pressing the RED circle button toggles the RED apriltag limelight pipeline
+            if( gamepad1.circleWasPressed()  || gamepad2.circleWasPressed()) {
                 llodo.updatePipeline(Alliance.RED);
             }
 
-            // Press gamepad square but not circle to update to BLUE.
-            if (!(gamepad1.circle || gamepad2.circle) && (gamepad1.square || gamepad2.square)) {
+            // Pressing the BLUE cross button toggles the BLUE apriltag limelight pipeline
+            if( gamepad1.crossWasPressed() || gamepad2.crossWasPressed() ) {
                 llodo.updatePipeline(Alliance.BLUE);
             }
 
@@ -59,10 +60,18 @@ public class TestPinpointLimelight3A extends LinearOpMode {
 
             reportBothPoses();
 
-            if (gamepad1.cross || gamepad2.cross) {
+            // Pressing the TRIANGLE button adjusts turret angle to the limelight blue/red target angle
+            // NOTE: since the limelight is mounted on the drivetrain, not the turret, the limelight
+            // solution doesn't shift to zero once the turret rotates.  Until the robot drivetrain itself
+            // is changed, the limelight angle will continue to report the same answer.
+            if( gamepad1.triangleWasPressed() || gamepad1.triangleWasPressed() ) {
                 targetTurret();
             }
 
+            telemetry.addLine("-----------------------------");
+            telemetry.addLine("CIRCLE - switch to RED target pipeline");
+            telemetry.addLine("CROSS  - switch to BLUE target pipeline");
+            telemetry.addLine("TRIANGLE - aim turret based on limelight");
             telemetry.update();
         }
 
@@ -88,12 +97,12 @@ public class TestPinpointLimelight3A extends LinearOpMode {
             // Parse Limelight result for MegaTag2 robot pose data
             Pose3D limelightBotpose = llResult.getBotpose_MT2();
             if (limelightBotpose != null) {
-                Position limelightPosition = limelightBotpose.getPosition();
+                Position           limelightPosition    = limelightBotpose.getPosition();
                 YawPitchRollAngles limelightOrientation = limelightBotpose.getOrientation();
                 // https://ftc-docs.firstinspires.org/en/latest/game_specific_resources/field_coordinate_system/field-coordinate-system.html#square-field-inverted-alliance-area
                 // We want our pinpoint orientation rotated 180� from standard FTC orientation, so negate everything from limelight.
-                double posX = -limelightPosition.unit.toInches(limelightPosition.x);  // Pinpoint +X (forward) matches Limelight +X (forward)
-                double posY = -limelightPosition.unit.toInches(limelightPosition.y);  // Pinpoint +Y (left) opposite of Limelight +Y (right)
+                double posX   = -limelightPosition.unit.toInches(limelightPosition.x);  // Pinpoint +X (forward) matches Limelight +X (forward)
+                double posY   = -limelightPosition.unit.toInches(limelightPosition.y);  // Pinpoint +Y (left) opposite of Limelight +Y (right)
                 double angDeg = rotate180Yaw(limelightOrientation.getYaw(AngleUnit.DEGREES));
                 double[] stddev = llResult.getStddevMt2();
                 telemetry.addData("Limelight(Apriltag)", "x=%.2f y=%.2f %.2f deg", posX, posY, angDeg);
@@ -103,9 +112,9 @@ public class TestPinpointLimelight3A extends LinearOpMode {
             for (LLResultTypes.FiducialResult fr : fiducialResults) {
                 telemetry.addData("Fiducial", "ID: %d: %s, X: %.2f deg, Y: %.2f deg", fr.getFiducialId(), fr.getTargetXDegrees(), fr.getTargetYDegrees());
             }
-            double captureLatency = llResult.getCaptureLatency();
+            double captureLatency   = llResult.getCaptureLatency();
             double targetingLatency = llResult.getTargetingLatency();
-            double parseLatency = llResult.getParseLatency();
+            double parseLatency     = llResult.getParseLatency();
             telemetry.addData("Limelight Latency (msec)", captureLatency + targetingLatency);
             telemetry.addData("Parse Latency (msec)", parseLatency);
         } else {

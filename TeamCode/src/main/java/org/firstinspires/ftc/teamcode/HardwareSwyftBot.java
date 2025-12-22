@@ -227,6 +227,16 @@ public class HardwareSwyftBot
     //   179 (184)  . . .    (236)  241           <-- 5deg tolerance on RESET and INJECT
     public final static double LIFT_SERVO_RESET_ANG  = 184.0;  // 0.500 = 179.5deg
     public final static double LIFT_SERVO_INJECT_ANG = 236.0;  // 0.310 = 241.7deg
+
+    //====== LED CONTROLLERS (controlled via SERVO signals) =====
+    public Servo       ledServo = null;   // goBilda RGB LED
+
+    public final static double LED_INIT   = 0.000;  // off
+    public final static double LED_RED    = 0.279;
+    public final static double LED_GREEN  = 0.488;
+    public final static double LED_BLUE   = 0.611;
+    public final static double LED_PURPLE = 0.723;
+
     //====== MOTIF CONSTANTS =====
     public enum MotifOptions {
         MOTIF_GPP,  // GREEN, PURPLE, PURPLE
@@ -375,6 +385,10 @@ public class HardwareSwyftBot
         // Initialize the servo for the injector/lifter
         liftServo    = hwMap.servo.get("liftServo");                // servo port 0 Expansion Hub)
         liftServoPos = hwMap.analogInput.get("liftServoPos");       // Analog port 1 (Control Hub)
+
+        //--------------------------------------------------------------------------------------------
+        // Initialize servo control of the goBilda LED
+        ledServo = hwMap.tryGet(Servo.class, "ledServo");
 
         // Ensure all servos are in the initialize position (YES for auto; NO for teleop)
         if( isAutonomous ) {

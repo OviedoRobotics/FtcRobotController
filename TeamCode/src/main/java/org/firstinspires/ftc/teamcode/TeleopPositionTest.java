@@ -18,11 +18,12 @@ public class TeleopPositionTest extends LinearOpMode {
     // 3=spin servo
     // 4=lift/injecter servo
     // 5=lEyelidServo
-    // 6=rEyelidServo 
+    // 6=rEyelidServo
+    // 7=goBilda RGB LED    
     int       selectedMechanism = 0;
     double [] stepSizes = { 0.1, 0.01, 0.001, 0.0001 };
     int       stepIndex = 0;
-    double    shooterPos, turretPos, spinPos, liftPos, lEyelidPos, rEyelidPos;
+    double    shooterPos, turretPos, spinPos, liftPos, lEyelidPos, rEyelidPos, ledValue;
     double    shooterPower = 0.50;
 
     long    nanoTimeCurr=0, nanoTimePrev=0;
@@ -61,6 +62,9 @@ public class TeleopPositionTest extends LinearOpMode {
         
         rEyelidPos = robot.R_EYELID_SERVO_INIT;
         robot.rEyelidServo.setPosition(rEyelidPos);
+
+        ledValue = robot.LED_INIT;
+        robot.ledServo.setPosition(ledValue);
 
         // Send telemetry message to signify robot waiting;
         telemetry.addData("State", "Ready");
@@ -114,6 +118,10 @@ public class TeleopPositionTest extends LinearOpMode {
                     telemetry.addData("SELECTED:", "rEyelidServo" );
                     telemetry.addData("Right Eyelid Position", "%.3f", robot.rEyelidServo.getPosition() );
                     break;
+                case 7 :
+                    telemetry.addData("SELECTED:", "ledServo" );
+                    telemetry.addData("goBilda LED setting", "%.3f", robot.ledServo.getPosition() );
+                    break;
                 default :
                     selectedMechanism = 0;
                     break;
@@ -128,7 +136,7 @@ public class TeleopPositionTest extends LinearOpMode {
             if( gamepad1.crossWasPressed() )
             {
                 selectedMechanism += 1;
-                if( selectedMechanism > 6 ) selectedMechanism = 0;
+                if( selectedMechanism > 7 ) selectedMechanism = 0;
             } // cross
 
             //================ LEFT BUMPER DECREASES SERVO POSITION ================
@@ -176,6 +184,12 @@ public class TeleopPositionTest extends LinearOpMode {
                         if( rEyelidPos < 0.0 ) rEyelidPos = 0.0;
                         if( rEyelidPos > 1.0 ) rEyelidPos = 1.0;
                         robot.rEyelidServo.setPosition(rEyelidPos);
+                        break;
+                    case 7 :
+                        ledValue -= stepSizes[stepIndex];
+                        if( ledValue < 0.0 ) ledValue = 0.0;
+                        if( ledValue > 1.0 ) ledValue = 1.0;
+                        robot.ledServo.setPosition(ledValue);
                         break;
                     default :
                         break;
@@ -227,6 +241,12 @@ public class TeleopPositionTest extends LinearOpMode {
                         if( rEyelidPos < 0.0 ) rEyelidPos = 0.0;
                         if( rEyelidPos > 1.0 ) rEyelidPos = 1.0;
                         robot.rEyelidServo.setPosition(rEyelidPos);
+                        break;
+                    case 7 :
+                        ledValue += stepSizes[stepIndex];
+                        if( ledValue < 0.0 ) ledValue = 0.0;
+                        if( ledValue > 1.0 ) ledValue = 1.0;
+                        robot.ledServo.setPosition(ledValue);
                         break;
                     default :
                         break;
