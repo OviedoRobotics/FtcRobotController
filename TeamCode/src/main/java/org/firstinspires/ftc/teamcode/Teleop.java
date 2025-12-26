@@ -9,6 +9,7 @@ import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState.SPI
 import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState.SPIN_P1;
 import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState.SPIN_P3;
 
+import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.Gamepad;
 
@@ -80,6 +81,7 @@ public abstract class Teleop extends LinearOpMode {
 
     /* Declare OpMode members. */
     HardwareSwyftBot robot = new HardwareSwyftBot();
+    LimelightFusedPinpointOdometry llodo = null;
     // sets unique behavior based on alliance
     public abstract void setAllianceSpecificBehavior();
 
@@ -99,7 +101,12 @@ public abstract class Teleop extends LinearOpMode {
                 
         // Initialize robot hardware (not autonomous mode)
         robot.init(hardwareMap,false);
+        robot.limelightStart();
+        llodo = new LimelightFusedPinpointOdometry(robot.limelight, robot.odom, telemetry, 0.0);
+
         setAllianceSpecificBehavior();
+
+        llodo.updatePipeline(blueAlliance ? Alliance.BLUE : Alliance.RED);
 
         // Send telemetry message to signify robot waiting;
         telemetry.addData("State", "Ready");
@@ -185,7 +192,7 @@ public abstract class Teleop extends LinearOpMode {
 
             //BRODY!!
             if (gamepad1_l_bumper_now && !gamepad1_l_bumper_last) {
-                robot.turretServo.setPosition(robot.computeAlignedTurretPos());
+                targetTurret();
             }
 
             if (gamepad1_r_bumper_now && !gamepad1_r_bumper_last) {
@@ -654,6 +661,13 @@ public abstract class Teleop extends LinearOpMode {
             }
         }
     } // processShooter
+
+    private void targetTurret() {
+        LLResultTypes.FiducialResult shootTarget = llodo.getShootTarget();
+        if (shootTarget == null) return;
+        double targetXDegrees = shootTarget.getTargetXDegrees();
+        robot.setTurretAngle(targetXDegrees);
+    }
 
     /*---------------------------------------------------------------------------------*/
     void processInjector() {

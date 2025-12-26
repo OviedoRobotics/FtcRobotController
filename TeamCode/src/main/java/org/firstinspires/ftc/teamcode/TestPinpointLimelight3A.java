@@ -27,7 +27,7 @@ public class TestPinpointLimelight3A extends LinearOpMode {
     @Override
     public void runOpMode() throws InterruptedException {
         robot.init(hardwareMap, true); // using isAutonomous=true to ensure encoders/turret are reset.
-        robot.limelight.start(); // must be started before next class is used
+        robot.limelightStart(); // must be started before next class is used
         llodo = new LimelightFusedPinpointOdometry(robot.limelight, robot.odom, telemetry, 0.0);
         llodo.updatePipeline(Alliance.BLUE); // DEFAULT
         llodo.alignPinpointToLimelightEveryLoop(true);
