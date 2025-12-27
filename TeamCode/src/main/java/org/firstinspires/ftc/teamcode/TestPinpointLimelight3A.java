@@ -26,8 +26,8 @@ public class TestPinpointLimelight3A extends LinearOpMode {
 
     @Override
     public void runOpMode() throws InterruptedException {
-        robot.init(hardwareMap, false);
-        robot.limelight.start(); // must be started before next class is used
+        robot.init(hardwareMap, true); // using isAutonomous=true to ensure encoders/turret are reset.
+        robot.limelightStart(); // must be started before next class is used
         llodo = new LimelightFusedPinpointOdometry(robot.limelight, robot.odom, telemetry, 0.0);
         llodo.updatePipeline(Alliance.BLUE); // DEFAULT
         llodo.alignPinpointToLimelightEveryLoop(true);
@@ -64,7 +64,7 @@ public class TestPinpointLimelight3A extends LinearOpMode {
             // NOTE: since the limelight is mounted on the drivetrain, not the turret, the limelight
             // solution doesn't shift to zero once the turret rotates.  Until the robot drivetrain itself
             // is changed, the limelight angle will continue to report the same answer.
-            if( gamepad1.triangleWasPressed() || gamepad1.triangleWasPressed() ) {
+            if( gamepad1.triangleWasPressed() || gamepad2.triangleWasPressed() ) {
                 targetTurret();
             }
 
@@ -110,7 +110,7 @@ public class TestPinpointLimelight3A extends LinearOpMode {
             }
             List<LLResultTypes.FiducialResult> fiducialResults = llResult.getFiducialResults();
             for (LLResultTypes.FiducialResult fr : fiducialResults) {
-                telemetry.addData("Fiducial", "ID: %d: %s, X: %.2f deg, Y: %.2f deg", fr.getFiducialId(), fr.getTargetXDegrees(), fr.getTargetYDegrees());
+                telemetry.addData("Fiducial", "ID: %d, X: %.2f deg, Y: %.2f deg", fr.getFiducialId(), fr.getTargetXDegrees(), fr.getTargetYDegrees());
             }
             double captureLatency   = llResult.getCaptureLatency();
             double targetingLatency = llResult.getTargetingLatency();

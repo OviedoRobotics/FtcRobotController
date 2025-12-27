@@ -40,7 +40,6 @@ public class LimelightFusedPinpointOdometry {
         assert odom != null;
         assert telemetry != null;
         assert limelight.isRunning();
-        assert limelight.isConnected();
         this.limelight = limelight;
         this.odom = odom;
         this.telemetry = telemetry;
@@ -51,6 +50,7 @@ public class LimelightFusedPinpointOdometry {
 
     public void updatePipeline(Alliance alliance) {
         assert alliance != null;
+        this.alliance = alliance;
         int allianceLocalizationPipeline = alliance == Alliance.BLUE ? 6 : 7;
         boolean result = limelight.pipelineSwitch(allianceLocalizationPipeline);
         assert result;

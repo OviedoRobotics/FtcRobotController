@@ -667,13 +667,13 @@ public class HardwareSwyftBot
     // currently limited to +/- 90deg
     public void setTurretAngle( double targetAngleDegrees )
     {
-        // convert degrees into servo position setting
-        double targetAngleCounts = targetAngleDegrees * TURRET_CTS_PER_DEG;
+        // convert degrees into servo position setting centered around the init position.
+        double targetAngleCounts = (targetAngleDegrees * TURRET_CTS_PER_DEG) + TURRET_SERVO_INIT;
         // make sure it's within our safe range
         if( targetAngleCounts < TURRET_SERVO_N90 ) targetAngleCounts = TURRET_SERVO_N90;
         if( targetAngleCounts > TURRET_SERVO_MAX ) targetAngleCounts = TURRET_SERVO_MAX;
         // set both turret servos (connected on Y cable)
-        turretServo.setPosition(computeAlignedTurretPos());
+        turretServo.setPosition(targetAngleCounts);
     } // setTurretAngle
 
     /*--------------------------------------------------------------------------------------------*/
