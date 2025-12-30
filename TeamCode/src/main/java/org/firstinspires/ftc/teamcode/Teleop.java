@@ -58,9 +58,13 @@ public abstract class Teleop extends LinearOpMode {
     boolean controlMultSegLinear = true;
     double   curX, curY, curAngle;
 
+    double shooterPower = 0.55;  // far shooting default. scale for location.
+    double shooterTargetXdeg, shooterTargetYdeg;
+
     boolean blueAlliance;   // set in the Blue/Red
     boolean farAlliance;    //
     int     aprilTagGoal;
+    boolean showApriltagTargetData = true;
 
     final int DRIVER_MODE_SINGLE_WHEEL = 1;
     final int DRIVER_MODE_STANDARD     = 2;
@@ -190,18 +194,6 @@ public abstract class Teleop extends LinearOpMode {
                 }
             }
 
-            //BRODY!!
-            if (gamepad1_l_bumper_now && !gamepad1_l_bumper_last) {
-                targetTurret();
-            }
-
-            if (gamepad1_r_bumper_now && !gamepad1_r_bumper_last) {
-                // RIGHT BUTTON resets turret to the center
-                robot.turretServo.setPosition(robot.TURRET_SERVO_INIT);
-//              robot.shooterServo.setPosition(robot.computeAlignedFlapperPos());
-            }
-            //BRODY!!
-
             telemetry.addData("cross","Toggle Intake");
             telemetry.addData("circle","Robot-centric (fwd/back modes)");
             telemetry.addData("square","Driver-centric (set joystick!)");
@@ -235,6 +227,7 @@ public abstract class Teleop extends LinearOpMode {
             } // processDpadDriveMode
 
             processCollector();
+            processTurretAutoAim();
             processSpindexer();
             processShooterFlap();
             processShooter();
@@ -248,7 +241,9 @@ public abstract class Teleop extends LinearOpMode {
 
             // Update telemetry data
 //          telemetry.addData("Shooter Servo", "%.3f", robot.shooterServoCurPos );
+            telemetry.addData("Shooter POWER (P1 triangle/cross to adjust)", "%.2f", shooterPower);
             telemetry.addData("Shooter RPM", "%.1f %.1f", robot.shooterMotor1Vel, robot.shooterMotor2Vel );
+            telemetry.addData("Shooter TARGET", "X: %.2f deg, Y: %.2f deg", shooterTargetXdeg, shooterTargetYdeg);
 //          telemetry.addData("Shooter mA", "%.1f %.1f", robot.shooterMotor1Amps, robot.shooterMotor2Amps );
 //          telemetry.addData("Angles", "IMU %.2f, Pinpoint %.2f deg)", robot.headingIMU(), curAngle );
             telemetry.addData("Spindexer Angle", "%.1f deg (%.2f)", robot.getSpindexerAngle(), robot.spindexerPowerSetting );
@@ -648,7 +643,18 @@ public abstract class Teleop extends LinearOpMode {
 
     /*---------------------------------------------------------------------------------*/
     void processShooter() {
-        double shooterPower = 0.55;  // function of location!!
+        if( gamepad1_triangle_now && !gamepad1_triangle_last) {
+            shooterPower += 0.01;
+            if(shooterMotorsOn) {
+                robot.shooterMotorsSetPower( shooterPower );
+            }
+        } else if( gamepad1_cross_now && !gamepad1_cross_last) {
+            shooterPower -= 0.01;
+            if(shooterMotorsOn) {
+                robot.shooterMotorsSetPower( shooterPower );
+            }
+        }
+
         // Check for an OFF-to-ON toggle of the gamepad2 CIRCLE button (toggles SHOOTER on/off)
         if( gamepad2_circle_now && !gamepad2_circle_last)
         {
@@ -662,12 +668,34 @@ public abstract class Teleop extends LinearOpMode {
         }
     } // processShooter
 
+    private void processTurretAutoAim() {
+        if(showApriltagTargetData) {
+            LLResultTypes.FiducialResult fr = llodo.getShootTarget();
+            if (fr != null) {
+                shooterTargetXdeg = fr.getTargetXDegrees();
+                shooterTargetYdeg = fr.getTargetYDegrees();
+            } else {
+                shooterTargetXdeg = 0;
+                shooterTargetYdeg = 0;
+            }
+        }
+
+        if (gamepad1_l_bumper_now && !gamepad1_l_bumper_last) {
+            targetTurret();
+        }
+        if (gamepad1_r_bumper_now && !gamepad1_r_bumper_last) {
+            // RIGHT BUTTON resets turret to the center and resets the shooter power
+            robot.turretServo.setPosition(robot.TURRET_SERVO_INIT);
+            shooterPower = 0.55;
+        }
+    } // processTurretAutoAim
+
     private void targetTurret() {
         LLResultTypes.FiducialResult shootTarget = llodo.getShootTarget();
         if (shootTarget == null) return;
         double targetXDegrees = shootTarget.getTargetXDegrees();
         robot.setTurretAngle(targetXDegrees);
-    }
+    } // targetTurret
 
     /*---------------------------------------------------------------------------------*/
     void processInjector() {
