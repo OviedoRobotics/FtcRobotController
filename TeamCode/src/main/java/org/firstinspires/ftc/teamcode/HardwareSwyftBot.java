@@ -47,6 +47,13 @@ public class HardwareSwyftBot
 
     //====== LIMELIGHT SMART CAMERA ======
     public Limelight3A limelight;
+    /**
+     * https://ftc-docs.firstinspires.org/en/latest/game_specific_resources/field_coordinate_system/field-coordinate-system.html#square-field-inverted-alliance-area
+     * We currently use a field orientation that is 180º rotated from the standard FTC field,
+     * (+x -> Obelisk, -x -> audience | +y -> blue goal, -y -> red goal)
+     * so we have to adjust the values returned from the limelight camera (and the yaw fed back into it).
+     */
+    private static final boolean ROTATE_LIMELIGHT_FIELD_180 = true;
 
     //====== MECANUM DRIVETRAIN MOTORS (RUN_USING_ENCODER) =====
     protected DcMotorEx frontLeftMotor     = null;
@@ -702,6 +709,36 @@ public class HardwareSwyftBot
         measuredAngle = measuredAngle - 180.0;
         return measuredAngle;
     } // getTurretAngle
+
+    public double getShootDistance(Alliance alliance) {
+        double currentX = odom.getPosX(DistanceUnit.INCH);
+        double currentY = odom.getPosY(DistanceUnit.INCH);
+        // Positions for targets based on values from ftc2025DECODE.fmap
+        double targetX = rotate180XY(alliance == Alliance.BLUE ? 55.64 : -55.64);
+        double targetY = rotate180XY(58.37);
+        return Math.sqrt(Math.pow(targetX - currentX, 2) + Math.pow(targetY - currentY, 2));
+    }
+
+    public double getShootAngleDeg(Alliance alliance) {
+        double currentX = odom.getPosX(DistanceUnit.INCH);
+        double currentY = odom.getPosY(DistanceUnit.INCH);
+        // Positions for targets based on values from ftc2025DECODE.fmap
+        double targetX = rotate180XY(alliance == Alliance.BLUE ? 55.64 : -55.64);
+        double targetY = rotate180XY(58.37);
+        return Math.toDegrees(Math.atan2(targetY - currentY, targetX - currentX));
+    }
+
+    private static double rotate180XY(double xy) {
+        return ROTATE_LIMELIGHT_FIELD_180 ? -xy : xy;
+    }
+
+    private static double rotate180Yaw(double yaw) {
+        if (!ROTATE_LIMELIGHT_FIELD_180) return yaw;
+        double rotated = yaw + 180;
+        double wrap = (rotated + 180) % 360;
+        double shift = wrap - 180;
+        return shift;
+    }
 
     /*--------------------------------------------------------------------------------------------*/
     public double computeAxonAngle( double measuredVoltage )
