@@ -725,7 +725,9 @@ public class HardwareSwyftBot
         // Positions for targets based on values from ftc2025DECODE.fmap
         double targetX = rotate180XY(alliance == Alliance.BLUE ? 55.64 : -55.64);
         double targetY = rotate180XY(58.37);
-        return Math.toDegrees(Math.atan2(targetY - currentY, targetX - currentX));
+        double targetFrom0 = Math.toDegrees(Math.atan2(targetY - currentY, targetX - currentX));
+        double robotHeading = odom.getPosition().getHeading(AngleUnit.DEGREES);
+        return targetFrom0 - robotHeading;
     }
 
     private static double rotate180XY(double xy) {
