@@ -17,13 +17,11 @@ public class TeleopPositionTest extends LinearOpMode {
     // 2=turret servo(s)
     // 3=spin servo
     // 4=lift/injecter servo
-    // 5=lEyelidServo
-    // 6=rEyelidServo
-    // 7=goBilda RGB LED    
+    // 5=goBilda RGB LED    
     int       selectedMechanism = 0;
     double [] stepSizes = { 0.1, 0.01, 0.001, 0.0001 };
     int       stepIndex = 0;
-    double    shooterPos, turretPos, spinPos, liftPos, lEyelidPos, rEyelidPos, ledValue;
+    double    shooterPos, turretPos, spinPos, liftPos, ledValue;
     double    shooterPower = 0.50;
 
     long    nanoTimeCurr=0, nanoTimePrev=0;
@@ -58,12 +56,6 @@ public class TeleopPositionTest extends LinearOpMode {
         robot.liftServo.setPosition(liftPos);
 
         if( robot.isRobot2 ) {
-            lEyelidPos = robot.L_EYELID_SERVO_INIT;
-            robot.lEyelidServo.setPosition(lEyelidPos);
-
-            rEyelidPos = robot.R_EYELID_SERVO_INIT;
-            robot.rEyelidServo.setPosition(rEyelidPos);
-
             ledValue = robot.LED_INIT;
             robot.ledServo.setPosition(ledValue);
         }
@@ -115,18 +107,6 @@ public class TeleopPositionTest extends LinearOpMode {
                     telemetry.addData("Injector Servo Feedback", "%.3f deg", robot.getInjectorAngle() );                                      
                     break;
                 case 5 :
-                    telemetry.addData("SELECTED:", "lEyelidServo" );
-                    if( robot.isRobot2 ) {
-                        telemetry.addData("Left Eyelid Position", "%.3f", robot.lEyelidServo.getPosition());
-                    }
-                    break;
-                case 6 :
-                    telemetry.addData("SELECTED:", "rEyelidServo" );
-                    if( robot.isRobot2 ) {
-                        telemetry.addData("Right Eyelid Position", "%.3f", robot.rEyelidServo.getPosition());
-                    }
-                    break;
-                case 7 :
                     telemetry.addData("SELECTED:", "ledServo" );
                     if( robot.isRobot2 ) {
                         telemetry.addData("goBilda LED setting", "%.3f", robot.ledServo.getPosition());
@@ -146,7 +126,7 @@ public class TeleopPositionTest extends LinearOpMode {
             if( gamepad1.crossWasPressed() )
             {
                 selectedMechanism += 1;
-                if( selectedMechanism > 7 ) selectedMechanism = 0;
+                if( selectedMechanism > 5 ) selectedMechanism = 0;
             } // cross
 
             //================ LEFT BUMPER DECREASES SERVO POSITION ================
@@ -184,22 +164,6 @@ public class TeleopPositionTest extends LinearOpMode {
                         robot.liftServo.setPosition(liftPos);
                         break;
                     case 5 :
-                        lEyelidPos -= stepSizes[stepIndex];
-                        if( lEyelidPos < 0.0 ) lEyelidPos = 0.0;
-                        if( lEyelidPos > 1.0 ) lEyelidPos = 1.0;
-                        if( robot.isRobot2 ) {
-                            robot.lEyelidServo.setPosition(lEyelidPos);
-                        }
-                        break;
-                    case 6 :
-                        rEyelidPos -= stepSizes[stepIndex];
-                        if( rEyelidPos < 0.0 ) rEyelidPos = 0.0;
-                        if( rEyelidPos > 1.0 ) rEyelidPos = 1.0;
-                        if( robot.isRobot2 ) {
-                            robot.rEyelidServo.setPosition(rEyelidPos);
-                        }
-                        break;
-                    case 7 :
                         ledValue -= stepSizes[stepIndex];
                         if( ledValue < 0.0 ) ledValue = 0.0;
                         if( ledValue > 1.0 ) ledValue = 1.0;
@@ -247,22 +211,6 @@ public class TeleopPositionTest extends LinearOpMode {
                         robot.liftServo.setPosition(liftPos);
                         break;
                     case 5 :
-                        lEyelidPos += stepSizes[stepIndex];
-                        if( lEyelidPos < 0.0 ) lEyelidPos = 0.0;
-                        if( lEyelidPos > 1.0 ) lEyelidPos = 1.0;
-                        if( robot.isRobot2 ) {
-                            robot.lEyelidServo.setPosition(lEyelidPos);
-                        }
-                        break;
-                    case 6 :
-                        rEyelidPos += stepSizes[stepIndex];
-                        if( rEyelidPos < 0.0 ) rEyelidPos = 0.0;
-                        if( rEyelidPos > 1.0 ) rEyelidPos = 1.0;
-                        if( robot.isRobot2 ) {
-                            robot.rEyelidServo.setPosition(rEyelidPos);
-                        }
-                        break;
-                    case 7 :
                         ledValue += stepSizes[stepIndex];
                         if( ledValue < 0.0 ) ledValue = 0.0;
                         if( ledValue > 1.0 ) ledValue = 1.0;

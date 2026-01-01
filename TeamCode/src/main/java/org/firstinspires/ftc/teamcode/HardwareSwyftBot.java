@@ -147,6 +147,7 @@ public class HardwareSwyftBot
     public final static double TURRET_SERVO_N90  = 0.29; // -90 deg
     public final static double TURRET_SERVO_MIN  = 0.06; // -180deg
     public final static double TURRET_CTS_PER_DEG = (TURRET_SERVO_P90 - TURRET_SERVO_N90)/180.0;
+
     //====== SPINDEXER SERVO =====
     public Servo       spinServo    = null;
     public CRServo     spinServoCR  = null;
@@ -199,26 +200,6 @@ public class HardwareSwyftBot
     }
     
     public SpindexerState spinServoCurPos = SpindexerState.SPIN_P2;
-
-    //====== EYELID SERVOS =====
-    public Servo       rEyelidServo      = null;   // right eyelid
-    public Servo       lEyelidServo      = null;   // left eyelid
-
-    public final static double R_EYELID_SERVO_INIT = 0.570;  // ROBOT2 only
-    public final static double R_EYELID_SERVO_UP   = 0.570;
-    public final static double L_EYELID_SERVO_INIT = 0.440;
-    public final static double L_EYELID_SERVO_UP   = 0.440;
-    public final static double R_EYELID_SERVO_DOWN = 0.295;
-    public final static double L_EYELID_SERVO_DOWN = 0.700;
-
-    public enum EyelidState {
-        EYELID_OPEN_BOTH,
-        EYELID_OPEN_R,
-        EYELID_OPEN_L,
-        EYELID_CLOSED_BOTH,
-        EYELID_CLOSED_R,
-        EYELID_CLOSED_L
-    }
 
     //====== INJECTOR/LIFTER SERVO =====
     public Servo       liftServo      = null;
@@ -410,11 +391,6 @@ public class HardwareSwyftBot
         spinServoPos = hwMap.analogInput.get("spinServoPos");
 
         //--------------------------------------------------------------------------------------------
-        // Initialize the servos for the spindexer eyelids
-        rEyelidServo = hwMap.tryGet(Servo.class, "rEyelidServo");
-        lEyelidServo = hwMap.tryGet(Servo.class, "lEyelidServo");
-
-        //--------------------------------------------------------------------------------------------
         // Initialize the servo for the injector/lifter
         liftServo    = hwMap.servo.get("liftServo");                // servo port 0 Expansion Hub)
         liftServoPos = hwMap.analogInput.get("liftServoPos");       // Analog port 1 (Control Hub)
@@ -431,9 +407,11 @@ public class HardwareSwyftBot
     } /* init */
 
     /*--------------------------------------------------------------------------------------------*/
-    //BRODY!!
     // Resets odometry starting position and angle to zero accumulated encoder counts
     public void resetGlobalCoordinatePosition(){
+//      robot.odom.resetPosAndIMU();   // don't need full recalibration; just reset our position in case of any movement
+        Pose2D startPosTeleop = new Pose2D(DistanceUnit.INCH, 0.0, 0.0, AngleUnit.DEGREES, 0.0);
+        odom.setPosition(startPosTeleop);  // in case we don't run autonomous first!
         robotGlobalXCoordinatePosition = 0.0;  // This will get overwritten the first time
         robotGlobalYCoordinatePosition = 0.0;  // we call robot.odom.update()!
         robotOrientationDegrees        = 0.0;
@@ -443,15 +421,11 @@ public class HardwareSwyftBot
     public void resetEncoders() throws InterruptedException {
         // Initialize the injector servo first! (so it's out of the way for spindexer rotation)
         liftServo.setPosition(LIFT_SERVO_INIT);
-        if( isRobot2 ) {
-            lEyelidServo.setPosition(L_EYELID_SERVO_INIT);
-            rEyelidServo.setPosition(R_EYELID_SERVO_INIT);
-        }
         turretServo.setPosition(TURRET_SERVO_INIT);
         shooterServo.setPosition(SHOOTER_SERVO_INIT);
         sleep(250);
         spinServoSetPosition(SpindexerState.SPIN_P3); // allows autonomous progression 3-2-1
-        // Also reset our odometry starting position
+        // Also initialize/calibrate the pinpoint odometry computer
         odom.resetPosAndIMU();
     } // resetEncoders
 
@@ -710,6 +684,7 @@ public class HardwareSwyftBot
         return measuredAngle;
     } // getTurretAngle
 
+    /*--------------------------------------------------------------------------------------------*/
     public double getShootDistance(Alliance alliance) {
         double currentX = odom.getPosX(DistanceUnit.INCH);
         double currentY = odom.getPosY(DistanceUnit.INCH);
@@ -719,20 +694,22 @@ public class HardwareSwyftBot
         return Math.sqrt(Math.pow(targetX - currentX, 2) + Math.pow(targetY - currentY, 2));
     }
 
+    /*--------------------------------------------------------------------------------------------*/
     public double getShootAngleDeg(Alliance alliance) {
         double currentX = odom.getPosX(DistanceUnit.INCH);
         double currentY = odom.getPosY(DistanceUnit.INCH);
         // Positions for targets based on values from ftc2025DECODE.fmap
-        double targetX = rotate180XY(alliance == Alliance.BLUE ? 55.64 : -55.64);
+        double targetX = rotate180XY( (alliance == Alliance.BLUE)? +55.64 : -55.64);
         double targetY = rotate180XY(58.37);
         double targetFrom0 = Math.toDegrees(Math.atan2(targetY - currentY, targetX - currentX));
         double robotHeading = odom.getPosition().getHeading(AngleUnit.DEGREES);
         return targetFrom0 - robotHeading;
-    }
+    } // getShootAngleDeg
 
-    private static double rotate180XY(double xy) {
-        return ROTATE_LIMELIGHT_FIELD_180 ? -xy : xy;
-    }
+    private static double rotate180XY(double xy)
+    {
+        return (ROTATE_LIMELIGHT_FIELD_180)? -xy : xy;
+    } // rotate180XY
 
     private static double rotate180Yaw(double yaw) {
         if (!ROTATE_LIMELIGHT_FIELD_180) return yaw;
@@ -740,7 +717,7 @@ public class HardwareSwyftBot
         double wrap = (rotated + 180) % 360;
         double shift = wrap - 180;
         return shift;
-    }
+    } // rotate180Yaw
 
     /*--------------------------------------------------------------------------------------------*/
     public double computeAxonAngle( double measuredVoltage )
@@ -928,39 +905,6 @@ public class HardwareSwyftBot
        liftServoTimer.reset();
        liftServoBusyD = true;        
     } // abortInjectionStateMachine
-
-    /*--------------------------------------------------------------------------------------------*/
-    public void eyelidServoSetPosition( EyelidState position )
-    {
-        // eventually use the rEyelidServoTimer and rEyelidServoBusyU to time the movement
-        // so software protections can be put in place regard operation in a "bad state"
-        
-        switch( position ) {
-            case EYELID_OPEN_BOTH :
-               rEyelidServo.setPosition( R_EYELID_SERVO_UP );
-               lEyelidServo.setPosition( L_EYELID_SERVO_UP );
-               break;
-            case EYELID_OPEN_R :
-               rEyelidServo.setPosition( R_EYELID_SERVO_UP );
-               break;
-            case EYELID_OPEN_L :
-               lEyelidServo.setPosition( L_EYELID_SERVO_UP );
-               break;
-            case EYELID_CLOSED_BOTH :
-               rEyelidServo.setPosition( R_EYELID_SERVO_DOWN );
-               lEyelidServo.setPosition( L_EYELID_SERVO_DOWN );
-               break;
-            case EYELID_CLOSED_R :
-               rEyelidServo.setPosition( R_EYELID_SERVO_DOWN );
-               break;
-            case EYELID_CLOSED_L :
-               lEyelidServo.setPosition( L_EYELID_SERVO_DOWN );
-               break;
-            default :
-               break;
-        } // switch()
-
-    } // eyelidServoSetPosition
         
     /*--------------------------------------------------------------------------------------------*/
 

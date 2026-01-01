@@ -2,8 +2,6 @@
  */
 package org.firstinspires.ftc.teamcode;
 
-import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.EyelidState.EYELID_CLOSED_BOTH;
-
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
 import org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState;
@@ -46,9 +44,6 @@ public class AutonomousBlueNear extends AutonomousBase {
         robot.limelightStop();
         resetGlobalCoordinatePosition();
         scoringZones = 0;
-
-        // If nobody pressed X during setup, ensure eyelids are closed.
-        robot.eyelidServoSetPosition( EYELID_CLOSED_BOTH );
 
         // Start the autonomous timer so we know how much time is remaining when cycling samples
         autonomousTimer.reset();

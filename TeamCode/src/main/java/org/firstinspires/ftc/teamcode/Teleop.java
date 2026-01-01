@@ -2,8 +2,6 @@
 */
 package org.firstinspires.ftc.teamcode;
 
-import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.EyelidState.EYELID_CLOSED_BOTH;
-import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.EyelidState.EYELID_OPEN_BOTH;
 import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState.SPIN_DECREMENT;
 import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState.SPIN_INCREMENT;
 import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState.SPIN_P1;
@@ -56,7 +54,6 @@ public abstract class Teleop extends LinearOpMode {
     double  rearLeft, rearRight, frontLeft, frontRight, maxPower;  /* Motor power levels */
     boolean backwardDriveControl = false; // drive controls backward (other end of robot becomes "FRONT")
     boolean controlMultSegLinear = true;
-    double   curX, curY, curAngle;
 
     double shooterPower = 0.55;  // far shooting default. scale for location.
     double llShooterTargetXdeg, llShooterTargetYdeg;
@@ -73,10 +70,10 @@ public abstract class Teleop extends LinearOpMode {
     int       driverMode               = DRIVER_MODE_STANDARD;
     double    driverAngle              = 0.0;  /* for DRIVER_MODE_DRV_CENTRIC */
 
-    boolean enableOdometry = true;
+    boolean enableOdometry   = true;
     boolean intakeMotorOnFwd = false;
     boolean intakeMotorOnRev = false;
-    boolean shooterMotorsOn = false;
+    boolean shooterMotorsOn  = false;
 
     Gamepad.RumbleEffect spindexerRumbleL;    // Can't spin further LEFT!
     Gamepad.RumbleEffect spindexerRumbleR;    // Can't spin further RIGHT!
@@ -108,10 +105,10 @@ public abstract class Teleop extends LinearOpMode {
         robot.init(hardwareMap,false);
         robot.limelightStart();
         llodo = new LimelightFusedPinpointOdometry(robot.limelight, robot.odom, telemetry, 0.0);
-
+        // Establish whether this is the RED or BLUE alliance
         setAllianceSpecificBehavior();
-
-        llodo.updatePipeline(blueAlliance ? Alliance.BLUE : Alliance.RED);
+        // Update the limelight pipeline apriltag target numbers based on alliance color
+        llodo.updatePipeline( (blueAlliance)? Alliance.BLUE : Alliance.RED);
 
         // Send telemetry message to signify robot waiting;
         telemetry.addData("State", "Ready");
@@ -125,10 +122,10 @@ public abstract class Teleop extends LinearOpMode {
             performEveryLoopTeleop();
             // Check for operator input that changes Autonomous options
             captureGamepad1Buttons();
-            // Normally autonomous resets encoders.  Do we need to for teleop??
+            // Normally autonomous resets encoders/odometry.  Do we need to for teleop??
             if( gamepad1_cross_now && !gamepad1_cross_last) {
                 robot.resetEncoders();
-                robot.resetGlobalCoordinatePosition(); // BRODY!!
+                robot.resetGlobalCoordinatePosition();
             }
             // Pause briefly before looping
             idle();
@@ -146,28 +143,6 @@ public abstract class Teleop extends LinearOpMode {
 
             // Bulk-refresh the hub data and updates our state machines
             performEveryLoopTeleop();
-
-            // Request an update from the Pinpoint odometry computer (single I2C read)
-            if( enableOdometry ) {
-                robot.odom.update();
-                Pose2D pos = robot.odom.getPosition();  // x,y pos in inch; heading in degrees
-                curX     = pos.getX(DistanceUnit.INCH);
-                curY     = pos.getY(DistanceUnit.INCH);
-                curAngle = pos.getHeading(AngleUnit.DEGREES);
-                if( true ) {  // change to "false" for tournaments
-                    String posStr = String.format(Locale.US, "{X,Y: %.1f, %.1f in  H: %.1f deg}", curX, curY, curAngle);
-                    telemetry.addData("Position", posStr);
-                }
-                if( true ) {  // change to "false" for tournaments
-                    String velStr = String.format(Locale.US, "{X,Y: %.1f, %.1f in/sec, H: %.2f deg/sec}",
-                            robot.odom.getVelX(DistanceUnit.INCH),
-                            robot.odom.getVelY(DistanceUnit.INCH),
-                            robot.odom.getHeadingVelocity(UnnormalizedAngleUnit.DEGREES));
-                    telemetry.addData("Velocity", velStr);
-                    telemetry.addData("Status", robot.odom.getDeviceStatus());
-                    telemetry.addData("Pinpoint Refresh Rate", robot.odom.getFrequency());
-                }
-            } // enableOdometry
 
             // Check for an OFF-to-ON toggle of the gamepad1 TRIANGLE button (toggles SINGLE-MOTOR drive control)
 //          if( gamepad1_triangle_now && !gamepad1_triangle_last)
@@ -241,12 +216,11 @@ public abstract class Teleop extends LinearOpMode {
             cycleTimeHz =  1000.0 / cycleTimeElapsed;
 
             // Update telemetry data
-//          telemetry.addData("Shooter Servo", "%.3f", robot.shooterServoCurPos );
             telemetry.addData("Shooter POWER (P1 triangle/cross to adjust)", "%.2f", shooterPower);
             telemetry.addData("Shooter RPM", "%.1f %.1f", robot.shooterMotor1Vel, robot.shooterMotor2Vel );
+//          telemetry.addData("Shooter mA", "%.1f %.1f", robot.shooterMotor1Amps, robot.shooterMotor2Amps );
             telemetry.addData("LL Shooter TARGET", "X: %.2f deg, Y: %.2f deg", llShooterTargetXdeg, llShooterTargetYdeg);
             telemetry.addData("ODO Shooter TARGET", "dist: %.2f in, angle: %.2f deg", odoShootDistance, odoShootAngleDeg);
-//          telemetry.addData("Shooter mA", "%.1f %.1f", robot.shooterMotor1Amps, robot.shooterMotor2Amps );
 //          telemetry.addData("Angles", "IMU %.2f, Pinpoint %.2f deg)", robot.headingIMU(), curAngle );
             telemetry.addData("Spindexer Angle", "%.1f deg (%.2f)", robot.getSpindexerAngle(), robot.spindexerPowerSetting );
             telemetry.addLine( (robot.isRobot2)? "Robot2" : "Robot1");
@@ -277,12 +251,30 @@ public abstract class Teleop extends LinearOpMode {
         robot.readBulkData();
         robot.processInjectionStateMachine();
  //     robot.processSpindexerControl();  // only for spinServoCR (not currently used)
-        //BRODY!!
-        Pose2D pos = robot.odom.getPosition();  // x,y pos in inch; heading in degrees
-        robot.robotGlobalXCoordinatePosition = pos.getX(DistanceUnit.INCH);
-        robot.robotGlobalYCoordinatePosition = pos.getY(DistanceUnit.INCH);
-        robot.robotOrientationDegrees        = pos.getHeading(AngleUnit.DEGREES);
-        //BRODY!!
+        // Request an update from the Pinpoint odometry computer (single I2C read)
+        if( enableOdometry ) {
+            robot.odom.update();
+            Pose2D pos = robot.odom.getPosition();  // x,y pos in inch; heading in degrees
+            double curX     = pos.getX(DistanceUnit.INCH);
+            double curY     = pos.getY(DistanceUnit.INCH);
+            double curAngle = pos.getHeading(AngleUnit.DEGREES);
+            if( true ) {  // change to "false" for tournaments
+                String posStr = String.format(Locale.US, "{X,Y: %.1f, %.1f in  H: %.1f deg}", curX, curY, curAngle);
+                telemetry.addData("Position", posStr);
+            }
+            if( false ) {  // change to "false" for tournaments
+                String velStr = String.format(Locale.US, "{X,Y: %.1f, %.1f in/sec, H: %.2f deg/sec}",
+                        robot.odom.getVelX(DistanceUnit.INCH),
+                        robot.odom.getVelY(DistanceUnit.INCH),
+                        robot.odom.getHeadingVelocity(UnnormalizedAngleUnit.DEGREES));
+                telemetry.addData("Velocity", velStr);
+                telemetry.addData("Status", robot.odom.getDeviceStatus());
+                telemetry.addData("Pinpoint Refresh Rate", robot.odom.getFrequency());
+            }
+            robot.robotGlobalXCoordinatePosition = curX;
+            robot.robotGlobalYCoordinatePosition = curY;
+            robot.robotOrientationDegrees        = curAngle;
+        } // enableOdometry
     } // performEveryLoopTeleop
 
     /*---------------------------------------------------------------------------------*/
@@ -564,15 +556,11 @@ public abstract class Teleop extends LinearOpMode {
         if( gamepad2_cross_now && !gamepad2_cross_last)
         {
             if (intakeMotorOnFwd == false){
-                // Command both eyelid open if we're collecting
-                if( robot.isRobot2) robot.eyelidServoSetPosition( EYELID_OPEN_BOTH );
                 // Turn on collector in FORWARD
                 robot.intakeMotor.setPower(0.90);
                 intakeMotorOnFwd = true;
                 intakeMotorOnRev = false;
             } else{
-                // Command both eyelid CLOSED whenever we stop collecting
-                if( robot.isRobot2) robot.eyelidServoSetPosition( EYELID_CLOSED_BOTH );
                 // Shut OFF collector
                 robot.intakeMotor.setPower(0.00);
                 intakeMotorOnFwd = false;
@@ -583,15 +571,11 @@ public abstract class Teleop extends LinearOpMode {
         if( gamepad2_square_now && !gamepad2_square_last)
         {
             if (intakeMotorOnRev == false){
-                // Command both eyelid open if we're anti-collecting
-                if( robot.isRobot2) robot.eyelidServoSetPosition( EYELID_OPEN_BOTH );
                 // Turn on collector in REVERSE
                 robot.intakeMotor.setPower(-0.90);
                 intakeMotorOnFwd = false;
                 intakeMotorOnRev = true;
             } else{
-                // Command both eyelid CLOSED whenever we stop collecting
-                if( robot.isRobot2) robot.eyelidServoSetPosition( EYELID_CLOSED_BOTH );
                 // Shut OFF collector
                 robot.intakeMotor.setPower(0.00);
                 intakeMotorOnFwd = false;
