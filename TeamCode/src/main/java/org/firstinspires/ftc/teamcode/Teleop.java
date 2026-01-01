@@ -59,7 +59,8 @@ public abstract class Teleop extends LinearOpMode {
     double   curX, curY, curAngle;
 
     double shooterPower = 0.55;  // far shooting default. scale for location.
-    double shooterTargetXdeg, shooterTargetYdeg;
+    double llShooterTargetXdeg, llShooterTargetYdeg;
+    double odoShootDistance, odoShootAngleDeg;
 
     boolean blueAlliance;   // set in the Blue/Red
     boolean farAlliance;    //
@@ -243,7 +244,8 @@ public abstract class Teleop extends LinearOpMode {
 //          telemetry.addData("Shooter Servo", "%.3f", robot.shooterServoCurPos );
             telemetry.addData("Shooter POWER (P1 triangle/cross to adjust)", "%.2f", shooterPower);
             telemetry.addData("Shooter RPM", "%.1f %.1f", robot.shooterMotor1Vel, robot.shooterMotor2Vel );
-            telemetry.addData("Shooter TARGET", "X: %.2f deg, Y: %.2f deg", shooterTargetXdeg, shooterTargetYdeg);
+            telemetry.addData("LL Shooter TARGET", "X: %.2f deg, Y: %.2f deg", llShooterTargetXdeg, llShooterTargetYdeg);
+            telemetry.addData("ODO Shooter TARGET", "dist: %.2f in, angle: %.2f deg", odoShootDistance, odoShootAngleDeg);
 //          telemetry.addData("Shooter mA", "%.1f %.1f", robot.shooterMotor1Amps, robot.shooterMotor2Amps );
 //          telemetry.addData("Angles", "IMU %.2f, Pinpoint %.2f deg)", robot.headingIMU(), curAngle );
             telemetry.addData("Spindexer Angle", "%.1f deg (%.2f)", robot.getSpindexerAngle(), robot.spindexerPowerSetting );
@@ -670,13 +672,15 @@ public abstract class Teleop extends LinearOpMode {
 
     private void processTurretAutoAim() {
         if(showApriltagTargetData) {
+            odoShootDistance = robot.getShootDistance(blueAlliance ? Alliance.BLUE : Alliance.RED);
+            odoShootAngleDeg = robot.getShootAngleDeg(blueAlliance ? Alliance.BLUE : Alliance.RED);
             LLResultTypes.FiducialResult fr = llodo.getShootTarget();
             if (fr != null) {
-                shooterTargetXdeg = fr.getTargetXDegrees();
-                shooterTargetYdeg = fr.getTargetYDegrees();
+                llShooterTargetXdeg = fr.getTargetXDegrees();
+                llShooterTargetYdeg = fr.getTargetYDegrees();
             } else {
-                shooterTargetXdeg = 0;
-                shooterTargetYdeg = 0;
+                llShooterTargetXdeg = 0;
+                llShooterTargetYdeg = 0;
             }
         }
 
