@@ -56,7 +56,6 @@ public abstract class Teleop extends LinearOpMode {
     boolean controlMultSegLinear = true;
 
     double shooterPower = 0.55;  // far shooting default. scale for location.
-    double llShooterTargetXdeg, llShooterTargetYdeg;
     double odoShootDistance, odoShootAngleDeg;
 
     boolean blueAlliance;   // set in the Blue/Red
@@ -218,7 +217,6 @@ public abstract class Teleop extends LinearOpMode {
             telemetry.addData("Shooter POWER (P1 triangle/cross to adjust)", "%.2f", shooterPower);
             telemetry.addData("Shooter RPM", "%.1f %.1f", robot.shooterMotor1Vel, robot.shooterMotor2Vel );
 //          telemetry.addData("Shooter mA", "%.1f %.1f", robot.shooterMotor1Amps, robot.shooterMotor2Amps );
-            telemetry.addData("LL Shooter TARGET", "X: %.2f deg, Y: %.2f deg", llShooterTargetXdeg, llShooterTargetYdeg);
             telemetry.addData("ODO Shooter TARGET", "dist: %.2f in, angle: %.2f deg", odoShootDistance, odoShootAngleDeg);
 //          telemetry.addData("Angles", "IMU %.2f, Pinpoint %.2f deg)", robot.headingIMU(), curAngle );
             telemetry.addData("Spindexer Angle", "%.1f deg (%.2f)", robot.getSpindexerAngle(), robot.spindexerPowerSetting );
@@ -659,21 +657,11 @@ public abstract class Teleop extends LinearOpMode {
     } // processShooter
 
     private void processTurretAutoAim() {
-        if(showApriltagTargetData) {
-            odoShootDistance = robot.getShootDistance(blueAlliance ? Alliance.BLUE : Alliance.RED);
-            odoShootAngleDeg = robot.getShootAngleDeg(blueAlliance ? Alliance.BLUE : Alliance.RED);
-            LLResultTypes.FiducialResult fr = llodo.getShootTarget();
-            if (fr != null) {
-                llShooterTargetXdeg = fr.getTargetXDegrees();
-                llShooterTargetYdeg = fr.getTargetYDegrees();
-            } else {
-                llShooterTargetXdeg = 0;
-                llShooterTargetYdeg = 0;
-            }
-        }
+        odoShootDistance = robot.getShootDistance(blueAlliance ? Alliance.BLUE : Alliance.RED);
+        odoShootAngleDeg = robot.getShootAngleDeg(blueAlliance ? Alliance.BLUE : Alliance.RED);
 
         if (gamepad1_l_bumper_now && !gamepad1_l_bumper_last) {
-            targetTurret();
+            robot.setTurretAngle(odoShootAngleDeg);
         }
         if (gamepad1_r_bumper_now && !gamepad1_r_bumper_last) {
             // RIGHT BUTTON resets turret to the center and resets the shooter power
@@ -681,13 +669,6 @@ public abstract class Teleop extends LinearOpMode {
             shooterPower = 0.55;
         }
     } // processTurretAutoAim
-
-    private void targetTurret() {
-        LLResultTypes.FiducialResult shootTarget = llodo.getShootTarget();
-        if (shootTarget == null) return;
-        double targetXDegrees = shootTarget.getTargetXDegrees();
-        robot.setTurretAngle(targetXDegrees);
-    } // targetTurret
 
     /*---------------------------------------------------------------------------------*/
     void processInjector() {

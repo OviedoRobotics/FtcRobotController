@@ -698,13 +698,21 @@ public class HardwareSwyftBot
     public double getShootAngleDeg(Alliance alliance) {
         double currentX = odom.getPosX(DistanceUnit.INCH);
         double currentY = odom.getPosY(DistanceUnit.INCH);
-        // Positions for targets based on values from ftc2025DECODE.fmap
-        double targetX = 58.37;
-        double targetY = (alliance == Alliance.BLUE) ? 55.64 : -55.64;
-        double targetFrom0 = Math.toDegrees(Math.atan2(currentY - targetY, targetX - currentX));
         double robotHeading = odom.getPosition().getHeading(AngleUnit.DEGREES);
-        return targetFrom0 - robotHeading;
+        return calcShootAngleDeg(alliance, currentX, currentY, robotHeading);
     } // getShootAngleDeg
+
+    static double calcShootAngleDeg(Alliance alliance, double robotX, double robotY, double heading) {
+        // Rotated field ositions for targets based on values from ftc2025DECODE.fmap
+        double targetX = 58.37;
+        double targetY = alliance == Alliance.BLUE ? +55.64 : -55.64;
+        return calcAngleDegToTarget(targetX, targetY, robotX, robotY, heading);
+    }
+
+    static double calcAngleDegToTarget(double targetX, double targetY, double robotX, double robotY, double robotHeading) {
+        double targetFromStraight = Math.toDegrees(Math.atan2(targetY - robotY, targetX - robotX));
+        return targetFromStraight - robotHeading;
+    }
 
     private static double rotate180XY(double xy)
     {
