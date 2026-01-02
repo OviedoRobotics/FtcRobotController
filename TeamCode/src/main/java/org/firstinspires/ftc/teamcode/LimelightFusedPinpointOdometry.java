@@ -62,25 +62,6 @@ public class LimelightFusedPinpointOdometry {
     }
 
     /**
-     * Using the latest limelight data, (which may not have targeting info if the camera isn't facing the target) return details for where to shoot for the configured alliance.
-     *
-     * @return FiducialResult for target which includes targetXDegrees for aiming and targetYDegrees for adjusting motor speed.
-     */
-    public LLResultTypes.FiducialResult getShootTarget() {
-        LLResult llResult = limelight.getLatestResult();
-        if (llResult != null && llResult.isValid()) {
-            int targetApriltag = alliance == Alliance.BLUE ? 20 : 24;
-            List<LLResultTypes.FiducialResult> fiducialResults = llResult.getFiducialResults();
-            for (LLResultTypes.FiducialResult fr : fiducialResults) {
-                if (fr.getFiducialId() == targetApriltag) {
-                    return fr;
-                }
-            }
-        }
-        return null;
-    }
-
-    /**
      * Should be called on every loop. Actual updates will be rate limited and only happen if a valid location is identified.
      */
     void alignPinpointToLimelightEveryLoop(boolean forceUpdateOdometry) {

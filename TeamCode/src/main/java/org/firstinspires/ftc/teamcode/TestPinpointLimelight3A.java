@@ -65,7 +65,7 @@ public class TestPinpointLimelight3A extends LinearOpMode {
             // solution doesn't shift to zero once the turret rotates.  Until the robot drivetrain itself
             // is changed, the limelight angle will continue to report the same answer.
             if( gamepad1.triangleWasPressed() || gamepad2.triangleWasPressed() ) {
-                targetTurret();
+                //targetTurret();
             }
 
             telemetry.addLine("-----------------------------");
@@ -121,13 +121,6 @@ public class TestPinpointLimelight3A extends LinearOpMode {
             telemetry.addData("Limelight", "No data available");
         }
     } // reportBothPoses
-
-    private void targetTurret() {
-        LLResultTypes.FiducialResult shootTarget = llodo.getShootTarget();
-        if (shootTarget == null) return;
-        double targetXDegrees = shootTarget.getTargetXDegrees();
-        robot.setTurretAngle(targetXDegrees);
-    }
 
     private static double rotate180Yaw(double yaw) {
         double rotated = yaw + 180;
