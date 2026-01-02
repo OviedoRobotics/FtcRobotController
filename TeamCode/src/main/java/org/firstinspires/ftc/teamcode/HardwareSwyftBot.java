@@ -34,8 +34,8 @@ public class HardwareSwyftBot
     LynxModule controlHub;
     LynxModule expansionHub;
     
-    public boolean isRobot1 = false;  // see IMU initialization below
-    public boolean isRobot2 = false;
+    public boolean isRobot1 = false;  // 7592-C (see IMU initialization below)
+    public boolean isRobot2 = false;  // 7592-D
 
     //====== INERTIAL MEASUREMENT UNIT (IMU) =====
     protected IMU imu          = null;
@@ -209,12 +209,12 @@ public class HardwareSwyftBot
     public ElapsedTime liftServoTimer = new ElapsedTime();
 
     //===== ROBOT1 injector/lift servo positions:
-    public final static double LIFT_SERVO_INIT_R1   = 0.520;
-    public final static double LIFT_SERVO_RESET_R1  = 0.520;
-    public final static double LIFT_SERVO_INJECT_R1 = 0.330;
-      //   174 (179)  . . .    (229)  235           <-- 5deg tolerance on RESET and INJECT
-    public final static double LIFT_SERVO_RESET_ANG_R1  = 179.0;  // 0.520 = 174.0deg
-    public final static double LIFT_SERVO_INJECT_ANG_R1 = 229.8;  // 0.330 = 234.8deg
+    public final static double LIFT_SERVO_INIT_R1   = 0.510;
+    public final static double LIFT_SERVO_RESET_R1  = 0.510;
+    public final static double LIFT_SERVO_INJECT_R1 = 0.320;
+      //   177 (182)  . . .    (233)  238           <-- 5deg tolerance on RESET and INJECT
+    public final static double LIFT_SERVO_RESET_ANG_R1  = 181.9;  // 0.510 = 176.9deg
+    public final static double LIFT_SERVO_INJECT_ANG_R1 = 233.2;  // 0.320 = 238.2deg
     //===== ROBOT2 injector/lift servo positions:
     public final static double LIFT_SERVO_INIT_R2   = 0.500;
     public final static double LIFT_SERVO_RESET_R2  = 0.500;
@@ -689,8 +689,8 @@ public class HardwareSwyftBot
         double currentX = odom.getPosX(DistanceUnit.INCH);
         double currentY = odom.getPosY(DistanceUnit.INCH);
         // Positions for targets based on values from ftc2025DECODE.fmap
-        double targetX = rotate180XY(alliance == Alliance.BLUE ? 55.64 : -55.64);
-        double targetY = rotate180XY(58.37);
+        double targetX = 58.37;
+        double targetY = (alliance == Alliance.BLUE) ? 55.64 : -55.64;
         return Math.sqrt(Math.pow(targetX - currentX, 2) + Math.pow(targetY - currentY, 2));
     }
 
@@ -699,9 +699,9 @@ public class HardwareSwyftBot
         double currentX = odom.getPosX(DistanceUnit.INCH);
         double currentY = odom.getPosY(DistanceUnit.INCH);
         // Positions for targets based on values from ftc2025DECODE.fmap
-        double targetX = rotate180XY( (alliance == Alliance.BLUE)? +55.64 : -55.64);
-        double targetY = rotate180XY(58.37);
-        double targetFrom0 = Math.toDegrees(Math.atan2(targetY - currentY, targetX - currentX));
+        double targetX = 58.37;
+        double targetY = (alliance == Alliance.BLUE) ? 55.64 : -55.64;
+        double targetFrom0 = Math.toDegrees(Math.atan2(currentY - targetY, targetX - currentX));
         double robotHeading = odom.getPosition().getHeading(AngleUnit.DEGREES);
         return targetFrom0 - robotHeading;
     } // getShootAngleDeg

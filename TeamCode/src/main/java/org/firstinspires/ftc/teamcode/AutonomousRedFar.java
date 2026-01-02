@@ -128,6 +128,7 @@ public class AutonomousRedFar extends AutonomousBase {
         //===== Score Preload Balls (from the FAR zone) ==========
         // Immediately start up shooter so it can be getting up to speed
         robot.shooterMotorsSetPower( shooterPowerFar );
+        robot.intakeMotor.setPower(0.90);
         // Drive out away from wall, both to allow us to rotate the turret and not have the
         // shooter drive belt touch the field wall, but also to be closer to the goal.
         // Must not go so far we are no longer within the scoring zone!

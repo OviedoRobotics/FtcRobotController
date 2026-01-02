@@ -1321,6 +1321,8 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
     /* - shooter is already up to speed                                                           */
     public void scoreThreeBallsFromFar( int obeliskID ) {
         if( opModeIsActive() ) {
+            // Ensure collector to ON to retain balls while spindexing
+            robot.intakeMotor.setPower(0.90);
             // Convert the obelisk value into a shooting order
             HardwareSwyftBot.SpindexerState[] shootOrder = getObeliskShootOrder(obeliskID);
             // Shoot all 3 balls
@@ -1336,6 +1338,8 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
         } // opModeIsActive
         // Turn off shooter while we go collect more balls
         robot.shooterMotorsSetPower( 0.0 );
+        // Turn off collector
+        robot.intakeMotor.setPower(0.0);
     } // scoreThreeBallsFromFar
 
     //--------------------------------------------------------------------------------------------

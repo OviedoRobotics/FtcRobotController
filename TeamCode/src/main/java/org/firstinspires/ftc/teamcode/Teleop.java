@@ -110,16 +110,15 @@ public abstract class Teleop extends LinearOpMode {
         // Update the limelight pipeline apriltag target numbers based on alliance color
         llodo.updatePipeline( (blueAlliance)? Alliance.BLUE : Alliance.RED);
 
-        // Send telemetry message to signify robot waiting;
-        telemetry.addData("State", "Ready");
-        telemetry.addLine("Press X (cross) to reset encoders");
-        telemetry.addLine("(to run Teleop without Auto first)");
-        telemetry.update();
-
         // Wait for the game to start (driver presses PLAY)
         while (!isStarted()) {
+            // Send telemetry message to signify robot waiting;
+            telemetry.addData("State", "Ready");
+            telemetry.addLine("Press X (cross) to reset encoders");
+            telemetry.addLine("(to run Teleop without Auto first)");
             // Bulk-refresh the hub data and updates our state machines (spindexer!)
             performEveryLoopTeleop();
+            telemetry.update();
             // Check for operator input that changes Autonomous options
             captureGamepad1Buttons();
             // Normally autonomous resets encoders/odometry.  Do we need to for teleop??
@@ -271,9 +270,14 @@ public abstract class Teleop extends LinearOpMode {
                 telemetry.addData("Status", robot.odom.getDeviceStatus());
                 telemetry.addData("Pinpoint Refresh Rate", robot.odom.getFrequency());
             }
+
             robot.robotGlobalXCoordinatePosition = curX;
             robot.robotGlobalYCoordinatePosition = curY;
             robot.robotOrientationDegrees        = curAngle;
+
+            if(gamepad1.touchpadWasPressed()){
+                llodo.alignPinpointToLimelightEveryLoop(false);
+            }
         } // enableOdometry
     } // performEveryLoopTeleop
 
