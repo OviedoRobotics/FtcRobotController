@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
+import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
@@ -20,6 +21,10 @@ import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
+import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
+import org.firstinspires.ftc.robotcore.external.navigation.Position;
+import org.firstinspires.ftc.robotcore.external.navigation.UnnormalizedAngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 
 import static com.qualcomm.hardware.rev.RevHubOrientationOnRobot.LogoFacingDirection;
 import static com.qualcomm.hardware.rev.RevHubOrientationOnRobot.UsbFacingDirection;
@@ -46,7 +51,9 @@ public class HardwareSwyftBot
     GoBildaPinpointDriver odom;
 
     //====== LIMELIGHT SMART CAMERA ======
-    public Limelight3A limelight;
+    public  Limelight3A limelight;
+    private LLResult    llResultLast;
+
     /**
      * https://ftc-docs.firstinspires.org/en/latest/game_specific_resources/field_coordinate_system/field-coordinate-system.html#square-field-inverted-alliance-area
      * We currently use a field orientation that is 180º rotated from the standard FTC field,
@@ -92,19 +99,22 @@ public class HardwareSwyftBot
     // The math above assumes motor encoders.  For REV odometry pods, the counts per inch is different
     protected double COUNTS_PER_INCH2      = 1738.4;  // 8192 counts-per-rev / (1.5" omni wheel * PI)
 
-    //BRODY!!
-    // Left Corner is (0,0) Facing obelisk is 90deg
-    double startingRobotGlobalXPosition = 72; // x inches
-    double startingRobotGlobalYPosition = 24; // y inches
-    double startingRobotOrientationDegrees = 90; // field orientation in deg
-
-    Pose2D startingPos = new Pose2D(DistanceUnit.INCH, startingRobotGlobalXPosition, startingRobotGlobalYPosition, AngleUnit.DEGREES, startingRobotOrientationDegrees);
-
     // Absolute Position of Robot on the field.
     double robotGlobalXCoordinatePosition       = 0;   // inches
     double robotGlobalYCoordinatePosition       = 0;   // inches
-    double robotOrientationDegrees              = 0;   // degrees 90deg (facing obelisk)
-    //BRODY!!
+    double robotOrientationDegrees              = 0;   // degrees
+
+    double robotGlobalXvelocity                 = 0;   // inches/sec
+    double robotGlobalYvelocity                 = 0;   // inches/sec
+    double robotAngleVelocity                   = 0;   // degrees/sec
+
+    double limelightFieldXpos     = 0;
+    double limelightFieldYpos     = 0;
+    double limelightFieldAngleDeg = 0;
+
+    double limelightFieldXstd     = 0;
+    double limelightFieldYstd     = 0;
+    double limelightFieldAnglestd = 0;
 
     //====== 2025 DECODE SEASON MECHANISM MOTORS (RUN_USING_ENCODER) =====
     protected DcMotorEx intakeMotor     = null;
@@ -147,6 +157,8 @@ public class HardwareSwyftBot
     public final static double TURRET_SERVO_N90  = 0.29; // -90 deg
     public final static double TURRET_SERVO_MIN  = 0.06; // -180deg
     public final static double TURRET_CTS_PER_DEG = (TURRET_SERVO_P90 - TURRET_SERVO_N90)/180.0;
+
+    public final static double TURRET_R1_OFFSET = -0.008; // ROBOT1 differs from our reference (ROBOT2)
 
     //====== SPINDEXER SERVO =====
     public Servo       spinServo    = null;
@@ -209,12 +221,12 @@ public class HardwareSwyftBot
     public ElapsedTime liftServoTimer = new ElapsedTime();
 
     //===== ROBOT1 injector/lift servo positions:
-    public final static double LIFT_SERVO_INIT_R1   = 0.510;
-    public final static double LIFT_SERVO_RESET_R1  = 0.510;
-    public final static double LIFT_SERVO_INJECT_R1 = 0.320;
-      //   177 (182)  . . .    (233)  238           <-- 5deg tolerance on RESET and INJECT
-    public final static double LIFT_SERVO_RESET_ANG_R1  = 181.9;  // 0.510 = 176.9deg
-    public final static double LIFT_SERVO_INJECT_ANG_R1 = 233.2;  // 0.320 = 238.2deg
+    public final static double LIFT_SERVO_INIT_R1   = 0.520;
+    public final static double LIFT_SERVO_RESET_R1  = 0.520;
+    public final static double LIFT_SERVO_INJECT_R1 = 0.330;
+      //   173 (178)  . . .    (239)  235           <-- 5deg tolerance on RESET and INJECT
+    public final static double LIFT_SERVO_RESET_ANG_R1  = 178.3;  // 0.520 = 173.3deg
+    public final static double LIFT_SERVO_INJECT_ANG_R1 = 230.2;  // 0.330 = 235.2deg
     //===== ROBOT2 injector/lift servo positions:
     public final static double LIFT_SERVO_INIT_R2   = 0.500;
     public final static double LIFT_SERVO_RESET_R2  = 0.500;
@@ -294,9 +306,6 @@ public class HardwareSwyftBot
         if( isAutonomous ) {
             odom.resetPosAndIMU();
         }
-
-        // defines initial pose of robot on field.  white tip of far tape facing obelisk: x = 72in., y = 24in., orientation = 90deg.
-        odom.setPosition(startingPos);  //BRODY!!
 
         //--------------------------------------------------------------------------------------------
         // Locate the limelight3a camera in our hardware settings
@@ -410,8 +419,7 @@ public class HardwareSwyftBot
     // Resets odometry starting position and angle to zero accumulated encoder counts
     public void resetGlobalCoordinatePosition(){
 //      robot.odom.resetPosAndIMU();   // don't need full recalibration; just reset our position in case of any movement
-        Pose2D startPosTeleop = new Pose2D(DistanceUnit.INCH, 0.0, 0.0, AngleUnit.DEGREES, 0.0);
-        odom.setPosition(startPosTeleop);  // in case we don't run autonomous first!
+        setPinpointFieldPosition( 0.0, 0.0, 0.0 ); // in case we don't run autonomous first!
         robotGlobalXCoordinatePosition = 0.0;  // This will get overwritten the first time
         robotGlobalYCoordinatePosition = 0.0;  // we call robot.odom.update()!
         robotOrientationDegrees        = 0.0;
@@ -421,7 +429,7 @@ public class HardwareSwyftBot
     public void resetEncoders() throws InterruptedException {
         // Initialize the injector servo first! (so it's out of the way for spindexer rotation)
         liftServo.setPosition(LIFT_SERVO_INIT);
-        turretServo.setPosition(TURRET_SERVO_INIT);
+        turretServoSetPosition( TURRET_SERVO_INIT );
         shooterServo.setPosition(SHOOTER_SERVO_INIT);
         sleep(250);
         spinServoSetPosition(SpindexerState.SPIN_P3); // allows autonomous progression 3-2-1
@@ -645,16 +653,25 @@ public class HardwareSwyftBot
     } // setRunToPosition
 
     /*--------------------------------------------------------------------------------------------*/
+    public void turretServoSetPosition( double targetPosition )
+    {
+        if( isRobot1 ) {
+            targetPosition += TURRET_R1_OFFSET;
+        }
+        turretServo.setPosition(targetPosition);
+    } // turretServoSetPosition
+
+    /*--------------------------------------------------------------------------------------------*/
     // currently limited to +/- 90deg
     public void setTurretAngle( double targetAngleDegrees )
     {
         // convert degrees into servo position setting centered around the init position.
-        double targetAngleCounts = (targetAngleDegrees * TURRET_CTS_PER_DEG) + TURRET_SERVO_INIT;
+        double targetAngleCounts = -(targetAngleDegrees * TURRET_CTS_PER_DEG) + TURRET_SERVO_INIT;
         // make sure it's within our safe range
         if( targetAngleCounts < TURRET_SERVO_N90 ) targetAngleCounts = TURRET_SERVO_N90;
         if( targetAngleCounts > TURRET_SERVO_MAX ) targetAngleCounts = TURRET_SERVO_MAX;
         // set both turret servos (connected on Y cable)
-        turretServo.setPosition(targetAngleCounts);
+        turretServoSetPosition( targetAngleCounts );
     } // setTurretAngle
 
     /*--------------------------------------------------------------------------------------------*/
@@ -685,21 +702,132 @@ public class HardwareSwyftBot
     } // getTurretAngle
 
     /*--------------------------------------------------------------------------------------------*/
+    public void updatePinpointFieldPosition() {
+        // Request an update from the Pinpoint odometry computer (single I2C read)
+        odom.update();
+        // Parse for x/y/angle position data
+        Pose2D pos = odom.getPosition();  // x,y pos in inch; heading in degrees
+        robotGlobalXCoordinatePosition = pos.getX(DistanceUnit.INCH);
+        robotGlobalYCoordinatePosition = pos.getY(DistanceUnit.INCH);
+        robotOrientationDegrees        = pos.getHeading(AngleUnit.DEGREES);
+        // Parse for velocities (inches/sec, degrees/sec)
+        robotGlobalXvelocity = odom.getVelX(DistanceUnit.INCH);
+        robotGlobalYvelocity = odom.getVelY(DistanceUnit.INCH);
+        robotAngleVelocity   = odom.getHeadingVelocity(UnnormalizedAngleUnit.DEGREES);
+        // Currently unused:
+        // - Status         = odom.getDeviceStatus()
+        // - Reference Rate = odom.getFrequency()
+    } // updatePinpointFieldPosition
+
+    /*--------------------------------------------------------------------------------------------*/
+    public void setPinpointFieldPosition( double X, double Y, double headingDeg ) {
+        Pose2D newFieldPosition = new Pose2D(DistanceUnit.INCH, X, Y, AngleUnit.DEGREES, headingDeg );
+        odom.setPosition( newFieldPosition );
+        robotGlobalXCoordinatePosition = X;
+        robotGlobalYCoordinatePosition = Y;
+        robotOrientationDegrees        = headingDeg;
+    } // setPinpointFieldPosition
+
+    /*--------------------------------------------------------------------------------------------*/
+    public void updateLimelightFieldPosition() {
+        // To get the most accurate estimate of field position from the limelight (using the
+        // built-in field map and feedback from the Apriltags mounted on the red/blue goals)
+        // we tell the limelight the current robot/camera orientation angle.
+        double yawAngle = rotate180Yaw( robotOrientationDegrees );  // Rotate frame of reference!
+        limelight.updateRobotOrientation( yawAngle );   // takes effect on next cycle...
+        // Lets see if the limelight camera can see the Apriltag (to provide updated field location data)
+        LLResult llResult = limelight.getLatestResult();
+        if( llResult == null ) {
+            // Nothing to process this cycle
+            return;
+        }
+        if (llResultLast != null && (llResultLast == llResult) ) {
+            // Already processed that one
+            return;
+        }
+        if( !llResult.isValid() ) {
+            // Can't see the AprilTag from here (clear our results)
+            limelightFieldXpos     = 0;    limelightFieldXstd     = 0;
+            limelightFieldYpos     = 0;    limelightFieldYstd     = 0;
+            limelightFieldAngleDeg = 0;    limelightFieldAnglestd = 0;
+            return;
+        }
+        int STALENESS_LIMIT_MS = 30;
+        if( llResult.getStaleness() < STALENESS_LIMIT_MS ) {
+            llResultLast = llResult;
+            // Parse Limelight result for MegaTag2 robot pose data
+            Pose3D   limelightBotpose = llResult.getBotpose_MT2();
+            double[] stddev           = llResult.getStddevMt2();
+            if (limelightBotpose != null) {
+                // Obtain the X/Y position data
+                Position limelightPosition = limelightBotpose.getPosition();
+                // Translate X and Y into the odometry frame of reference
+                double posX = rotate180XY( limelightPosition.x );
+                double posY = rotate180XY( limelightPosition.y );
+                // update our global tracking variables
+                limelightFieldXpos = limelightPosition.unit.toInches(posX);
+                limelightFieldXstd = stddev[0];
+                limelightFieldYpos = limelightPosition.unit.toInches(posY);
+                limelightFieldYstd = stddev[1];
+                // Obtain the angle data
+                YawPitchRollAngles limelightOrientation = limelightBotpose.getOrientation();
+                limelightFieldAngleDeg = rotate180Yaw( limelightOrientation.getYaw(AngleUnit.DEGREES) );
+                limelightFieldAnglestd = stddev[5];
+            }
+        } else {  // limelight data is stale, don't trust it
+            limelightFieldXpos     = 0;    limelightFieldXstd     = 0;
+            limelightFieldYpos     = 0;    limelightFieldYstd     = 0;
+            limelightFieldAngleDeg = 0;    limelightFieldAnglestd = 0;
+        }
+    } // updateLimelightFieldPosition
+
+    /*--------------------------------------------------------------------------------------------*/
+    // The current pinpoint odometry is configured with a different +X/+Y/+angle than Limelight field
+    private static double rotate180Yaw(double yaw) {
+        if (!ROTATE_LIMELIGHT_FIELD_180) return yaw;
+        double rotated = yaw + 180;
+        double wrap = (rotated + 180) % 360;
+        double shift = wrap - 180;
+        return shift;
+    } // rotate180Yaw
+
+    private static double rotate180XY(double xy) {
+        return ((ROTATE_LIMELIGHT_FIELD_180)? -xy : xy);
+    } // rotate180XY
+
+    /*--------------------------------------------------------------------------------------------*/
     public double getShootDistance(Alliance alliance) {
-        double currentX = odom.getPosX(DistanceUnit.INCH);
-        double currentY = odom.getPosY(DistanceUnit.INCH);
+        double currentX = robotGlobalXCoordinatePosition;
+        double currentY = robotGlobalYCoordinatePosition;
         // Positions for targets based on values from ftc2025DECODE.fmap
-        double targetX = 58.37;
-        double targetY = (alliance == Alliance.BLUE) ? 55.64 : -55.64;
-        return Math.sqrt(Math.pow(targetX - currentX, 2) + Math.pow(targetY - currentY, 2));
-    }
+//      double targetX = 58.37;
+//      double targetY = (alliance == Alliance.BLUE)? +55.64 : -55.64;
+        double targetX = 60.0;
+        double targetY = (alliance == Alliance.BLUE)? +60.0 : -60.0;  // 6ft = 72"
+        // Compute distance to target point inside the goal
+        double deltaX = targetX - currentX;
+        double deltaY = targetY - currentY;
+        double distance = Math.sqrt( Math.pow(deltaX,2) + Math.pow(deltaY,2) );
+        return distance;
+    } // getShootDistance
 
     /*--------------------------------------------------------------------------------------------*/
     public double getShootAngleDeg(Alliance alliance) {
-        double currentX = odom.getPosX(DistanceUnit.INCH);
-        double currentY = odom.getPosY(DistanceUnit.INCH);
-        double robotHeading = odom.getPosition().getHeading(AngleUnit.DEGREES);
-        return calcShootAngleDeg(alliance, currentX, currentY, robotHeading);
+        double currentX = robotGlobalXCoordinatePosition;
+        double currentY = robotGlobalYCoordinatePosition;
+        // Rotated field positions for targets based on values from ftc2025DECODE.fmap
+//      double targetX = 58.37;
+//      double targetY = (alliance == Alliance.BLUE)? +55.64 : -55.64;
+        double targetX = 60.0;
+        double targetY = (alliance == Alliance.BLUE)? +60.0 : -60.0;  // 6ft = 72"
+        // Compute distance to target point inside the goal
+        double deltaX = targetX - currentX;
+        double deltaY = targetY - currentY;
+        // Compute the angle assuming the robot is facing forward at 0 degrees
+        double targetFromStraight = Math.toDegrees( Math.atan2(deltaY,deltaX) );
+        // Adjust for the current robot orientation
+        double shootAngle = targetFromStraight - robotOrientationDegrees;
+        return shootAngle;
     } // getShootAngleDeg
 
     static double calcShootAngleDeg(Alliance alliance, double robotX, double robotY, double heading) {
@@ -713,19 +841,6 @@ public class HardwareSwyftBot
         double targetFromStraight = Math.toDegrees(Math.atan2(targetY - robotY, targetX - robotX));
         return targetFromStraight - robotHeading;
     }
-
-    private static double rotate180XY(double xy)
-    {
-        return (ROTATE_LIMELIGHT_FIELD_180)? -xy : xy;
-    } // rotate180XY
-
-    private static double rotate180Yaw(double yaw) {
-        if (!ROTATE_LIMELIGHT_FIELD_180) return yaw;
-        double rotated = yaw + 180;
-        double wrap = (rotated + 180) % 360;
-        double shift = wrap - 180;
-        return shift;
-    } // rotate180Yaw
 
     /*--------------------------------------------------------------------------------------------*/
     public double computeAxonAngle( double measuredVoltage )

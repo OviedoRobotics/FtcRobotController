@@ -7,16 +7,8 @@ import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState.SPI
 import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState.SPIN_P1;
 import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState.SPIN_P3;
 
-import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.Gamepad;
-
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
-import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
-import org.firstinspires.ftc.robotcore.external.navigation.UnnormalizedAngleUnit;
-
-import java.util.Locale;
 
 /**
  * TeleOp for the 2025-2026 FTC DECODE Season
@@ -82,7 +74,7 @@ public abstract class Teleop extends LinearOpMode {
 
     /* Declare OpMode members. */
     HardwareSwyftBot robot = new HardwareSwyftBot();
-    LimelightFusedPinpointOdometry llodo = null;
+//  LimelightFusedPinpointOdometry llodo = null;
     // sets unique behavior based on alliance
     public abstract void setAllianceSpecificBehavior();
 
@@ -103,11 +95,12 @@ public abstract class Teleop extends LinearOpMode {
         // Initialize robot hardware (not autonomous mode)
         robot.init(hardwareMap,false);
         robot.limelightStart();
-        llodo = new LimelightFusedPinpointOdometry(robot.limelight, robot.odom, telemetry, 0.0);
+//      llodo = new LimelightFusedPinpointOdometry(robot.limelight, robot.odom, telemetry, 0.0);
         // Establish whether this is the RED or BLUE alliance
         setAllianceSpecificBehavior();
-        // Update the limelight pipeline apriltag target numbers based on alliance color
-        llodo.updatePipeline( (blueAlliance)? Alliance.BLUE : Alliance.RED);
+        // limelight pipelines 6 & 7 filter for the BLUE and RED goal apriltags
+        robot.limelightPipelineSwitch( (blueAlliance)? 6:7 );
+//      llodo.updatePipeline( (blueAlliance)? Alliance.BLUE : Alliance.RED);
 
         // Wait for the game to start (driver presses PLAY)
         while (!isStarted()) {
@@ -117,6 +110,14 @@ public abstract class Teleop extends LinearOpMode {
             telemetry.addLine("(to run Teleop without Auto first)");
             // Bulk-refresh the hub data and updates our state machines (spindexer!)
             performEveryLoopTeleop();
+            telemetry.addData("Limelight","x=%.2f y=%.2f  %.2f deg (Apriltag)",
+                    robot.limelightFieldXpos, robot.limelightFieldYpos, robot.limelightFieldAngleDeg );
+            telemetry.addData("  stdev"," %.2f   %.2f    %.2f",
+                    robot.limelightFieldXstd, robot.limelightFieldYstd, robot.limelightFieldAnglestd );
+            telemetry.addData("Pinpoint","x=%.2f y=%.2f  %.2f deg (odom)",
+                    robot.robotGlobalXCoordinatePosition, robot.robotGlobalYCoordinatePosition, robot.robotOrientationDegrees );
+            telemetry.addData(" "," %.2f in/sec %.2f in/sec %.2f deg/sec",
+                    robot.robotGlobalXvelocity, robot.robotGlobalYvelocity, robot.robotAngleVelocity );
             telemetry.update();
             // Check for operator input that changes Autonomous options
             captureGamepad1Buttons();
@@ -130,7 +131,7 @@ public abstract class Teleop extends LinearOpMode {
         } // !isStarted
 
         // Ensure turret is initialized
-        robot.turretServo.setPosition(robot.TURRET_SERVO_INIT);
+        robot.turretServoSetPosition(robot.TURRET_SERVO_INIT);
 
         // run until the end of the match (driver presses STOP)
         while (opModeIsActive())
@@ -168,10 +169,10 @@ public abstract class Teleop extends LinearOpMode {
                 }
             }
 
-            telemetry.addData("cross","Toggle Intake");
-            telemetry.addData("circle","Robot-centric (fwd/back modes)");
-            telemetry.addData("square","Driver-centric (set joystick!)");
-            telemetry.addData("d-pad","Fine control 15%)");
+//          telemetry.addData("cross","Toggle Intake");
+//          telemetry.addData("circle","Robot-centric (fwd/back modes)");
+//          telemetry.addData("square","Driver-centric (set joystick!)");
+//          telemetry.addData("d-pad","Fine control 15%)");
 
             if( processDpadDriveMode() == false ) {
                 // Control based on joystick; report the sensed values
@@ -214,26 +215,22 @@ public abstract class Teleop extends LinearOpMode {
             cycleTimeHz =  1000.0 / cycleTimeElapsed;
 
             // Update telemetry data
-            telemetry.addData("Shooter POWER (P1 triangle/cross to adjust)", "%.2f", shooterPower);
+            telemetry.addData("Limelight","x=%.2f y=%.2f  %.2f deg (Apriltag)",
+                    robot.limelightFieldXpos, robot.limelightFieldYpos, robot.limelightFieldAngleDeg );
+            telemetry.addData("  stdev"," %.2f   %.2f    %.2f",
+                    robot.limelightFieldXstd, robot.limelightFieldYstd, robot.limelightFieldAnglestd );
+            telemetry.addData("Pinpoint","x=%.2f y=%.2f  %.2f deg (odom)",
+                   robot.robotGlobalXCoordinatePosition, robot.robotGlobalYCoordinatePosition, robot.robotOrientationDegrees );
+            telemetry.addData(" "," %.2f in/sec %.2f in/sec %.2f deg/sec", 
+                   robot.robotGlobalXvelocity, robot.robotGlobalYvelocity, robot.robotAngleVelocity );
+            telemetry.addData("Goal", "%s dist: %.2f in, angle: %.2f deg", ((blueAlliance)? "BLUE":"RED"), odoShootDistance, odoShootAngleDeg);
+            telemetry.addData("Shooter POWER", "%.2f (P1 tri/cross to adjust)", shooterPower);
             telemetry.addData("Shooter RPM", "%.1f %.1f", robot.shooterMotor1Vel, robot.shooterMotor2Vel );
 //          telemetry.addData("Shooter mA", "%.1f %.1f", robot.shooterMotor1Amps, robot.shooterMotor2Amps );
-            telemetry.addData("ODO Shooter TARGET", "dist: %.2f in, angle: %.2f deg", odoShootDistance, odoShootAngleDeg);
-//          telemetry.addData("Angles", "IMU %.2f, Pinpoint %.2f deg)", robot.headingIMU(), curAngle );
-            telemetry.addData("Spindexer Angle", "%.1f deg (%.2f)", robot.getSpindexerAngle(), robot.spindexerPowerSetting );
+//          telemetry.addData("IMU", "%.2f deg", robot.headingIMU() );
+//          telemetry.addData("Spindexer Angle", "%.1f deg (%.2f)", robot.getSpindexerAngle(), robot.spindexerPowerSetting );
             telemetry.addLine( (robot.isRobot2)? "Robot2" : "Robot1");
             telemetry.addData("CycleTime", "%.1f msec (%.1f Hz)", cycleTimeElapsed, cycleTimeHz);
-            if( false ) {
-              // BRODY!!
-              telemetry.addData("TurretAngle", robot.computeTurretAngle());
-              telemetry.addData("FlapperAngle", robot.computeLaunchAngle());
-              telemetry.addData("Turret Position", robot.computeAlignedTurretPos());
-              telemetry.addData("Flapper Position", robot.computeAlignedFlapperPos());
-              telemetry.addData("Robot Global X", robot.robotGlobalXCoordinatePosition);
-              telemetry.addData("Robot Global Y", robot.robotGlobalYCoordinatePosition);
-              telemetry.addData("Robot Global Orientation", robot.robotOrientationDegrees);
-              telemetry.addData("Robot Global Orientation Pinpoint", robot.odom.getPosition().getHeading(AngleUnit.DEGREES));
-              //BRODY!!
-            }
             telemetry.update();
 
             // Pause for metronome tick.  40 mS each cycle = update 25 times a second.
@@ -247,36 +244,18 @@ public abstract class Teleop extends LinearOpMode {
     void performEveryLoopTeleop() {
         robot.readBulkData();
         robot.processInjectionStateMachine();
- //     robot.processSpindexerControl();  // only for spinServoCR (not currently used)
-        // Request an update from the Pinpoint odometry computer (single I2C read)
+//      robot.processSpindexerControl();  // only for spinServoCR (not currently used)
         if( enableOdometry ) {
-            robot.odom.update();
-            Pose2D pos = robot.odom.getPosition();  // x,y pos in inch; heading in degrees
-            double curX     = pos.getX(DistanceUnit.INCH);
-            double curY     = pos.getY(DistanceUnit.INCH);
-            double curAngle = pos.getHeading(AngleUnit.DEGREES);
-            if( true ) {  // change to "false" for tournaments
-                String posStr = String.format(Locale.US, "{X,Y: %.1f, %.1f in  H: %.1f deg}", curX, curY, curAngle);
-                telemetry.addData("Position", posStr);
-            }
-            if( false ) {  // change to "false" for tournaments
-                String velStr = String.format(Locale.US, "{X,Y: %.1f, %.1f in/sec, H: %.2f deg/sec}",
-                        robot.odom.getVelX(DistanceUnit.INCH),
-                        robot.odom.getVelY(DistanceUnit.INCH),
-                        robot.odom.getHeadingVelocity(UnnormalizedAngleUnit.DEGREES));
-                telemetry.addData("Velocity", velStr);
-                telemetry.addData("Status", robot.odom.getDeviceStatus());
-                telemetry.addData("Pinpoint Refresh Rate", robot.odom.getFrequency());
-            }
-
-            robot.robotGlobalXCoordinatePosition = curX;
-            robot.robotGlobalYCoordinatePosition = curY;
-            robot.robotOrientationDegrees        = curAngle;
-
-            if(gamepad1.touchpadWasPressed()){
-                llodo.alignPinpointToLimelightEveryLoop(false);
-            }
+            robot.updatePinpointFieldPosition();
+            robot.updateLimelightFieldPosition();
         } // enableOdometry
+        // Touchpad means to update the goBilda Pinpoint computer with the latest limelight apriltag position
+        if(gamepad1.touchpadWasPressed()){
+//          llodo.alignPinpointToLimelightEveryLoop(false);
+            // Ensure we don't get a spurious zero/clear reading
+            if( (robot.limelightFieldXpos != 0.0) && (robot.limelightFieldYpos !=0.0) && (robot.limelightFieldAngleDeg != 0.0) )
+                robot.setPinpointFieldPosition(robot.limelightFieldXpos, robot.limelightFieldYpos, robot.limelightFieldAngleDeg );
+        }
     } // performEveryLoopTeleop
 
     /*---------------------------------------------------------------------------------*/
@@ -657,15 +636,15 @@ public abstract class Teleop extends LinearOpMode {
     } // processShooter
 
     private void processTurretAutoAim() {
-        odoShootDistance = robot.getShootDistance(blueAlliance ? Alliance.BLUE : Alliance.RED);
-        odoShootAngleDeg = robot.getShootAngleDeg(blueAlliance ? Alliance.BLUE : Alliance.RED);
+        odoShootDistance = robot.getShootDistance( (blueAlliance)? Alliance.BLUE : Alliance.RED );
+        odoShootAngleDeg = robot.getShootAngleDeg( (blueAlliance)? Alliance.BLUE : Alliance.RED );
 
         if (gamepad1_l_bumper_now && !gamepad1_l_bumper_last) {
             robot.setTurretAngle(odoShootAngleDeg);
         }
         if (gamepad1_r_bumper_now && !gamepad1_r_bumper_last) {
             // RIGHT BUTTON resets turret to the center and resets the shooter power
-            robot.turretServo.setPosition(robot.TURRET_SERVO_INIT);
+            robot.turretServoSetPosition(robot.TURRET_SERVO_INIT);
             shooterPower = 0.55;
         }
     } // processTurretAutoAim

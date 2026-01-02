@@ -267,8 +267,7 @@ public abstract class AutonomousBase extends LinearOpMode {
     // Resets odometry starting position and angle to zero accumulated encoder counts
     public void resetGlobalCoordinatePosition(){
 //      robot.odom.resetPosAndIMU();   // don't need full recalibration; just reset our position in case of any movement
-        Pose2D startPosAuto = new Pose2D(DistanceUnit.INCH, 0.0, 0.0, AngleUnit.DEGREES, 0.0);
-        robot.odom.setPosition(startPosAuto);
+        robot.setPinpointFieldPosition( 0.0, 0.0, 0.0 ); // TODO: set this for our true starting position
         robotGlobalXCoordinatePosition = 0.0;  // This will get overwritten the first time
         robotGlobalYCoordinatePosition = 0.0;  // we call robot.odom.update()!
         robotOrientationRadians        = 0.0;
@@ -1211,7 +1210,7 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
             // Start up the shooter motor so it can be at speed when we reach the shooting zone
             robot.shooterMotorsSetPower( shooterPower );
             // Swivel the turret toward the RED or BLUE goal (assumes field location of 11.0/0.0/0deg)
-            robot.turretServo.setPosition( (isRed)? 0.545 : 0.435 ); // right toward RED or left toward BLUE
+            robot.turretServoSetPosition( (isRed)? 0.545 : 0.435 ); // right toward RED or left toward BLUE
             driveToPosition( 10.0, ((isRed)? 0.0:0.0),  ((isRed)?  0.0:0.0),   DRIVE_SPEED_80, TURN_SPEED_30, DRIVE_TO);
         } // opModeIsActive
     } // collectSpikemark1FromFar
@@ -1261,7 +1260,7 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
             // Start up the shooter motor so it can be at speed when we reach the shooting zone
             robot.shooterMotorsSetPower( shooterPower );
             // Swivel the turret toward the RED or BLUE goal (assumes field location of 11.0/0.0/0deg)
-            robot.turretServo.setPosition( (isRed)? 0.545 : 0.435 ); // right toward RED or left toward BLUE
+            robot.turretServoSetPosition( (isRed)? 0.545 : 0.435 ); // right toward RED or left toward BLUE
             driveToPosition( 10.0, ((isRed)? 0.0:0.0),  ((isRed)?  0.0:0.0),   DRIVE_SPEED_80, TURN_SPEED_30, DRIVE_TO);
         } // opModeIsActive
     } // collectSpikemark2FromFar
@@ -1309,7 +1308,7 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
             // Start up the shooter motor so it can be at speed when we reach the shooting zone
             robot.shooterMotorsSetPower( shooterPower );
             // Swivel the turret toward the RED or BLUE goal (assumes field location of 11.0/0.0/0deg)
-            robot.turretServo.setPosition( (isRed)? 0.545 : 0.435 ); // right toward RED or left toward BLUE
+            robot.turretServoSetPosition( (isRed)? 0.545 : 0.435 ); // right toward RED or left toward BLUE
             driveToPosition( 10.0, ((isRed)? 0.0:0.0),  ((isRed)?  0.0:0.0),   DRIVE_SPEED_80, TURN_SPEED_30, DRIVE_TO);
         } // opModeIsActive
     } // collectSpikemark3FromFar

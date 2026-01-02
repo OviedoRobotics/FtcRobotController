@@ -97,7 +97,7 @@ public class AutonomousBlueFar extends AutonomousBase {
         // Must not go so far we are no longer within the scoring zone!
         driveToPosition( 11.0, 0.0, 0.0, DRIVE_SPEED_40, TURN_SPEED_15, DRIVE_TO);
         // Swivel the turret toward the RED or BLUE goal (assumes field location of 11.0/0.0/0deg
-        robot.turretServo.setPosition( (redAlliance)? 0.545 : 0.435 ); // right toward RED or left toward BLUE
+        robot.turretServoSetPosition( (redAlliance)? 0.545 : 0.435 ); // right toward RED or left toward BLUE
         sleep( 1500 ); // Must cover both shooter spin up and turret rotation
         scoreThreeBallsFromFar( obeliskID );
 

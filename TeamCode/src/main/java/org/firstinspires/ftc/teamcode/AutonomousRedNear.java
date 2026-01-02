@@ -130,7 +130,7 @@ public class AutonomousRedNear extends AutonomousBase {
 //          driveToPosition(11.0, 0.0, 0.0, DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_THRU);
             // Point the turret toward the goal
             robot.shooterServo.setPosition(0.5);  // NOT ACTUALLY USED
-            robot.turretServo.setPosition(0.43); // rotated left toward BLUE goal);
+            robot.turretServoSetPosition(0.43); // rotated left toward BLUE goal);
 //          driveToPosition(28.5, 11.5, -179.0, DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_TO);
             // Turn on the collector to help retain balls during spindexing
             robot.intakeMotor.setPower(0.90);

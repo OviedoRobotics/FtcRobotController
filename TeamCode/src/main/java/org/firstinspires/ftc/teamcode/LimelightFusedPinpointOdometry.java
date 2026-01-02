@@ -1,8 +1,6 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.hardware.limelightvision.LLResult;
-import com.qualcomm.hardware.limelightvision.LLResultTypes;
-import com.qualcomm.hardware.limelightvision.LLStatus;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
@@ -12,8 +10,6 @@ import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 import org.firstinspires.ftc.robotcore.external.navigation.Position;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
-
-import java.util.List;
 
 /**
  * Support class that uses a Limelight localization pipeline to keep the pinpoint odometry location accurate.
@@ -33,7 +29,7 @@ public class LimelightFusedPinpointOdometry {
     private final double robotStartingYawDegrees;
     private Alliance alliance;
 
-    private LLResult lastUsedResult;
+    private LLResult llResultLast;
 
     public LimelightFusedPinpointOdometry(Limelight3A limelight, GoBildaPinpointDriver odom, Telemetry telemetry, double robotStartingYawDegrees) {
         assert limelight != null;
@@ -51,7 +47,8 @@ public class LimelightFusedPinpointOdometry {
     public void updatePipeline(Alliance alliance) {
         assert alliance != null;
         this.alliance = alliance;
-        int allianceLocalizationPipeline = alliance == Alliance.BLUE ? 6 : 7;
+        // limelight pipelines 6 & 7 filter for the BLUE and RED goal apriltags
+        int allianceLocalizationPipeline = (alliance == Alliance.BLUE)? 6:7;
         boolean result = limelight.pipelineSwitch(allianceLocalizationPipeline);
         assert result;
         if(!limelight.isRunning()) limelight.start(); // restart if paused/stopped.
@@ -77,12 +74,12 @@ public class LimelightFusedPinpointOdometry {
 
         // Check Limelight for Apriltag-based field location data
         LLResult llResult = limelight.getLatestResult();
-        if (lastUsedResult != null && lastUsedResult == llResult) {
+        if (llResultLast != null && llResultLast == llResult) {
             // Already processed.
             return;
         }
         if (llResult != null && llResult.isValid() && llResult.getStaleness() < STALENESS_LIMIT_MS) {
-            lastUsedResult = llResult;
+            llResultLast = llResult;
             telemetry.addData("Limelight Latency (msec)", llResult.getCaptureLatency() + llResult.getTargetingLatency());
             telemetry.addData("Parse Latency (msec)", llResult.getParseLatency());
             // Parse Limelight result for MegaTag2 robot pose data
