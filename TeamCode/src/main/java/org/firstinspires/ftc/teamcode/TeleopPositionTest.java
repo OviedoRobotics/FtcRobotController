@@ -93,8 +93,8 @@ public class TeleopPositionTest extends LinearOpMode {
                     telemetry.addData("SELECTED:", "turretServo" );
                     telemetry.addData("Turret Servo Set Position", "%.3f", turretPos );
                     telemetry.addData("Turret Servo Get Position", "%.3f", robot.turretServo.getPosition() );
-                    telemetry.addData("Turret Servo1 Angle Feedback", "%.3f deg", robot.getTurretAngle(true) );
-                    telemetry.addData("Turret Servo2 Angle Feedback", "%.3f deg", robot.getTurretAngle(false) );
+                    telemetry.addData("Turret Servo1 Angle Feedback", "%.3f", robot.getTurretPosition(true) );
+                    telemetry.addData("Turret Servo2 Angle Feedback", "%.3f", robot.getTurretPosition(false) );
                     break;
                 case 3 :
                     telemetry.addData("SELECTED:", "spinServo" );

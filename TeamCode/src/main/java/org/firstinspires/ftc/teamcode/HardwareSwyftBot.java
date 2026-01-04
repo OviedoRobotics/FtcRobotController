@@ -134,6 +134,9 @@ public class HardwareSwyftBot
     public Servo       shooterServo    = null;
     public AnalogInput shooterServoPos = null;
 
+    public double      shooterServoSetpoint = 0.0;
+    public boolean     shooterServoIsBusy   = false; // are we still moving toward position?
+
     public final static double SHOOTER_SERVO_INIT = 0.50;   // straight up
     public final static double SHOOTER_SERVO_INIT_ANGLE = 180.0;
     public final static double SHOOTER_SERVO_MIN = 0.50;
@@ -158,7 +161,8 @@ public class HardwareSwyftBot
     public final static double TURRET_SERVO_MIN  = 0.06; // -180deg
     public final static double TURRET_CTS_PER_DEG = (TURRET_SERVO_P90 - TURRET_SERVO_N90)/180.0;
 
-    public final static double TURRET_R1_OFFSET = -0.008; // ROBOT1 differs from our reference (ROBOT2)
+    public final static double TURRET_R1_OFFSET = -0.008; // ROBOT1 offset to align with reference
+    public final static double TURRET_R2_OFFSET =  0.000; // ROBOT2 offset to align with reference
 
     //====== SPINDEXER SERVO =====
     public Servo       spinServo    = null;
@@ -228,12 +232,12 @@ public class HardwareSwyftBot
     public final static double LIFT_SERVO_RESET_ANG_R1  = 178.3;  // 0.520 = 173.3deg
     public final static double LIFT_SERVO_INJECT_ANG_R1 = 230.2;  // 0.330 = 235.2deg
     //===== ROBOT2 injector/lift servo positions:
-    public final static double LIFT_SERVO_INIT_R2   = 0.500;
-    public final static double LIFT_SERVO_RESET_R2  = 0.500;
-    public final static double LIFT_SERVO_INJECT_R2 = 0.310;
-      //   179 (184)  . . .    (236)  241           <-- 5deg tolerance on RESET and INJECT
-    public final static double LIFT_SERVO_RESET_ANG_R2  = 184.0;  // 0.500 = 179.5deg
-    public final static double LIFT_SERVO_INJECT_ANG_R2 = 236.0;  // 0.310 = 241.7deg
+    public final static double LIFT_SERVO_INIT_R2   = 0.510;
+    public final static double LIFT_SERVO_RESET_R2  = 0.510;
+    public final static double LIFT_SERVO_INJECT_R2 = 0.320;
+      //   176.95 (181)  . . .    (234)  238.7           <-- 5deg tolerance on RESET and INJECT
+    public final static double LIFT_SERVO_RESET_ANG_R2  = 181.0;  // 0.510 = 176.95deg
+    public final static double LIFT_SERVO_INJECT_ANG_R2 = 234.0;  // 0.320 = 238.7deg
     //===== These get populated after IMU init, when we know if we're ROBOT1 or ROBOT2
     public double LIFT_SERVO_INIT;
     public double LIFT_SERVO_RESET;
@@ -658,7 +662,15 @@ public class HardwareSwyftBot
         if( isRobot1 ) {
             targetPosition += TURRET_R1_OFFSET;
         }
+        if( isRobot2 ) {
+            targetPosition += TURRET_R2_OFFSET;
+        }
         turretServo.setPosition(targetPosition);
+        
+        // Store this setting so we can track progress of the turret motion
+        shooterServoSetpoint = targetPosition;
+        shooterServoIsBusy   = true;  // TODO: need performEveryLoop logic to clear/timeout!
+        
     } // turretServoSetPosition
 
     /*--------------------------------------------------------------------------------------------*/
@@ -675,12 +687,16 @@ public class HardwareSwyftBot
     } // setTurretAngle
 
     /*--------------------------------------------------------------------------------------------*/
-    public double getTurretAngle( boolean analog1 )
+    // Due to the complexity of 5-turn servos and two robots (4 total position sensors) we don't  
+    // attempt to convert the servo position from a 0..1 value to an actual 0..360deg value.  All
+    // we need to know is that whatever position commanded (0..1) has been achieved according to
+    // the analog feedback, and we can do that in the 0..1 domain
+    // INPUT:  analog1?  (do we want to know the current feedback based on servo1 or servo2 sensor?
+    public double getTurretPosition( boolean analog1 )
     {   // NOTE: the analog position feedback for the 5-turn AndyMark servos differs from Axon 3.3V
-        final double DEGREES_PER_ROTATION = 404.0;  // Five full rotations covers +/- 202 degrees
-        final double MAX_ANALOG_VOLTAGE   = 2.88;   // maximum analog feedback output (1.0)
-        final double MIN_ANALOG_VOLTAGE   = 0.46;   // minimum analog feedback output (0.0) 1.66V = 0.5
-        double measuredVoltage, scaledVoltage, measuredAngle;  // 0.267 = -90   0.667 = +90
+        final double MAX_ANALOG_VOLTAGE   = 2.88; // Volts: maximum analog feedback (for 1.0)
+        final double MIN_ANALOG_VOLTAGE   = 0.46; // Volts: minimum analog feedback (for 0.0) 1.66V = 0.5
+        double measuredVoltage, scaledVoltage, positionFeedback;  // NOTE: 0.267 = -90   0.667 = +90
         // Which feedback does the user want?
         if( analog1 ) {
             measuredVoltage = (turretServoPos1 == null)? 0.0 : turretServoPos1.getVoltage();
@@ -691,15 +707,10 @@ public class HardwareSwyftBot
         scaledVoltage = (measuredVoltage - MIN_ANALOG_VOLTAGE)/(MAX_ANALOG_VOLTAGE - MIN_ANALOG_VOLTAGE);
         // Ensure we remain within the 0.0 to 1.0 range
         scaledVoltage = Math.max(0.0, Math.min(1.0, scaledVoltage));
-        // Invert, since voltage goes down as the 0...1 servo setting goes up
-        scaledVoltage = 1.0 - scaledVoltage;
-        // Convert from 0..1 servo setting to 0..360 angle
-        // TODO: fix this!  close but not quite right yet...
-        measuredAngle = scaledVoltage * DEGREES_PER_ROTATION;
-        // Shift from 0..360 to -180..+180
-        measuredAngle = measuredAngle - 180.0;
-        return measuredAngle;
-    } // getTurretAngle
+        // Invert, since voltage goes down as the 0...1 servo position setting goes up
+        positionFeedback = 1.0 - scaledVoltage;
+        return positionFeedback;
+    } // getTurretPosition
 
     /*--------------------------------------------------------------------------------------------*/
     public void updatePinpointFieldPosition() {
@@ -819,7 +830,7 @@ public class HardwareSwyftBot
 //      double targetX = 58.37;
 //      double targetY = (alliance == Alliance.BLUE)? +55.64 : -55.64;
         double targetX = 60.0;
-        double targetY = (alliance == Alliance.BLUE)? +60.0 : -60.0;  // 6ft = 72"
+        double targetY = (alliance == Alliance.BLUE)? +57 : -58;  // 6ft = 72"
         // Compute distance to target point inside the goal
         double deltaX = targetX - currentX;
         double deltaY = targetY - currentY;
@@ -829,18 +840,6 @@ public class HardwareSwyftBot
         double shootAngle = targetFromStraight - robotOrientationDegrees;
         return shootAngle;
     } // getShootAngleDeg
-
-    static double calcShootAngleDeg(Alliance alliance, double robotX, double robotY, double heading) {
-        // Rotated field ositions for targets based on values from ftc2025DECODE.fmap
-        double targetX = 58.37;
-        double targetY = alliance == Alliance.BLUE ? +55.64 : -55.64;
-        return calcAngleDegToTarget(targetX, targetY, robotX, robotY, heading);
-    }
-
-    static double calcAngleDegToTarget(double targetX, double targetY, double robotX, double robotY, double robotHeading) {
-        double targetFromStraight = Math.toDegrees(Math.atan2(targetY - robotY, targetX - robotX));
-        return targetFromStraight - robotHeading;
-    }
 
     /*--------------------------------------------------------------------------------------------*/
     public double computeAxonAngle( double measuredVoltage )

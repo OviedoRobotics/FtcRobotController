@@ -112,7 +112,7 @@ public abstract class Teleop extends LinearOpMode {
             performEveryLoopTeleop();
             telemetry.addData("Limelight","x=%.2f y=%.2f  %.2f deg (Apriltag)",
                     robot.limelightFieldXpos, robot.limelightFieldYpos, robot.limelightFieldAngleDeg );
-            telemetry.addData("  stdev"," %.2f   %.2f    %.2f",
+            telemetry.addData("  stdev","%.5f %.5f  %.5f",
                     robot.limelightFieldXstd, robot.limelightFieldYstd, robot.limelightFieldAnglestd );
             telemetry.addData("Pinpoint","x=%.2f y=%.2f  %.2f deg (odom)",
                     robot.robotGlobalXCoordinatePosition, robot.robotGlobalYCoordinatePosition, robot.robotOrientationDegrees );
@@ -129,9 +129,6 @@ public abstract class Teleop extends LinearOpMode {
             // Pause briefly before looping
             idle();
         } // !isStarted
-
-        // Ensure turret is initialized
-        robot.turretServoSetPosition(robot.TURRET_SERVO_INIT);
 
         // run until the end of the match (driver presses STOP)
         while (opModeIsActive())
@@ -217,7 +214,7 @@ public abstract class Teleop extends LinearOpMode {
             // Update telemetry data
             telemetry.addData("Limelight","x=%.2f y=%.2f  %.2f deg (Apriltag)",
                     robot.limelightFieldXpos, robot.limelightFieldYpos, robot.limelightFieldAngleDeg );
-            telemetry.addData("  stdev"," %.2f   %.2f    %.2f",
+            telemetry.addData("  stdev","%.5f %.5f  %.5f",
                     robot.limelightFieldXstd, robot.limelightFieldYstd, robot.limelightFieldAnglestd );
             telemetry.addData("Pinpoint","x=%.2f y=%.2f  %.2f deg (odom)",
                    robot.robotGlobalXCoordinatePosition, robot.robotGlobalYCoordinatePosition, robot.robotOrientationDegrees );
@@ -249,8 +246,8 @@ public abstract class Teleop extends LinearOpMode {
             robot.updatePinpointFieldPosition();
             robot.updateLimelightFieldPosition();
         } // enableOdometry
-        // Touchpad means to update the goBilda Pinpoint computer with the latest limelight apriltag position
-        if(gamepad1.touchpadWasPressed()){
+        // If the limelight position standard deviation is low, update pinpoint odometry position.
+        if(robot.limelightFieldXstd < 0.001 && robot.limelightFieldYstd < 0.001){
 //          llodo.alignPinpointToLimelightEveryLoop(false);
             // Ensure we don't get a spurious zero/clear reading
             if( (robot.limelightFieldXpos != 0.0) && (robot.limelightFieldYpos !=0.0) && (robot.limelightFieldAngleDeg != 0.0) )
@@ -639,13 +636,24 @@ public abstract class Teleop extends LinearOpMode {
         odoShootDistance = robot.getShootDistance( (blueAlliance)? Alliance.BLUE : Alliance.RED );
         odoShootAngleDeg = robot.getShootAngleDeg( (blueAlliance)? Alliance.BLUE : Alliance.RED );
 
-        if (gamepad1_l_bumper_now && !gamepad1_l_bumper_last) {
+        if (gamepad1_l_bumper_now && !gamepad1_l_bumper_last) { // Should we make it so we can hold down the button?
             robot.setTurretAngle(odoShootAngleDeg);
+            double x = odoShootDistance;
+            // .051 + (-2.53E-03)x + 3.9E-05x^2 + -1.21E-07x^3
+            shooterPower = 0.51 + -2.53E-3 * x + 3.9E-5 * Math.pow(x,2) + -1.21E-7 * Math.pow(x,3);
+            shooterPower = Math.max(shooterPower, 0.45); // Ensure min power.
+            shooterPower = Math.min(shooterPower, 0.59); // Ensure max power.
+            if(shooterMotorsOn) {
+                robot.shooterMotorsSetPower(shooterPower);
+            }
         }
         if (gamepad1_r_bumper_now && !gamepad1_r_bumper_last) {
             // RIGHT BUTTON resets turret to the center and resets the shooter power
             robot.turretServoSetPosition(robot.TURRET_SERVO_INIT);
             shooterPower = 0.55;
+            if(shooterMotorsOn) {
+                robot.shooterMotorsSetPower(shooterPower);
+            }
         }
     } // processTurretAutoAim
 
