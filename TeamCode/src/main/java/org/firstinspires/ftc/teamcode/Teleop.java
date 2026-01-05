@@ -15,33 +15,6 @@ import com.qualcomm.robotcore.hardware.Gamepad;
  */
 //@Disabled
 public abstract class Teleop extends LinearOpMode {
-    boolean gamepad1_triangle_last,   gamepad1_triangle_now   = false;  // Single Wheel Control
-    boolean gamepad1_circle_last,     gamepad1_circle_now     = false;  // Backwards Drive mode (also turns off driver-centric mode)
-    boolean gamepad1_cross_last,      gamepad1_cross_now      = false;  // UNUSED
-    boolean gamepad1_square_last,     gamepad1_square_now     = false;  // Enables/calibrates driver-centric mode
-    boolean gamepad1_dpad_up_last,    gamepad1_dpad_up_now    = false;
-    boolean gamepad1_dpad_down_last,  gamepad1_dpad_down_now  = false;
-    boolean gamepad1_dpad_left_last,  gamepad1_dpad_left_now  = false;
-    boolean gamepad1_dpad_right_last, gamepad1_dpad_right_now = false;
-    boolean gamepad1_l_bumper_last,   gamepad1_l_bumper_now   = false;  // UNUSED
-    boolean gamepad1_r_bumper_last,   gamepad1_r_bumper_now   = false;  // UNUSED
-    boolean gamepad1_touchpad_last,   gamepad1_touchpad_now   = false;  
-    boolean gamepad1_l_trigger_last,  gamepad1_l_trigger_now  = false;
-    boolean gamepad1_r_trigger_last,  gamepad1_r_trigger_now  = false;
-
-    boolean gamepad2_triangle_last,   gamepad2_triangle_now   = false;  //
-    boolean gamepad2_circle_last,     gamepad2_circle_now     = false;  //
-    boolean gamepad2_cross_last,      gamepad2_cross_now      = false;  //
-    boolean gamepad2_square_last,     gamepad2_square_now     = false;  //
-    boolean gamepad2_dpad_up_last,    gamepad2_dpad_up_now    = false;  //
-    boolean gamepad2_dpad_down_last,  gamepad2_dpad_down_now  = false;  //
-    boolean gamepad2_dpad_left_last,  gamepad2_dpad_left_now  = false;  //
-    boolean gamepad2_dpad_right_last, gamepad2_dpad_right_now = false;  //
-    boolean gamepad2_l_bumper_last,   gamepad2_l_bumper_now   = false;  //
-    boolean gamepad2_r_bumper_last,   gamepad2_r_bumper_now   = false;  //
-    boolean gamepad2_touchpad_last,   gamepad2_touchpad_now   = false;  //
-    boolean gamepad2_share_last,      gamepad2_share_now      = false;  //
-
     double  yTranslation, xTranslation, rotation;                  /* Driver control inputs */
     double  rearLeft, rearRight, frontLeft, frontRight, maxPower;  /* Motor power levels */
     boolean backwardDriveControl = false; // drive controls backward (other end of robot becomes "FRONT")
@@ -119,10 +92,8 @@ public abstract class Teleop extends LinearOpMode {
             telemetry.addData(" "," %.2f in/sec %.2f in/sec %.2f deg/sec",
                     robot.robotGlobalXvelocity, robot.robotGlobalYvelocity, robot.robotAngleVelocity );
             telemetry.update();
-            // Check for operator input that changes Autonomous options
-            captureGamepad1Buttons();
             // Normally autonomous resets encoders/odometry.  Do we need to for teleop??
-            if( gamepad1_cross_now && !gamepad1_cross_last) {
+            if( gamepad1.crossWasPressed() ) {
                 robot.resetEncoders();
                 robot.resetGlobalCoordinatePosition();
             }
@@ -133,10 +104,6 @@ public abstract class Teleop extends LinearOpMode {
         // run until the end of the match (driver presses STOP)
         while (opModeIsActive())
         {
-            // Refresh gamepad button status
-            captureGamepad1Buttons();
-            captureGamepad2Buttons();
-
             // Bulk-refresh the hub data and updates our state machines
             performEveryLoopTeleop();
 
@@ -147,13 +114,13 @@ public abstract class Teleop extends LinearOpMode {
 //          }
 
             // Check for an OFF-to-ON toggle of the gamepad1 SQUARE button (toggles DRIVER-CENTRIC drive control)
-            if( gamepad1_square_now && !gamepad1_square_last)
+            if( gamepad1.squareWasPressed() )
             {
                 driverMode = DRIVER_MODE_DRV_CENTRIC;
             }
 
             // Check for an OFF-to-ON toggle of the gamepad1 CIRCLE button (toggles STANDARD/BACKWARD drive control)
-            if( gamepad1_circle_now && !gamepad1_circle_last)
+            if( gamepad1.circleWasPressed() )
             {
                 // If currently in DRIVER-CENTRIC mode, switch to STANDARD (robot-centric) mode
                 if( driverMode != DRIVER_MODE_STANDARD ) {
@@ -254,37 +221,6 @@ public abstract class Teleop extends LinearOpMode {
                 robot.setPinpointFieldPosition(robot.limelightFieldXpos, robot.limelightFieldYpos, robot.limelightFieldAngleDeg );
         }
     } // performEveryLoopTeleop
-
-    /*---------------------------------------------------------------------------------*/
-    void captureGamepad1Buttons() {
-        gamepad1_triangle_last   = gamepad1_triangle_now;    gamepad1_triangle_now   = gamepad1.triangle;
-        gamepad1_circle_last     = gamepad1_circle_now;      gamepad1_circle_now     = gamepad1.circle;
-        gamepad1_cross_last      = gamepad1_cross_now;       gamepad1_cross_now      = gamepad1.cross;
-        gamepad1_square_last     = gamepad1_square_now;      gamepad1_square_now     = gamepad1.square;
-        gamepad1_dpad_up_last    = gamepad1_dpad_up_now;     gamepad1_dpad_up_now    = gamepad1.dpad_up;
-        gamepad1_dpad_down_last  = gamepad1_dpad_down_now;   gamepad1_dpad_down_now  = gamepad1.dpad_down;
-        gamepad1_dpad_left_last  = gamepad1_dpad_left_now;   gamepad1_dpad_left_now  = gamepad1.dpad_left;
-        gamepad1_dpad_right_last = gamepad1_dpad_right_now;  gamepad1_dpad_right_now = gamepad1.dpad_right;
-        gamepad1_l_bumper_last   = gamepad1_l_bumper_now;    gamepad1_l_bumper_now   = gamepad1.left_bumper;
-        gamepad1_r_bumper_last   = gamepad1_r_bumper_now;    gamepad1_r_bumper_now   = gamepad1.right_bumper;
-        gamepad1_touchpad_last   = gamepad1_touchpad_now;    gamepad1_touchpad_now   = gamepad1.touchpad;
-    } // captureGamepad1Buttons
-
-    /*---------------------------------------------------------------------------------*/
-    void captureGamepad2Buttons() {
-        gamepad2_triangle_last   = gamepad2_triangle_now;    gamepad2_triangle_now   = gamepad2.triangle;
-        gamepad2_circle_last     = gamepad2_circle_now;      gamepad2_circle_now     = gamepad2.circle;
-        gamepad2_cross_last      = gamepad2_cross_now;       gamepad2_cross_now      = gamepad2.cross;
-        gamepad2_square_last     = gamepad2_square_now;      gamepad2_square_now     = gamepad2.square;
-        gamepad2_dpad_up_last    = gamepad2_dpad_up_now;     gamepad2_dpad_up_now    = gamepad2.dpad_up;
-        gamepad2_dpad_down_last  = gamepad2_dpad_down_now;   gamepad2_dpad_down_now  = gamepad2.dpad_down;
-        gamepad2_dpad_left_last  = gamepad2_dpad_left_now;   gamepad2_dpad_left_now  = gamepad2.dpad_left;
-        gamepad2_dpad_right_last = gamepad2_dpad_right_now;  gamepad2_dpad_right_now = gamepad2.dpad_right;
-        gamepad2_l_bumper_last   = gamepad2_l_bumper_now;    gamepad2_l_bumper_now   = gamepad2.left_bumper;
-        gamepad2_r_bumper_last   = gamepad2_r_bumper_now;    gamepad2_r_bumper_now   = gamepad2.right_bumper;
-        gamepad2_touchpad_last   = gamepad2_touchpad_now;    gamepad2_touchpad_now   = gamepad2.touchpad;
-//      gamepad2_share_last      = gamepad2_share_now;       gamepad2_share_now      = gamepad2.share;
-    } // captureGamepad2Buttons
 
     /*---------------------------------------------------------------------------------*/
     /*  TELE-OP: Mecanum-wheel drive control using Dpad (slow/fine-adjustment mode)    */
@@ -531,7 +467,7 @@ public abstract class Teleop extends LinearOpMode {
     /*---------------------------------------------------------------------------------*/
     void processCollector() {
         // Check for an OFF-to-ON toggle of the gamepad2 CROSS button (toggles INTAKE on/off)
-        if( gamepad2_cross_now && !gamepad2_cross_last)
+        if( gamepad2.crossWasPressed() )
         {
             if (intakeMotorOnFwd == false){
                 // Turn on collector in FORWARD
@@ -546,7 +482,7 @@ public abstract class Teleop extends LinearOpMode {
             }
         } // cross
         // Do we have too many balls and need to ANTI-collect?
-        if( gamepad2_square_now && !gamepad2_square_last)
+        if( gamepad2.squareWasPressed() )
         {
             if (intakeMotorOnRev == false){
                 // Turn on collector in REVERSE
@@ -567,7 +503,7 @@ public abstract class Teleop extends LinearOpMode {
         boolean safeToSpindex = (robot.getInjectorAngle() <= robot.LIFT_SERVO_RESET_ANG);
         if( !safeToSpindex ) return;
         // Rotate spindexer left one position?
-        if( gamepad2_l_bumper_now && !gamepad2_l_bumper_last) {
+        if( gamepad2.leftBumperWasPressed() ) {
             if (robot.spinServoCurPos != SPIN_P1)
                 robot.spinServoSetPosition(SPIN_DECREMENT);
             else
@@ -575,7 +511,7 @@ public abstract class Teleop extends LinearOpMode {
 //          robot.spinServoSetPositionCR(SPIN_DECREMENT);  // only for spinServoCR
         }
         // Rotate spindexer right one position?
-        else if( gamepad2_r_bumper_now && !gamepad2_r_bumper_last) {
+        else if( gamepad2.rightBumperWasPressed() ) {
             if( robot.spinServoCurPos != SPIN_P3 )
                 robot.spinServoSetPosition( SPIN_INCREMENT );
             else
@@ -587,7 +523,7 @@ public abstract class Teleop extends LinearOpMode {
     /*---------------------------------------------------------------------------------*/
     void processShooterFlap() {
     // Check for an OFF-to-ON toggle of gamepad2 DPAD buttons (controls shooter flapper up/down)
-        if( gamepad2_dpad_down_now && !gamepad2_dpad_down_last ) {
+        if( gamepad2.dpadDownWasPressed() ) {
             // aim LOWER
             robot.shooterServoCurPos += 0.01;
             // Don't exceed our mechanical limits
@@ -595,7 +531,7 @@ public abstract class Teleop extends LinearOpMode {
                 robot.shooterServoCurPos = robot.SHOOTER_SERVO_MAX;
             robot.shooterServo.setPosition( robot.shooterServoCurPos );
         }
-        else if( gamepad2_dpad_up_now && !gamepad2_dpad_up_last ) {
+        else if( gamepad2.dpadUpWasPressed() ) {
             // aim HIGHER
             robot.shooterServoCurPos -= 0.01;
             // Don't exceed our mechanical limits
@@ -607,12 +543,12 @@ public abstract class Teleop extends LinearOpMode {
 
     /*---------------------------------------------------------------------------------*/
     void processShooter() {
-        if( gamepad1_triangle_now && !gamepad1_triangle_last) {
+        if( gamepad1.triangleWasPressed() ) {
             shooterPower += 0.01;
             if(shooterMotorsOn) {
                 robot.shooterMotorsSetPower( shooterPower );
             }
-        } else if( gamepad1_cross_now && !gamepad1_cross_last) {
+        } else if( gamepad1.crossWasPressed() ) {
             shooterPower -= 0.01;
             if(shooterMotorsOn) {
                 robot.shooterMotorsSetPower( shooterPower );
@@ -620,7 +556,7 @@ public abstract class Teleop extends LinearOpMode {
         }
 
         // Check for an OFF-to-ON toggle of the gamepad2 CIRCLE button (toggles SHOOTER on/off)
-        if( gamepad2_circle_now && !gamepad2_circle_last)
+        if( gamepad2.circleWasPressed() )
         {
             if (shooterMotorsOn == false){
                 robot.shooterMotorsSetPower( shooterPower );
@@ -636,7 +572,7 @@ public abstract class Teleop extends LinearOpMode {
         odoShootDistance = robot.getShootDistance( (blueAlliance)? Alliance.BLUE : Alliance.RED );
         odoShootAngleDeg = robot.getShootAngleDeg( (blueAlliance)? Alliance.BLUE : Alliance.RED );
 
-        if (gamepad1_l_bumper_now && !gamepad1_l_bumper_last) { // Should we make it so we can hold down the button?
+        if (gamepad1.leftBumperWasPressed()) { // Should we make it so we can hold down the button?
             robot.setTurretAngle(odoShootAngleDeg);
             double x = odoShootDistance;
             // .051 + (-2.53E-03)x + 3.9E-05x^2 + -1.21E-07x^3
@@ -647,7 +583,7 @@ public abstract class Teleop extends LinearOpMode {
                 robot.shooterMotorsSetPower(shooterPower);
             }
         }
-        if (gamepad1_r_bumper_now && !gamepad1_r_bumper_last) {
+        if (gamepad1.rightBumperWasPressed()) {
             // RIGHT BUTTON resets turret to the center and resets the shooter power
             robot.turretServoSetPosition(robot.TURRET_SERVO_INIT);
             shooterPower = 0.55;
@@ -660,7 +596,7 @@ public abstract class Teleop extends LinearOpMode {
     /*---------------------------------------------------------------------------------*/
     void processInjector() {
         // Check for an OFF-to-ON toggle of the gamepad2 TRIANGLE button (command ball injection!)
-        if( gamepad2_triangle_now && !gamepad2_triangle_last) {
+        if( gamepad2.triangleWasPressed() ) {
             // Ensure an earlier injection request isn't already underway
             if ((robot.liftServoBusyU == false) && (robot.liftServoBusyD == false)) {
                 robot.startInjectionStateMachine();
