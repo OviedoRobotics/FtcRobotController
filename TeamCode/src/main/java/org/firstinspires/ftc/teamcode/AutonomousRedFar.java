@@ -2,6 +2,8 @@
  */
 package org.firstinspires.ftc.teamcode;
 
+import static org.firstinspires.ftc.teamcode.BallOrder.*;
+
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
 /**
@@ -117,7 +119,7 @@ public class AutonomousRedFar extends AutonomousBase {
     /*   4 Drive back to launch zone                                                              */
     /*   5 Score collected balls                                                                  */
     /*--------------------------------------------------------------------------------------------*/
-    private void mainAutonomous( int obeliskID ) {
+    private void mainAutonomous(BallOrder obeliskID) {
         double shooterPowerFar = 0.55;
         
         // Do we start with an initial delay?
@@ -135,23 +137,23 @@ public class AutonomousRedFar extends AutonomousBase {
         driveToPosition( 11.0, 0.0, 0.0, DRIVE_SPEED_60, TURN_SPEED_15, DRIVE_TO);
         // Swivel the turret toward the RED or BLUE goal (assumes field location of 11.0/0.0/0deg
         robot.turretServoSetPosition( (redAlliance)? 0.545 : 0.435 ); // right toward RED or left toward BLUE
-        scoreThreeBallsFromFar( obeliskID );
+        scoreThreeBallsFromFar(obeliskID, PPG_23);
 
         // Collect and Score 1st spike mark
         if( doSpikeMark1 ) {
             collectSpikemark1FromFar(redAlliance, shooterPowerFar);
-            scoreThreeBallsFromFar(obeliskID);
+            scoreThreeBallsFromFar(obeliskID, GPP_21);
         }
 
         // Collect and Score 2nd spike mark
         if( doSpikeMark2 ) {
             collectSpikemark2FromFar(redAlliance, shooterPowerFar);
-            //scoreThreeBallsFromFar( obeliskID );    // NOT FAST ENOUGH FOR TOURNAMENT2 :-(
+            scoreThreeBallsFromFar(obeliskID, PGP_22);
         }
         // Collect and Score 3rd spike mark
         if( doSpikeMark3 ) {
             collectSpikemark3FromFar( redAlliance,shooterPowerFar );
-            scoreThreeBallsFromFar( obeliskID );
+            scoreThreeBallsFromFar(obeliskID, PPG_23);
         }
 
         // Drive away from the score line for the MOVEMENT points

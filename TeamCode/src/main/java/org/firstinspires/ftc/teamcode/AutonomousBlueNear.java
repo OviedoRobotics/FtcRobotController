@@ -2,6 +2,8 @@
  */
 package org.firstinspires.ftc.teamcode;
 
+import static org.firstinspires.ftc.teamcode.BallOrder.*;
+
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
 import org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState;
@@ -96,7 +98,7 @@ public class AutonomousBlueNear extends AutonomousBase {
     /*   4 Drive back to launch zone                                                              */
     /*   5 Score collected balls                                                                  */
     /*--------------------------------------------------------------------------------------------*/
-    private void mainAutonomous( int obeliskID ) {
+    private void mainAutonomous(BallOrder obeliskID) {
 
         // Do we start with an initial delay?
         if( startDelaySec > 0 ) {
@@ -116,7 +118,7 @@ public class AutonomousBlueNear extends AutonomousBase {
     } // mainAutonomous
 
     /*--------------------------------------------------------------------------------------------*/
-    private void scorePreloadBalls( int obeliskID ) {
+    private void scorePreloadBalls(BallOrder obeliskID) {
         // Turn on flywheel motor
         if( opModeIsActive() ) {
             telemetry.addData("Motion", "Flywheel Ramp Up");
@@ -139,7 +141,7 @@ public class AutonomousBlueNear extends AutonomousBase {
             //  21 = GPP (green purple purple)
             //  22 = PGP (purple green purple)
             //  23 = PPG (purple purple green)
-            SpindexerState[] shootOrder = getObeliskShootOrder(obeliskID);
+            SpindexerState[] shootOrder = getObeliskShootOrder(obeliskID, PPG_23);
             for(int i=0; i<shootOrder.length; i++) {
                 // rotate to the next position
                 robot.spinServoSetPosition( shootOrder[i] );

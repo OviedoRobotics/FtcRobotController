@@ -1,10 +1,9 @@
 package org.firstinspires.ftc.teamcode;
 
-import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState.SPIN_DECREMENT;
+import static org.firstinspires.ftc.teamcode.BallOrder.PPG_23;
 import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState.SPIN_P1;
 import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState.SPIN_P2;
 import static org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState.SPIN_P3;
-import static java.lang.Math.abs;
 import static java.lang.Math.toRadians;
 
 import android.os.Environment;
@@ -20,6 +19,7 @@ import com.qualcomm.robotcore.util.Range;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
+import org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
@@ -67,7 +67,7 @@ public abstract class AutonomousBase extends LinearOpMode {
     static final double FIRST_SPIKE_MARK_RED_POS_X = 0.0; // TODO: Find real position
     static final double FIRST_SPIKE_MARK_RED_POS_Y = 0.0; // TODO: Find real position
 
-    public int         obeliskID=23; // if we can't see it, default to PPG (purple purple green)
+    public BallOrder obeliskID = PPG_23; // if we can't see it, default to PPG (purple purple green)
 
     // NOTE: Initializing the odometry global X-Y and ANGLE to 0-0 and 0deg means the frame of reference for all movements is
     // the starting positiong/orientation of the robot.  An alternative is to make the bottom-left corner of the field the 0-0
@@ -298,7 +298,7 @@ public abstract class AutonomousBase extends LinearOpMode {
                 //  23 = PPG (purple purple green)
                 if( (limelightID >= 21) && (limelightID <= 23) ) {
                     telemetry.addData("Obelisk", "ID: %d", limelightID);
-                    obeliskID = limelightID;
+                    obeliskID = BallOrder.forObeliskID(limelightID);
                 }
             } // fiducialResults
         } // isValid
@@ -1318,12 +1318,13 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
     /* - robot is already parked in far shooting zone                                             */
     /* - turret is already rotated toward the goal                                                */
     /* - shooter is already up to speed                                                           */
-    public void scoreThreeBallsFromFar( int obeliskID ) {
+    public void scoreThreeBallsFromFar(BallOrder obeliskID, BallOrder loadOrder) {
         if( opModeIsActive() ) {
             // Ensure collector to ON to retain balls while spindexing
             robot.intakeMotor.setPower(0.90);
             // Convert the obelisk value into a shooting order
-            HardwareSwyftBot.SpindexerState[] shootOrder = getObeliskShootOrder(obeliskID);
+            SpindexerState[] shootOrder = getObeliskShootOrder(obeliskID, loadOrder);
+            // FIXME: should we swap SPIN_P1 and SPIN_P3 if alliance == blue since we reverse intake direction?
             // Shoot all 3 balls
             for(int i=0; i<shootOrder.length; i++) {
                 // rotate (if necessary) to the next position
@@ -1352,27 +1353,43 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
     } // launchBall
 
     //--------------------------------------------------------------------------------------------
-    HardwareSwyftBot.SpindexerState[] getObeliskShootOrder(int obeliskID) {
-        // Note: common OBELISK april tags for both RED & BLUE alliance
-        //  21 = GPP (green purple purple)
-        //  22 = PGP (purple green purple)
-        //  23 = PPG (purple purple green)
+    static SpindexerState[] getObeliskShootOrder(BallOrder obeliskID, BallOrder loadOrder) {
 
-        // Based on our preload pattern:
-        // SPIN_P2 = purple
+        // Based on our preload pattern PPG_23:
         // SPIN_P1 = purple
+        // SPIN_P2 = purple
         // SPIN_P3 = green
 
-        switch (obeliskID) {
-            case 21:
-                return new HardwareSwyftBot.SpindexerState[] {SPIN_P3, SPIN_P2, SPIN_P1};
-            case 22:
-                return new HardwareSwyftBot.SpindexerState[] {SPIN_P2, SPIN_P3, SPIN_P1};
-            case 23:
-                return new HardwareSwyftBot.SpindexerState[] {SPIN_P2, SPIN_P1, SPIN_P3};
-            default:
-                return new HardwareSwyftBot.SpindexerState[0];
+        switch (loadOrder) {
+            case GPP_21:
+                switch (obeliskID) {
+                    case GPP_21:
+                        return new SpindexerState[] {SPIN_P1, SPIN_P2, SPIN_P3};
+                    case PGP_22:
+                        return new SpindexerState[] {SPIN_P2, SPIN_P1, SPIN_P3};
+                    case PPG_23:
+                        return new SpindexerState[] {SPIN_P3, SPIN_P2, SPIN_P1};
+                }
+            case PGP_22:
+                switch (obeliskID) {
+                    case GPP_21:
+                        return new SpindexerState[] {SPIN_P2, SPIN_P3, SPIN_P1};
+                    case PGP_22:
+                        return new SpindexerState[] {SPIN_P3, SPIN_P2, SPIN_P1};
+                    case PPG_23:
+                        return new SpindexerState[] {SPIN_P3, SPIN_P1, SPIN_P2};
+                }
+            case PPG_23:
+                switch (obeliskID) {
+                    case GPP_21:
+                        return new SpindexerState[] {SPIN_P3, SPIN_P2, SPIN_P1};
+                    case PGP_22:
+                        return new SpindexerState[] {SPIN_P2, SPIN_P3, SPIN_P1};
+                    case PPG_23:
+                        return new SpindexerState[] {SPIN_P2, SPIN_P1, SPIN_P3};
+                }
         }
+        return new SpindexerState[] {SPIN_P3, SPIN_P2, SPIN_P1}; // default
     } // getObeliskShootOrder
 
 } // AutonomousBase
