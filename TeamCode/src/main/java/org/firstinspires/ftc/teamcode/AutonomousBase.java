@@ -1174,9 +1174,9 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
         // Transition from shooting zone to spike-mark zone (spikemark #1)
         if( opModeIsActive() ) {
             // drive away from the far shooting zone in a curved path toward the 1st spike mark
-            driveToPosition( x1, ((isRed)? -1.0:1.0), ((isRed)? -22.5:22.5), DRIVE_SPEED_50, TURN_SPEED_30, DRIVE_THRU);
-            driveToPosition( x2, ((isRed)? -3.0:3.0), ((isRed)? -45.0:45.0), DRIVE_SPEED_80, TURN_SPEED_30, DRIVE_THRU);
-            driveToPosition( x3, ((isRed)? -7.0:7.0), ((isRed)? -70.0:70.0), DRIVE_SPEED_80, TURN_SPEED_30, DRIVE_THRU);
+            driveToPosition( x1, ((isRed)? -1.0:1.0), ((isRed)? -22.5:22.5), DRIVE_SPEED_90, TURN_SPEED_30, DRIVE_THRU);
+            driveToPosition( x2, ((isRed)? -3.0:3.0), ((isRed)? -45.0:45.0), DRIVE_SPEED_90, TURN_SPEED_30, DRIVE_THRU);
+            driveToPosition( x3, ((isRed)? -7.0:7.0), ((isRed)? -70.0:70.0), DRIVE_SPEED_90, TURN_SPEED_30, DRIVE_THRU);
         }
         // Collect the 3 balls at that spike mark
         if( opModeIsActive() ) {
@@ -1186,32 +1186,32 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
             xPos   = (isRed)? 25.0 : 30.5;  // UNIQUE TO SPIKE1
             yPos   = (isRed)? -12.6 : +12.6;
             angDeg = (isRed)? -90.0 : +90.0;
-            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_THRU);
+            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_40, TURN_SPEED_30, DRIVE_THRU);
             // Drive into the 1st ball to collect it
             yPos   = (isRed)? -19.5 : +19.5;
-            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_TO);
+            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_40, TURN_SPEED_30, DRIVE_TO);
             sleep(250);  // let it fully collect
             robot.spinServoSetPosition( SPIN_P1 );
-            sleep(750);  // wait for spindex
+            sleep(750);  // wait for spindex  TODO: replace with feedback
             // Drive into the 2nd ball to collect it
             yPos   = (isRed)? -24.9 : +24.9;
-            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_TO);
+            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_40, TURN_SPEED_30, DRIVE_TO);
             sleep(250);  // let it fully collect
             robot.spinServoSetPosition( SPIN_P3 );
-            sleep(750);  // wait for spindex
+            sleep(750);  // wait for spindex  TODO: replace with feedback
             // Drive into the 3rd ball to collect it
             yPos   = (isRed)? -30.2 : +30.2;
-            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_TO);
+            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_40, TURN_SPEED_30, DRIVE_TO);
             sleep(250);  // let it fully collect
         } // opModeIsActive
         // Drive back to the shooting zone (back the way we came!)
         if( opModeIsActive() ) {
-            driveToPosition( x3, ((isRed)? -7.0:7.0), ((isRed)? -70.0:70.0), DRIVE_SPEED_70, TURN_SPEED_30, DRIVE_THRU);
+            driveToPosition( 20, ((isRed)? -25.0:25.0), ((isRed)? -80.0:80.0), DRIVE_SPEED_90, TURN_SPEED_30, DRIVE_THRU);
             // Start up the shooter motor so it can be at speed when we reach the shooting zone
             robot.shooterMotorsSetPower( shooterPower );
             // Swivel the turret toward the RED or BLUE goal (assumes field location of 11.0/0.0/0deg)
             robot.turretServoSetPosition( (isRed)? 0.545 : 0.435 ); // right toward RED or left toward BLUE
-            driveToPosition( 10.0, ((isRed)? 0.0:0.0),  ((isRed)?  0.0:0.0),   DRIVE_SPEED_80, TURN_SPEED_30, DRIVE_TO);
+            driveToPosition( 10.0, ((isRed)? 0.0:0.0),  ((isRed)?  0.0:0.0), DRIVE_SPEED_80, TURN_SPEED_30, DRIVE_TO);
         } // opModeIsActive
     } // collectSpikemark1FromFar
 
@@ -1224,9 +1224,9 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
         // Transition from shooting zone to spike-mark zone (spikemark #1)
         if( opModeIsActive() ) {
             // drive away from the far shooting zone in a curved path toward the 1st spike mark
-            driveToPosition( x1, ((isRed)? -1.0:1.0), ((isRed)? -22.5:22.5), DRIVE_SPEED_50, TURN_SPEED_30, DRIVE_THRU);
-            driveToPosition( x2, ((isRed)? -3.0:3.0), ((isRed)? -45.0:45.0), DRIVE_SPEED_80, TURN_SPEED_30, DRIVE_THRU);
-            driveToPosition( x3, ((isRed)? -7.0:7.0), ((isRed)? -70.0:70.0), DRIVE_SPEED_80, TURN_SPEED_30, DRIVE_THRU);
+            driveToPosition( x1, ((isRed)? -1.0:1.0), ((isRed)? -22.5:22.5), DRIVE_SPEED_90, TURN_SPEED_30, DRIVE_THRU);
+            driveToPosition( x2, ((isRed)? -3.0:3.0), ((isRed)? -45.0:45.0), DRIVE_SPEED_90, TURN_SPEED_30, DRIVE_THRU);
+            driveToPosition( x3, ((isRed)? -7.0:7.0), ((isRed)? -70.0:70.0), DRIVE_SPEED_90, TURN_SPEED_30, DRIVE_THRU);
         }
         // Collect the 3 balls at that spike mark
         if( opModeIsActive() ) {
@@ -1236,27 +1236,27 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
             xPos   = (isRed)? 49.3 : 54.8;  // UNIQUE TO SPIKE2
             yPos   = (isRed)? -12.6 : +12.6;
             angDeg = (isRed)? -90.0 : +90.0;
-            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_THRU);
+            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_40, TURN_SPEED_30, DRIVE_THRU);
             // Drive into the 1st ball to collect it
             yPos   = (isRed)? -19.5 : +19.5;
-            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_TO);
+            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_40, TURN_SPEED_30, DRIVE_TO);
             sleep(250);  // let it fully collect
             robot.spinServoSetPosition( SPIN_P2 );
             sleep(750);  // wait for spindex
             // Drive into the 2nd ball to collect it
             yPos   = (isRed)? -24.9 : +24.9;
-            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_TO);
+            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_40, TURN_SPEED_30, DRIVE_TO);
             sleep(250);  // let it fully collect
             robot.spinServoSetPosition( SPIN_P3 );
             sleep(750);  // wait for spindex
             // Drive into the 3rd ball to collect it
             yPos   = (isRed)? -30.2 : +30.2;
-            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_TO);
+            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_40, TURN_SPEED_30, DRIVE_TO);
             sleep(250);  // let it fully collect
         } // opModeIsActive
         // Drive back to the shooting zone (back the way we came!)
         if( opModeIsActive() ) {
-            driveToPosition( x3, ((isRed)? -7.0:7.0), ((isRed)? -70.0:70.0), DRIVE_SPEED_70, TURN_SPEED_30, DRIVE_THRU);
+            driveToPosition( 42, ((isRed)? -25.0:25.0), ((isRed)? -80.0:80.0), DRIVE_SPEED_90, TURN_SPEED_30, DRIVE_THRU);
             // Start up the shooter motor so it can be at speed when we reach the shooting zone
             robot.shooterMotorsSetPower( shooterPower );
             // Swivel the turret toward the RED or BLUE goal (assumes field location of 11.0/0.0/0deg)
@@ -1327,13 +1327,13 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
             // Shoot all 3 balls
             for(int i=0; i<shootOrder.length; i++) {
                 // rotate (if necessary) to the next position
-               robot.spinServoSetPosition( shootOrder[i] );
-//             robot.spinServoSetPositionCR( shootOrder[i] );
-               // wait for the rotation to complete, then launch that ball
-               sleep(900);
-              launchBall();
-              if( !opModeIsActive() ) break;
-              }
+                robot.spinServoSetPosition( shootOrder[i] );
+//              robot.spinServoSetPositionCR( shootOrder[i] );
+                // wait for the rotation to complete, then launch that ball
+                sleep(900);   // TODO: change to spindexer position feedback
+                launchBall();
+                if( !opModeIsActive() ) break;
+            }
         } // opModeIsActive
         // Turn off shooter while we go collect more balls
         robot.shooterMotorsSetPower( 0.0 );

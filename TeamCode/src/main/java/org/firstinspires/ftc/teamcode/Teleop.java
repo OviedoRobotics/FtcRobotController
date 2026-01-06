@@ -188,8 +188,9 @@ public abstract class Teleop extends LinearOpMode {
             telemetry.addData(" "," %.2f in/sec %.2f in/sec %.2f deg/sec", 
                    robot.robotGlobalXvelocity, robot.robotGlobalYvelocity, robot.robotAngleVelocity );
             telemetry.addData("Goal", "%s dist: %.2f in, angle: %.2f deg", ((blueAlliance)? "BLUE":"RED"), odoShootDistance, odoShootAngleDeg);
-            telemetry.addData("Shooter POWER", "%.2f (P1 tri/cross to adjust)", shooterPower);
+            telemetry.addData("Shooter POWER", "%.3f (P1 tri/cross to adjust)", shooterPower);
             telemetry.addData("Shooter RPM", "%.1f %.1f", robot.shooterMotor1Vel, robot.shooterMotor2Vel );
+            telemetry.addData("Turret", "set %.3f get %.3f analog %.3f", robot.turretServoSet, robot.turretServoGet, robot.turretServoPos );
 //          telemetry.addData("Shooter mA", "%.1f %.1f", robot.shooterMotor1Amps, robot.shooterMotor2Amps );
 //          telemetry.addData("IMU", "%.2f deg", robot.headingIMU() );
 //          telemetry.addData("Spindexer Angle", "%.1f deg (%.2f)", robot.getSpindexerAngle(), robot.spindexerPowerSetting );
@@ -214,8 +215,8 @@ public abstract class Teleop extends LinearOpMode {
             robot.updateLimelightFieldPosition();
         } // enableOdometry
         // If the limelight position standard deviation is low, update pinpoint odometry position.
-        if(robot.limelightFieldXstd < 0.001 && robot.limelightFieldYstd < 0.001){
-//          llodo.alignPinpointToLimelightEveryLoop(false);
+//      if(robot.limelightFieldXstd < 0.001 && robot.limelightFieldYstd < 0.001){
+        if( gamepad1.touchpadWasPressed() ){
             // Ensure we don't get a spurious zero/clear reading
             if( (robot.limelightFieldXpos != 0.0) && (robot.limelightFieldYpos !=0.0) && (robot.limelightFieldAngleDeg != 0.0) )
                 robot.setPinpointFieldPosition(robot.limelightFieldXpos, robot.limelightFieldYpos, robot.limelightFieldAngleDeg );

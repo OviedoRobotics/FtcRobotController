@@ -134,9 +134,6 @@ public class HardwareSwyftBot
     public Servo       shooterServo    = null;
     public AnalogInput shooterServoPos = null;
 
-    public double      shooterServoSetpoint = 0.0;
-    public boolean     shooterServoIsBusy   = false; // are we still moving toward position?
-
     public final static double SHOOTER_SERVO_INIT = 0.50;   // straight up
     public final static double SHOOTER_SERVO_INIT_ANGLE = 180.0;
     public final static double SHOOTER_SERVO_MIN = 0.50;
@@ -150,6 +147,11 @@ public class HardwareSwyftBot
     public Servo       turretServo     = null;  // 2 servos! (controlled together via Y cable)
     public AnalogInput turretServoPos1 = null;
     public AnalogInput turretServoPos2 = null;
+
+    public double     turretServoSet    = 0.0;  // 5-turn servo commanded setpoint
+    public double     turretServoGet    = 0.0;  // 5-turn servo queried setpoint
+    public double     turretServoPos    = 0.0;  // 5-turn servo position (analog feedback)
+    public boolean    turretServoIsBusy = false; // are we still moving toward position?
 
     // NOTE: Although the turret can spin to +180deg, the cable blocks the shooter hood exit
     // once you reach +55deg, so that's our effect MAX turret angle on the right side.
@@ -482,6 +484,10 @@ public class HardwareSwyftBot
         //   getPower() / getVelocity() / getCurrent()
         shooterMotor1Vel = shooterMotor1.getVelocity();
         shooterMotor2Vel = shooterMotor2.getVelocity();
+        // Where has the turret been commanded to?
+        turretServoGet   = turretServo.getPosition();
+        // Where is the turret currently located?  (average the two feedback values)
+        turretServoPos   = (getTurretPosition(true) + getTurretPosition(false))/2.0;
         // NOTE: motor mA data is NOT part of the bulk-read, so increases cycle time!
 //      shooterMotor1Amps = shooterMotor1.getCurrent(MILLIAMPS);
 //      shooterMotor2Amps = shooterMotor1.getCurrent(MILLIAMPS);
@@ -668,8 +674,8 @@ public class HardwareSwyftBot
         turretServo.setPosition(targetPosition);
         
         // Store this setting so we can track progress of the turret motion
-        shooterServoSetpoint = targetPosition;
-        shooterServoIsBusy   = true;  // TODO: need performEveryLoop logic to clear/timeout!
+        turretServoSet    = targetPosition;
+        turretServoIsBusy = true;  // TODO: need performEveryLoop logic to clear/timeout!
         
     } // turretServoSetPosition
 
@@ -986,11 +992,7 @@ public class HardwareSwyftBot
         // Process the LIFTING case (AxonMax+ no-load 60deg rotation = 115 msec
         if( liftServoBusyU ) {
             // Are we "done" because the servo position is now close enough? (Axon position feedback)
-            if (isRobot1) {
-                servoFullyInjected = false;
-            } else { // robot2 has Axon position feedback wired up
-                servoFullyInjected = (getInjectorAngle() >= LIFT_SERVO_INJECT_ANG);
-            }
+            servoFullyInjected = (getInjectorAngle() >= LIFT_SERVO_INJECT_ANG);
             servoTimeoutU = (liftServoTimer.milliseconds() > 750);
             // Has the injector servo reached the desired position? (or timed-out?)
             if( servoFullyInjected || servoTimeoutU ) {
