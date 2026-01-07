@@ -134,7 +134,7 @@ public class AutonomousRedFar extends AutonomousBase {
         // Drive out away from wall, both to allow us to rotate the turret and not have the
         // shooter drive belt touch the field wall, but also to be closer to the goal.
         // Must not go so far we are no longer within the scoring zone!
-        driveToPosition( 11.0, 0.0, 0.0, DRIVE_SPEED_60, TURN_SPEED_15, DRIVE_TO);
+        driveToPosition( 11.0, 0.0, 0.0, DRIVE_SPEED_30, TURN_SPEED_15, DRIVE_TO);
         // Swivel the turret toward the RED or BLUE goal (assumes field location of 11.0/0.0/0deg
         robot.turretServoSetPosition( (redAlliance)? 0.545 : 0.435 ); // right toward RED or left toward BLUE
         scoreThreeBallsFromFar(obeliskID, PPG_23);

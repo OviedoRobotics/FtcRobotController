@@ -99,7 +99,8 @@ public class TeleopPositionTest extends LinearOpMode {
                 case 3 :
                     telemetry.addData("SELECTED:", "spinServo" );
                     telemetry.addData("Spindexer Servo Command", "%.3f", robot.spinServo.getPosition() );
-                    telemetry.addData("Spindexer Servo Feedback", "%.3f deg", robot.getSpindexerAngle() );
+                    telemetry.addData("Spindexer Servo Feedback", "%.3f (%.3f deg)", robot.getSpindexerPos(),
+                                                                                            robot.getSpindexerAngle() );
                     break;
                 case 4 :
                     telemetry.addData("SELECTED:", "liftServo" );

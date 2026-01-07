@@ -217,7 +217,11 @@ public class HardwareSwyftBot
         SPIN_DECREMENT
     }
     
-    public SpindexerState spinServoCurPos = SpindexerState.SPIN_P2;
+    public SpindexerState spinServoCurPos = SpindexerState.SPIN_P2;  // commanded spindexer enum
+    public double         spinServoSetPos = 0.0;  // commanded spindexer position
+    public boolean        spinServoInPos  = true; // have we reached the commanded position
+    public ElapsedTime    spinServoTimer  = new ElapsedTime();
+    public double         spinServoTime   = 0.0;  // msec to get into position
 
     //====== INJECTOR/LIFTER SERVO =====
     public Servo       liftServo      = null;
@@ -491,6 +495,12 @@ public class HardwareSwyftBot
         // NOTE: motor mA data is NOT part of the bulk-read, so increases cycle time!
 //      shooterMotor1Amps = shooterMotor1.getCurrent(MILLIAMPS);
 //      shooterMotor2Amps = shooterMotor1.getCurrent(MILLIAMPS);
+        // Has the spindexer reached the commanded position?
+        double spindexerError = Math.abs( spinServoSetPos - getSpindexerPos() );
+        if( !spinServoInPos && (spindexerError < 0.030) ) {
+            spinServoTime = spinServoTimer.milliseconds();
+            spinServoInPos = true;
+        }
     } // readBulkData
 
     /*--------------------------------------------------------------------------------------------*/
@@ -526,18 +536,13 @@ public class HardwareSwyftBot
     static double thetaMinTurret = 0;
     static double thetaMaxFlapper = 355;
     static double thetaMinFlapper = 0;
-    static double STARTING_HEADING = 90;
-    static double TEST_LAUNCH_X = 6;
-    static double TEST_LAUNCH_Y = 2;
     static double X_BIN_L = 0.6667; // in feet
     static double Y_BIN_L = 12;   // in feet
     static double LAUNCH_EXIT_SPEED = 22;
     static double Z_BIN = 3.23;
     static double Z_SHOOTER = 0.5;  // get actual measurement
     static double TURRET_SERVO_RELATIVE_0_ANGLE = 0;
-    static double TURRET_SERVO_HORIZONTAL_POSITION = TURRET_SERVO_INIT; // position of turret servo when turret is aligned with the back of the robot
     static double TURRET_SERVO_HORIZONTAL_ANGLE_INIT = TURRET_SERVO_INIT*(thetaMaxTurret - thetaMinTurret);
-    static double SHOOTER_SERVO_POS_VERTICAL = 0.64;
 
     static double SHOOTER_SERVO_HORIZONTAL_POSITION = 0.39;
     public double computeAlignedTurretPos() {
@@ -817,8 +822,6 @@ public class HardwareSwyftBot
         double currentX = robotGlobalXCoordinatePosition;
         double currentY = robotGlobalYCoordinatePosition;
         // Positions for targets based on values from ftc2025DECODE.fmap
-//      double targetX = 58.37;
-//      double targetY = (alliance == Alliance.BLUE)? +55.64 : -55.64;
         double targetX = 60.0;
         double targetY = (alliance == Alliance.BLUE)? +60.0 : -60.0;  // 6ft = 72"
         // Compute distance to target point inside the goal
@@ -833,8 +836,6 @@ public class HardwareSwyftBot
         double currentX = robotGlobalXCoordinatePosition;
         double currentY = robotGlobalYCoordinatePosition;
         // Rotated field positions for targets based on values from ftc2025DECODE.fmap
-//      double targetX = 58.37;
-//      double targetY = (alliance == Alliance.BLUE)? +55.64 : -55.64;
         double targetX = 60.0;
         double targetY = (alliance == Alliance.BLUE)? +57 : -58;  // 6ft = 72"
         // Compute distance to target point inside the goal
@@ -848,6 +849,14 @@ public class HardwareSwyftBot
     } // getShootAngleDeg
 
     /*--------------------------------------------------------------------------------------------*/
+    public double computeAxonPos( double measuredVoltage )
+    {
+        final double MAX_ANALOG_VOLTAGE   = 3.3;    // 3.3V maximum analog feedback output
+        double measuredPos = (measuredVoltage / MAX_ANALOG_VOLTAGE);
+        return measuredPos;
+    } // computeAxonPos
+
+    /*--------------------------------------------------------------------------------------------*/
     public double computeAxonAngle( double measuredVoltage )
     {
         final double DEGREES_PER_ROTATION = 360.0;  // One full rotation measures 360 degrees
@@ -859,7 +868,13 @@ public class HardwareSwyftBot
         while( measuredAngle > 360.0 ) measuredAngle -= 360.0;
         return measuredAngle;
     } // computeAxonAngle
-    
+
+    /*--------------------------------------------------------------------------------------------*/
+    public double getSpindexerPos()
+    {
+        return computeAxonPos( spinServoPos.getVoltage() );
+    } // getSpindexerAngle
+
     /*--------------------------------------------------------------------------------------------*/
     public double getSpindexerAngle()
     {
@@ -915,38 +930,52 @@ public class HardwareSwyftBot
     public void spinServoSetPosition( SpindexerState position )
     {
         switch( position ) {
-            case SPIN_P1 : spinServo.setPosition(SPIN_SERVO_P1);
+            case SPIN_P1 :
                 spinServoCurPos = SpindexerState.SPIN_P1;
+                spinServoSetPos = SPIN_SERVO_P1;
+                spinServo.setPosition(spinServoSetPos);
                 break;
-            case SPIN_P2 : spinServo.setPosition(SPIN_SERVO_P2);
+            case SPIN_P2 :
                 spinServoCurPos = SpindexerState.SPIN_P2;
+                spinServoSetPos = SPIN_SERVO_P2;
+                spinServo.setPosition(spinServoSetPos);
                 break;
-            case SPIN_P3 : spinServo.setPosition(SPIN_SERVO_P3);
+            case SPIN_P3 :
                 spinServoCurPos = SpindexerState.SPIN_P3;
+                spinServoSetPos = SPIN_SERVO_P3;
+                spinServo.setPosition(spinServoSetPos);
                 break;
             case SPIN_INCREMENT :
                 if( spinServoCurPos == SpindexerState.SPIN_P1 ) {
-                    spinServo.setPosition(SPIN_SERVO_P2);
                     spinServoCurPos = SpindexerState.SPIN_P2;
+                    spinServoSetPos = SPIN_SERVO_P2;
+                    spinServo.setPosition(spinServoSetPos);
                 }
                 else if( spinServoCurPos == SpindexerState.SPIN_P2 ) {
-                    spinServo.setPosition(SPIN_SERVO_P3);
                     spinServoCurPos = SpindexerState.SPIN_P3;
+                    spinServoSetPos = SPIN_SERVO_P3;
+                    spinServo.setPosition(spinServoSetPos);
                 } // else no room to increment further!
                 break;
             case SPIN_DECREMENT :
                 if( spinServoCurPos == SpindexerState.SPIN_P3 ) {
-                    spinServo.setPosition(SPIN_SERVO_P2);
                     spinServoCurPos = SpindexerState.SPIN_P2;
+                    spinServoSetPos = SPIN_SERVO_P2;
+                    spinServo.setPosition(spinServoSetPos);
                 }
                 else if( spinServoCurPos == SpindexerState.SPIN_P2 ) {
-                    spinServo.setPosition(SPIN_SERVO_P1);
                     spinServoCurPos = SpindexerState.SPIN_P1;
+                    spinServoSetPos = SPIN_SERVO_P1;
+                    spinServo.setPosition(spinServoSetPos);
                 } // else no room to increment further!
                 break;
             default:
                 break;
         } // switch()
+
+        // reset our flag and start a timer
+        spinServoInPos = false;
+        spinServoTimer.reset();
     } // spinServoSetPosition
 
     /*--------------------------------------------------------------------------------------------*/
