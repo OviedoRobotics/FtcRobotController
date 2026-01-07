@@ -576,11 +576,7 @@ public abstract class Teleop extends LinearOpMode {
 
         if (gamepad1.leftBumperWasPressed()) { // Should we make it so we can hold down the button?
             robot.setTurretAngle(odoShootAngleDeg);
-            double x = odoShootDistance;
-            // .051 + (-2.53E-03)x + 3.9E-05x^2 + -1.21E-07x^3
-            shooterPower = 0.51 + -2.53E-3 * x + 3.9E-5 * Math.pow(x,2) + -1.21E-7 * Math.pow(x,3);
-            shooterPower = Math.max(shooterPower, 0.45); // Ensure min power.
-            shooterPower = Math.min(shooterPower, 0.59); // Ensure max power.
+            shooterPower = robot.computeShooterPower(odoShootDistance);
             if(shooterMotorsOn) {
                 robot.shooterMotorsSetPower(shooterPower);
             }
