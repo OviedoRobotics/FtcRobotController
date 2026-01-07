@@ -832,6 +832,16 @@ public class HardwareSwyftBot
     } // getShootDistance
 
     /*--------------------------------------------------------------------------------------------*/
+    public static double computeShooterPower(double distance) {
+        double x = distance;
+        // .051 + (-2.53E-03)x + 3.9E-05x^2 + -1.21E-07x^3
+        double shooterPower = 0.51 + -2.53E-3 * x + 3.9E-5 * Math.pow(x,2) + -1.21E-7 * Math.pow(x,3);
+        shooterPower = Math.max(shooterPower, 0.45); // Ensure min power.
+        shooterPower = Math.min(shooterPower, 0.59); // Ensure max power.
+        return shooterPower;
+    } // getShootPower
+
+    /*--------------------------------------------------------------------------------------------*/
     public double getShootAngleDeg(Alliance alliance) {
         double currentX = robotGlobalXCoordinatePosition;
         double currentY = robotGlobalYCoordinatePosition;
