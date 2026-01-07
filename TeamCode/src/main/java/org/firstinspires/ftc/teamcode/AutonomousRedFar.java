@@ -131,33 +131,33 @@ public class AutonomousRedFar extends AutonomousBase {
         // Immediately start up shooter so it can be getting up to speed
         robot.shooterMotorsSetPower( shooterPowerFar );
         robot.intakeMotor.setPower(0.90);
+        // Swivel the turret toward the RED or BLUE goal (assumes field location of 11.0/0.0/0deg
+        robot.turretServoSetPosition( (redAlliance)? 0.545 : 0.435 ); // right toward RED or left toward BLUE
         // Drive out away from wall, both to allow us to rotate the turret and not have the
         // shooter drive belt touch the field wall, but also to be closer to the goal.
         // Must not go so far we are no longer within the scoring zone!
         driveToPosition( 11.0, 0.0, 0.0, DRIVE_SPEED_30, TURN_SPEED_15, DRIVE_TO);
-        // Swivel the turret toward the RED or BLUE goal (assumes field location of 11.0/0.0/0deg
-        robot.turretServoSetPosition( (redAlliance)? 0.545 : 0.435 ); // right toward RED or left toward BLUE
         scoreThreeBallsFromFar(obeliskID, PPG_23);
 
         // Collect and Score 1st spike mark
         if( doSpikeMark1 ) {
             collectSpikemark1FromFar(redAlliance, shooterPowerFar);
-            scoreThreeBallsFromFar(obeliskID, GPP_21);
+            scoreThreeBallsFromFar(obeliskID, PGP_22);
         }
 
         // Collect and Score 2nd spike mark
         if( doSpikeMark2 ) {
             collectSpikemark2FromFar(redAlliance, shooterPowerFar);
-            scoreThreeBallsFromFar(obeliskID, PGP_22);
+            scoreThreeBallsFromFar(obeliskID, PPG_23);
         }
         // Collect and Score 3rd spike mark
         if( doSpikeMark3 ) {
             collectSpikemark3FromFar( redAlliance,shooterPowerFar );
-            scoreThreeBallsFromFar(obeliskID, PPG_23);
+            scoreThreeBallsFromFar(obeliskID, GPP_21);
         }
 
         // Drive away from the score line for the MOVEMENT points
-        //driveToPosition(32.0, 0.0, 0.0, DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_TO);
+        driveToPosition(32.0, 0.0, 0.0, DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_TO);
 
         // ensure motors are turned off even if we run out of time
         robot.driveTrainMotorsZero();

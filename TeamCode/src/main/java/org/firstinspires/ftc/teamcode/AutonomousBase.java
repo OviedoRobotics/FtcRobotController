@@ -37,6 +37,7 @@ public abstract class AutonomousBase extends LinearOpMode {
     static final double  HEADING_THRESHOLD    = 2.0;     // Minimum of 1 degree for an integer gyro
     static final double  P_TURN_COEFF         = 0.050;   // Larger is more responsive, but also less stable
     static final double  DRIVE_SPEED_10       = 0.10;    // 
+    static final double  DRIVE_SPEED_15       = 0.15;    //
     static final double  DRIVE_SPEED_20       = 0.20;    // Lower speed for moving from a standstill
     static final double  DRIVE_SPEED_30       = 0.30;    // Lower speed for fine control going sideways
     static final double  DRIVE_SPEED_40       = 0.40;    // Normally go slower to achieve better accuracy
@@ -1170,7 +1171,7 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
         double x1=16.0, x2=21.0, x3=24.0;  // UNIQUE TO SPIKE1
         double xPos, yPos, angDeg;
         // Reset the spindexer for collecting GPP
-        robot.spinServoSetPosition( SPIN_P2 );   // GPP goes into P3, P2, P1 (shooter position; not collect position)
+        robot.spinServoSetPosition( SPIN_P1 );   // we collect in P1, P2, P3 order
         // Transition from shooting zone to spike-mark zone (spikemark #1)
         if( opModeIsActive() ) {
             // drive away from the far shooting zone in a curved path toward the 1st spike mark
@@ -1188,21 +1189,16 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
             angDeg = (isRed)? -90.0 : +90.0;
             driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_40, TURN_SPEED_30, DRIVE_THRU);
             // Drive into the 1st ball to collect it
-            yPos   = (isRed)? -19.5 : +19.5;
-            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_40, TURN_SPEED_30, DRIVE_TO);
-            sleep(250);  // let it fully collect
-            robot.spinServoSetPosition( SPIN_P1 );
-            sleep(750);  // wait for spindex  TODO: replace with feedback
+            yPos   = (isRed)? -22.0 : +22.0;
+            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_15, TURN_SPEED_15, DRIVE_THRU);
+            robot.spinServoSetPosition( SPIN_P2 );
             // Drive into the 2nd ball to collect it
-            yPos   = (isRed)? -24.9 : +24.9;
-            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_40, TURN_SPEED_30, DRIVE_TO);
-            sleep(250);  // let it fully collect
+            yPos   = (isRed)? -28.0 : +28.0;
+            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_15, TURN_SPEED_15, DRIVE_THRU);
             robot.spinServoSetPosition( SPIN_P3 );
-            sleep(750);  // wait for spindex  TODO: replace with feedback
             // Drive into the 3rd ball to collect it
-            yPos   = (isRed)? -30.2 : +30.2;
-            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_40, TURN_SPEED_30, DRIVE_TO);
-            sleep(250);  // let it fully collect
+            yPos   = (isRed)? -33.0 : +33.0;
+            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_15, TURN_SPEED_15, DRIVE_TO);
         } // opModeIsActive
         // Drive back to the shooting zone (back the way we came!)
         if( opModeIsActive() ) {
@@ -1211,7 +1207,7 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
             robot.shooterMotorsSetPower( shooterPower );
             // Swivel the turret toward the RED or BLUE goal (assumes field location of 11.0/0.0/0deg)
             robot.turretServoSetPosition( (isRed)? 0.545 : 0.435 ); // right toward RED or left toward BLUE
-            driveToPosition( 10.0, ((isRed)? 0.0:0.0),  ((isRed)?  0.0:0.0), DRIVE_SPEED_80, TURN_SPEED_30, DRIVE_TO);
+            driveToPosition( 12.0, ((isRed)? -2.0:+2.0),  ((isRed)?  0.0:0.0), DRIVE_SPEED_80, TURN_SPEED_30, DRIVE_TO);
         } // opModeIsActive
     } // collectSpikemark1FromFar
 
@@ -1220,7 +1216,7 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
         double x1=38.0, x2=43.0, x3=47.0;  // UNIQUE TO SPIKE2
         double xPos, yPos, angDeg;
         // Reset the spindexer for collecting PGP
-        robot.spinServoSetPosition( SPIN_P1 );   // PGP goes into P1, P3, P2
+        robot.spinServoSetPosition( SPIN_P1 );   // we collect in P1, P2, P3 order
         // Transition from shooting zone to spike-mark zone (spikemark #1)
         if( opModeIsActive() ) {
             // drive away from the far shooting zone in a curved path toward the 1st spike mark
@@ -1233,26 +1229,21 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
             // Turn on collector
             robot.intakeMotor.setPower(0.90);
             // Drive to the final location prior to actual ball collection
-            xPos   = (isRed)? 49.3 : 54.8;  // UNIQUE TO SPIKE2
+            xPos   = (isRed)? 48.3 : 54.8;  // UNIQUE TO SPIKE2
             yPos   = (isRed)? -12.6 : +12.6;
             angDeg = (isRed)? -90.0 : +90.0;
             driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_40, TURN_SPEED_30, DRIVE_THRU);
             // Drive into the 1st ball to collect it
-            yPos   = (isRed)? -19.5 : +19.5;
-            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_40, TURN_SPEED_30, DRIVE_TO);
-            sleep(250);  // let it fully collect
+            yPos   = (isRed)? -22.0 : +22.0;
+            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_15, TURN_SPEED_15, DRIVE_THRU);
             robot.spinServoSetPosition( SPIN_P2 );
-            sleep(750);  // wait for spindex
             // Drive into the 2nd ball to collect it
-            yPos   = (isRed)? -24.9 : +24.9;
-            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_40, TURN_SPEED_30, DRIVE_TO);
-            sleep(250);  // let it fully collect
+            yPos   = (isRed)? -28.0 : +28.0;
+            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_15, TURN_SPEED_15, DRIVE_THRU);
             robot.spinServoSetPosition( SPIN_P3 );
-            sleep(750);  // wait for spindex
             // Drive into the 3rd ball to collect it
-            yPos   = (isRed)? -30.2 : +30.2;
-            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_40, TURN_SPEED_30, DRIVE_TO);
-            sleep(250);  // let it fully collect
+            yPos   = (isRed)? -33.0 : +33.0;
+            driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_15, TURN_SPEED_15, DRIVE_TO);
         } // opModeIsActive
         // Drive back to the shooting zone (back the way we came!)
         if( opModeIsActive() ) {
@@ -1261,7 +1252,7 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
             robot.shooterMotorsSetPower( shooterPower );
             // Swivel the turret toward the RED or BLUE goal (assumes field location of 11.0/0.0/0deg)
             robot.turretServoSetPosition( (isRed)? 0.545 : 0.435 ); // right toward RED or left toward BLUE
-            driveToPosition( 10.0, ((isRed)? 0.0:0.0),  ((isRed)?  0.0:0.0),   DRIVE_SPEED_80, TURN_SPEED_30, DRIVE_TO);
+            driveToPosition( 12.0, ((isRed)? -2.0:+2.0),  ((isRed)?  0.0:0.0), DRIVE_SPEED_80, TURN_SPEED_30, DRIVE_TO);
         } // opModeIsActive
     } // collectSpikemark2FromFar
 
@@ -1329,9 +1320,8 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
             for(int i=0; i<shootOrder.length; i++) {
                 // rotate (if necessary) to the next position
                 robot.spinServoSetPosition( shootOrder[i] );
-//              robot.spinServoSetPositionCR( shootOrder[i] );
                 // wait for the rotation to complete, then launch that ball
-                sleep(900);   // TODO: change to spindexer position feedback
+                sleep(700);   // TODO: change to spindexer position feedback
                 launchBall();
                 if( !opModeIsActive() ) break;
             }
