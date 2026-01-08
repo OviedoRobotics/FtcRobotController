@@ -121,10 +121,16 @@ public class HardwareSwyftBot
 
     protected DcMotorEx shooterMotor1   = null;  // upper 
     protected DcMotorEx shooterMotor2   = null;  // lower
-    public    double    shooterMotor1Vel = 0.0; // encoder counts per second
-    public    double    shooterMotor2Vel = 0.0; // encoder counts per second
-    public    double    shooterMotor1Amps= 0.0; // mA
-    public    double    shooterMotor2Amps= 0.0; // mA
+    public    double    shooterMotor1Vel = 0.0;  // encoder counts per second
+    public    double    shooterMotor2Vel = 0.0;  // encoder counts per second
+    public    double    shooterMotor1Amps= 0.0;  // mA
+    public    double    shooterMotor2Amps= 0.0;  // mA
+
+    public    double      shooterMotorsSet   = 0.0;   // TODO: these need to be velocities (not powers)
+    public    double      shooterMotorsGet   = 0.0;   // TODO: if we're going to check status
+    public    boolean     shooterMotorsReady = false; // Have we reached the target velocity?
+    public    ElapsedTime shooterMotorsTimer = new ElapsedTime();
+    public    double      shooterMotorsTime  = 0.0;   // how long it took to reach "ready" (msec)
 
     public final static double SHOOTER_MOTOR_FAR  = 0.55;
     public final static double SHOOTER_MOTOR_MID  = 0.45;
@@ -506,9 +512,12 @@ public class HardwareSwyftBot
     /*--------------------------------------------------------------------------------------------*/
     public void shooterMotorsSetPower( double shooterPower )
     {
-        // TODO: start a timer so we can measure  how long the ramp-up takes
         shooterMotor1.setPower( shooterPower );
         shooterMotor2.setPower( shooterPower );
+        shooterMotorsSet = shooterPower;
+        // reset our "ready" flag and start a timer
+        shooterMotorsReady = false;  // TODO: Need to finish this logic
+        shooterMotorsTimer.reset();
     } // shooterMotorsSetPower
 
     /*--------------------------------------------------------------------------------------------*/
@@ -822,7 +831,7 @@ public class HardwareSwyftBot
         double currentX = robotGlobalXCoordinatePosition;
         double currentY = robotGlobalYCoordinatePosition;
         // Positions for targets based on values from ftc2025DECODE.fmap
-        double targetX = 60.0;
+        double targetX = (alliance == Alliance.BLUE)? +60.0 : +60.0;  // 6ft = 72"
         double targetY = (alliance == Alliance.BLUE)? +60.0 : -60.0;  // 6ft = 72"
         // Compute distance to target point inside the goal
         double deltaX = targetX - currentX;
@@ -832,22 +841,23 @@ public class HardwareSwyftBot
     } // getShootDistance
 
     /*--------------------------------------------------------------------------------------------*/
-    public static double computeShooterPower(double distance) {
-        double x = distance;
-        // .051 + (-2.53E-03)x + 3.9E-05x^2 + -1.21E-07x^3
+    // Convert distance from goal (inches) into a power setting for our shooter motors.
+    // Four our shooter and field layout, the value should be between 0.45 and 0.59
+    public static double computeShooterPower(double x) {
+        // power = 0.051 + (-2.53E-03)x + 3.9E-05x^2 + -1.21E-07x^3
         double shooterPower = 0.51 + -2.53E-3 * x + 3.9E-5 * Math.pow(x,2) + -1.21E-7 * Math.pow(x,3);
-        shooterPower = Math.max(shooterPower, 0.45); // Ensure min power.
-        shooterPower = Math.min(shooterPower, 0.59); // Ensure max power.
+        shooterPower = Math.max(shooterPower, 0.45); // We should never be below 0.45
+        shooterPower = Math.min(shooterPower, 0.60); // We should never exceed 0.60
         return shooterPower;
-    } // getShootPower
+    } // computeShooterPower
 
     /*--------------------------------------------------------------------------------------------*/
     public double getShootAngleDeg(Alliance alliance) {
         double currentX = robotGlobalXCoordinatePosition;
         double currentY = robotGlobalYCoordinatePosition;
         // Rotated field positions for targets based on values from ftc2025DECODE.fmap
-        double targetX = 60.0;
-        double targetY = (alliance == Alliance.BLUE)? +57 : -58;  // 6ft = 72"
+        double targetX = (alliance == Alliance.BLUE)? +60.0 : +60.0;  // 6ft = 72"
+        double targetY = (alliance == Alliance.BLUE)? +57.0 : -58.0;  // 6ft = 72"
         // Compute distance to target point inside the goal
         double deltaX = targetX - currentX;
         double deltaY = targetY - currentY;

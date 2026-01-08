@@ -91,37 +91,45 @@ public class AutonomousBlueFar extends AutonomousBase {
         }
 
         //===== Score Preload Balls (from the FAR zone) ==========
-        // Immediately start up shooter so it can be getting up to speed
-        robot.shooterMotorsSetPower( shooterPowerFar );
+        // Enable collector/InKeeper so it's safe to spindex
         robot.intakeMotor.setPower(0.90);
+        // Immediately start up shooter so it can be getting up to speed
+//      robot.shooterMotorsSetPower( shooterPowerFar );
+//      robot.turretServoSetPosition( (redAlliance)? 0.545 : 0.435 ); // right toward RED or left toward BLUE
+        // Enable automatic shooter power/angle as we drive the next segment
+        autoAimEnabled = true;
         // Drive out away from wall, both to allow us to rotate the turret and not have the
         // shooter drive belt touch the field wall, but also to be closer to the goal.
         // Must not go so far we are no longer within the scoring zone!
-        driveToPosition( 11.0, 0.0, 0.0, DRIVE_SPEED_40, TURN_SPEED_15, DRIVE_TO);
-        // Swivel the turret toward the RED or BLUE goal (assumes field location of 11.0/0.0/0deg
-        robot.turretServoSetPosition( (redAlliance)? 0.545 : 0.435 ); // right toward RED or left toward BLUE
-        sleep( 1500 ); // Must cover both shooter spin up and turret rotation
+        driveToPosition( 11.0, 0.0, 0.0, DRIVE_SPEED_30, TURN_SPEED_15, DRIVE_TO);
+        autoAimEnabled = false;
         scoreThreeBallsFromFar(obeliskID, PPG_23);
+
+        // Collect and Score corner balls
+        if( doSpikeMark0 ) {
+            collectSpikemark0FromFar(redAlliance, shooterPowerFar);
+            scoreThreeBallsFromFar(obeliskID, PGP_22); // TODO: whatistherightone??
+        }
 
         // Collect and Score 1st spike mark
         if( doSpikeMark1 ) {
             collectSpikemark1FromFar(redAlliance, shooterPowerFar);
-            scoreThreeBallsFromFar(obeliskID, GPP_21);
+            scoreThreeBallsFromFar(obeliskID, PGP_22);
         }
 
         // Collect and Score 2nd spike mark
         if( doSpikeMark2 ) {
             collectSpikemark2FromFar(redAlliance, shooterPowerFar);
-            scoreThreeBallsFromFar(obeliskID, PGP_22);
+            scoreThreeBallsFromFar(obeliskID, PPG_23);
         }
         // Collect and Score 3rd spike mark
         if( doSpikeMark3 ) {
             collectSpikemark3FromFar( redAlliance,shooterPowerFar );
-            scoreThreeBallsFromFar(obeliskID, PPG_23);
+            scoreThreeBallsFromFar(obeliskID, GPP_21);
         }
 
         // Drive away from the score line for the MOVEMENT points
-        //driveToPosition(32.0, 0.0, 0.0, DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_TO);
+        driveToPosition(32.0, 0.0, 0.0, DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_TO);
 
         // ensure motors are turned off even if we run out of time
         robot.driveTrainMotorsZero();
