@@ -169,8 +169,8 @@ public class AutonomousRedFar extends AutonomousBase {
 
         // Transfer this setting to the hardware class used by Telop, but
         // shift to center of the field as the frame of reference
-        robot.resetGlobalCoordinatePosition( robotGlobalXCoordinatePosition - 62.6,
-                                             robotGlobalYCoordinatePosition - 16.2,
+        robot.resetGlobalCoordinatePosition( robotGlobalXCoordinatePosition - 62.8,
+                                             robotGlobalYCoordinatePosition - 14.3,
                                              Math.toDegrees(robotOrientationRadians) - 0.0 );
 
         // ensure motors are turned off even if we run out of time

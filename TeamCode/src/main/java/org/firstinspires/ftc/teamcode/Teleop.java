@@ -77,6 +77,10 @@ public abstract class Teleop extends LinearOpMode {
         robot.limelightPipelineSwitch( (blueAlliance)? 6:7 );
 //      llodo.updatePipeline( (blueAlliance)? Alliance.BLUE : Alliance.RED);
 
+        // Initialize driver centric angle based on the alliance color
+        driverMode  = DRIVER_MODE_DRV_CENTRIC;
+        driverAngle = (blueAlliance)? +90.0 : -90.0;  // assumes auto ended from BLUE-FAR or RED-FAR
+
         // Wait for the game to start (driver presses PLAY)
         while (!isStarted()) {
             // Send telemetry message to signify robot waiting;
@@ -190,14 +194,18 @@ public abstract class Teleop extends LinearOpMode {
             telemetry.addData(" "," %.2f in/sec %.2f in/sec %.2f deg/sec", 
                    robot.robotGlobalXvelocity, robot.robotGlobalYvelocity, robot.robotAngleVelocity );
             telemetry.addData("Goal", "%s dist: %.2f in, angle: %.2f deg", ((blueAlliance)? "BLUE":"RED"), odoShootDistance, odoShootAngleDeg);
-            telemetry.addData("Shooter POWER", "%.3f (P1 tri/cross to adjust)", shooterPower);
-            telemetry.addData("Shooter RPM", "%.1f %.1f", robot.shooterMotor1Vel, robot.shooterMotor2Vel );
+//          telemetry.addData("Shooter POWER", "%.3f (P1 tri/cross to adjust)", shooterPower);
+//          telemetry.addData("Shooter RPM", "%.1f %.1f", robot.shooterMotor1Vel, robot.shooterMotor2Vel );
             telemetry.addData("Turret", "set %.3f get %.3f analog %.3f", robot.turretServoSet, robot.turretServoGet, robot.turretServoPos );
 //          telemetry.addData("Shooter mA", "%.1f %.1f", robot.shooterMotor1Amps, robot.shooterMotor2Amps );
-//          telemetry.addData("IMU", "%.2f deg", robot.headingIMU() );
-            telemetry.addData("Spindexer", "set %.2f get %.2f time %.3f ms",
-                    robot.spinServoSetPos, robot.getSpindexerPos(), robot.spinServoTime );
+//          telemetry.addData("Spindexer", "set %.2f get %.2f time %.3f ms",
+//                  robot.spinServoSetPos, robot.getSpindexerPos(), robot.spinServoTime );
             telemetry.addLine( (robot.isRobot2)? "Robot2" : "Robot1");
+//          telemetry.addData("Driver Angle", "%.3f deg", driverAngle );
+//          telemetry.addData("IMU Angle", "%.3f deg", robot.headingIMU() );
+//          telemetry.addData("Driver Centric", "%.3f deg", (driverAngle - robot.headingIMU()) );
+            telemetry.addData("Robot velocity", "x=%.2f y=%.2f ang=%.2f",
+                robot.robotGlobalXvelocity, robot.robotGlobalYvelocity, robot.robotAngleVelocity );
             telemetry.addData("CycleTime", "%.1f msec (%.1f Hz)", cycleTimeElapsed, cycleTimeHz);
             telemetry.update();
 
@@ -217,14 +225,24 @@ public abstract class Teleop extends LinearOpMode {
             robot.updatePinpointFieldPosition();
             robot.updateLimelightFieldPosition();
         } // enableOdometry
-        // If the limelight position standard deviation is low, update pinpoint odometry position.
-//      if(robot.limelightFieldXstd < 0.001 && robot.limelightFieldYstd < 0.001){
+        // Do we manually update the field position based on apriltag?
         if( gamepad1.touchpadWasPressed() ){
-            // Ensure we don't get a spurious zero/clear reading
-            if( (robot.limelightFieldXpos != 0.0) && (robot.limelightFieldYpos !=0.0) && (robot.limelightFieldAngleDeg != 0.0) )
-                robot.setPinpointFieldPosition(robot.limelightFieldXpos, robot.limelightFieldYpos, robot.limelightFieldAngleDeg );
+            updatePinpointFieldPosition();
         }
     } // performEveryLoopTeleop
+
+    void updatePinpointFieldPosition() {
+        // Ensure we don't get a spurious zero/clear reading
+        boolean canSeeAprilTag = (robot.limelightFieldXpos != 0.0) && (robot.limelightFieldYpos !=0.0) && (robot.limelightFieldAngleDeg != 0.0);
+        boolean qualityReading = (robot.limelightFieldXstd < 0.001 && robot.limelightFieldYstd < 0.001);
+        boolean robotXslow = (Math.abs(robot.robotGlobalXvelocity) < 0.1)? true:false;
+        boolean robotYslow = (Math.abs(robot.robotGlobalYvelocity) < 0.1)? true:false;
+        boolean robotAslow = (Math.abs(robot.robotAngleVelocity)   < 0.1)? true:false;
+        boolean notDriving = (robotXslow && robotYslow && robotAslow)?  true:false;
+        if( canSeeAprilTag && qualityReading && notDriving ) {
+            robot.setPinpointFieldPosition(robot.limelightFieldXpos, robot.limelightFieldYpos, robot.limelightFieldAngleDeg);
+        }
+    }  // updatePinpointFieldPosition
 
     /*---------------------------------------------------------------------------------*/
     /*  TELE-OP: Mecanum-wheel drive control using Dpad (slow/fine-adjustment mode)    */
@@ -573,18 +591,26 @@ public abstract class Teleop extends LinearOpMode {
     } // processShooter
 
     private void processTurretAutoAim() {
-        // Compute the values every cycle (so we can display in telemetry)
-        odoShootDistance = robot.getShootDistance( (blueAlliance)? Alliance.BLUE : Alliance.RED );
-        odoShootAngleDeg = robot.getShootAngleDeg( (blueAlliance)? Alliance.BLUE : Alliance.RED );
         // Do we want to use them? (so long as the button is held...)
         autoAimEnabled = gamepad1.left_bumper;
         if( autoAimEnabled ) {
+            // update pinpoint coordinates if conditions are good to do so
+            updatePinpointFieldPosition();
+            // now that we have the latest coordinate update, compute the auto-aim parameters
+            odoShootDistance = robot.getShootDistance( (blueAlliance)? Alliance.BLUE : Alliance.RED );
+            odoShootAngleDeg = robot.getShootAngleDeg( (blueAlliance)? Alliance.BLUE : Alliance.RED );
+            // set the turret angle and shooter power
             robot.setTurretAngle(odoShootAngleDeg);
             shooterPower = robot.computeShooterPower(odoShootDistance);
             if(shooterMotorsOn) {
                 robot.shooterMotorsSetPower(shooterPower);
             }
         } // autoAimEnabled
+        else {
+            // We're not going to use it to auto-aim, but still compute it for telemetry
+            odoShootDistance = robot.getShootDistance( (blueAlliance)? Alliance.BLUE : Alliance.RED );
+            odoShootAngleDeg = robot.getShootAngleDeg( (blueAlliance)? Alliance.BLUE : Alliance.RED );
+        }
         // Has something gone wrong and we want to reset to manual straight-on mode?
         if (gamepad1.rightBumperWasPressed()) {
             // reset turret to the center and reset shooter power to FAR zone

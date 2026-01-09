@@ -298,7 +298,7 @@ public class HardwareSwyftBot
 
         // Initialize REV Control Hub IMU
         // NOTE: call this first so it defines whether we're ROBOT1 or ROBOT2
-        initIMU();
+        initIMU( isAutonomous );
 
         // define the spindexer servo positions (fine-tuned uniquely for each robot)
         SPIN_SERVO_P1 = (isRobot1)? SPIN_SERVO_P1_R1 : SPIN_SERVO_P1_R2;
@@ -453,10 +453,11 @@ public class HardwareSwyftBot
         spinServoSetPosition(SpindexerState.SPIN_P3); // allows autonomous progression 3-2-1
         // Also initialize/calibrate the pinpoint odometry computer
         odom.resetPosAndIMU();
+        imu.resetYaw();
     } // resetEncoders
 
     /*--------------------------------------------------------------------------------------------*/
-    public void initIMU()
+    public void initIMU( boolean isAutonomous )
     {
         // Determine if we're running on ROBOT1 (7592-C) or ROBOT2 (7592-D) based on IMU name
         // (we use tryGet() instead of the standard get() to avoid an exception when not found)
@@ -475,6 +476,10 @@ public class HardwareSwyftBot
         UsbFacingDirection  usbDirection  = UsbFacingDirection.FORWARD;
         RevHubOrientationOnRobot orientationOnRobot = new RevHubOrientationOnRobot(logoDirection, usbDirection);
         imu.initialize(new IMU.Parameters(orientationOnRobot));
+        if( isAutonomous ) {
+            imu.resetYaw();
+        }
+
     } // initIMU()
 
     /*--------------------------------------------------------------------------------------------*/
