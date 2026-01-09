@@ -20,8 +20,10 @@ public abstract class Teleop extends LinearOpMode {
     boolean backwardDriveControl = false; // drive controls backward (other end of robot becomes "FRONT")
     boolean controlMultSegLinear = true;
 
-    double shooterPower = 0.55;  // far shooting default. scale for location.
-    double odoShootDistance, odoShootAngleDeg;
+    double  shooterPower = 0.55;  // far shooting default. scale for location.
+    double  odoShootDistance = 0.0;
+    double  odoShootAngleDeg = 0.0;
+    boolean autoAimEnabled   = false; // turret power/angle only adjusted when this flag is enabled
 
     boolean blueAlliance;   // set in the Blue/Red
     boolean farAlliance;    //
@@ -95,7 +97,7 @@ public abstract class Teleop extends LinearOpMode {
             // Normally autonomous resets encoders/odometry.  Do we need to for teleop??
             if( gamepad1.crossWasPressed() ) {
                 robot.resetEncoders();
-                robot.resetGlobalCoordinatePosition();
+                robot.resetGlobalCoordinatePosition( 0.0, 0.0, 0.0 );
             }
             // Pause briefly before looping
             idle();
@@ -571,18 +573,21 @@ public abstract class Teleop extends LinearOpMode {
     } // processShooter
 
     private void processTurretAutoAim() {
+        // Compute the values every cycle (so we can display in telemetry)
         odoShootDistance = robot.getShootDistance( (blueAlliance)? Alliance.BLUE : Alliance.RED );
         odoShootAngleDeg = robot.getShootAngleDeg( (blueAlliance)? Alliance.BLUE : Alliance.RED );
-
-        if (gamepad1.leftBumperWasPressed()) { // Should we make it so we can hold down the button?
+        // Do we want to use them? (so long as the button is held...)
+        autoAimEnabled = gamepad1.left_bumper;
+        if( autoAimEnabled ) {
             robot.setTurretAngle(odoShootAngleDeg);
             shooterPower = robot.computeShooterPower(odoShootDistance);
             if(shooterMotorsOn) {
                 robot.shooterMotorsSetPower(shooterPower);
             }
-        }
+        } // autoAimEnabled
+        // Has something gone wrong and we want to reset to manual straight-on mode?
         if (gamepad1.rightBumperWasPressed()) {
-            // RIGHT BUTTON resets turret to the center and resets the shooter power
+            // reset turret to the center and reset shooter power to FAR zone
             robot.turretServoSetPosition(robot.TURRET_SERVO_INIT);
             shooterPower = 0.55;
             if(shooterMotorsOn) {
