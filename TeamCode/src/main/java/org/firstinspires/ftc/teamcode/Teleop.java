@@ -49,7 +49,6 @@ public abstract class Teleop extends LinearOpMode {
 
     /* Declare OpMode members. */
     HardwareSwyftBot robot = new HardwareSwyftBot();
-//  LimelightFusedPinpointOdometry llodo = null;
     // sets unique behavior based on alliance
     public abstract void setAllianceSpecificBehavior();
 
@@ -75,7 +74,6 @@ public abstract class Teleop extends LinearOpMode {
         setAllianceSpecificBehavior();
         // limelight pipelines 6 & 7 filter for the BLUE and RED goal apriltags
         robot.limelightPipelineSwitch( (blueAlliance)? 6:7 );
-//      llodo.updatePipeline( (blueAlliance)? Alliance.BLUE : Alliance.RED);
 
         // Initialize driver centric angle based on the alliance color
         driverMode  = DRIVER_MODE_DRV_CENTRIC;
@@ -234,7 +232,7 @@ public abstract class Teleop extends LinearOpMode {
     void updatePinpointFieldPosition() {
         // Ensure we don't get a spurious zero/clear reading
         boolean canSeeAprilTag = (robot.limelightFieldXpos != 0.0) && (robot.limelightFieldYpos !=0.0) && (robot.limelightFieldAngleDeg != 0.0);
-        boolean qualityReading = (robot.limelightFieldXstd < 0.001 && robot.limelightFieldYstd < 0.001);
+        boolean qualityReading = (robot.limelightFieldXstd < 0.002) && (robot.limelightFieldYstd < 0.002);
         boolean robotXslow = (Math.abs(robot.robotGlobalXvelocity) < 0.1)? true:false;
         boolean robotYslow = (Math.abs(robot.robotGlobalYvelocity) < 0.1)? true:false;
         boolean robotAslow = (Math.abs(robot.robotAngleVelocity)   < 0.1)? true:false;

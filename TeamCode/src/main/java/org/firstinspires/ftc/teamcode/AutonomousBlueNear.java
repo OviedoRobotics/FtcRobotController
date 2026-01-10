@@ -6,8 +6,6 @@ import static org.firstinspires.ftc.teamcode.BallOrder.*;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
-import org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState;
-
 /**
  */
 @Autonomous(name="Blue Near", group="7592", preselectTeleOp = "Teleop-Blue")
@@ -19,8 +17,6 @@ public class AutonomousBlueNear extends AutonomousBase {
     static final boolean DRIVE_Y = true;    // Drive forward/backward
     static final boolean DRIVE_X = false;   // Drive right/left (not DRIVE_Y)
 
-    double pos_y=robotGlobalYCoordinatePosition, pos_x=robotGlobalXCoordinatePosition, pos_angle=robotOrientationRadians;  // Allows us to specify movement ABSOLUTELY
-
     @Override
     public void runOpMode() throws InterruptedException {
 
@@ -29,6 +25,7 @@ public class AutonomousBlueNear extends AutonomousBase {
         telemetry.update();
         robot.init(hardwareMap,true);
         redAlliance  = false;
+        runningAutonomousFar = false;
 
         robot.limelightPipelineSwitch( 1 );
         robot.limelightStart();  // Start polling for data (skipping this has getLatestResult() return null results)
@@ -37,28 +34,41 @@ public class AutonomousBlueNear extends AutonomousBase {
         while (!isStarted()) {
             // Do we need to change any of the other autonomous options?
             processAutonomousInitMenu(false);  // not auto5 start position
-            // Process limelight for obelisk detection
-            processLimelightObelisk();
             // Pause briefly before looping
             idle();
         } // !isStarted
 
-        robot.limelightStop();
-        resetGlobalCoordinatePosition();
-        scoringZones = 0;
-
         // Start the autonomous timer so we know how much time is remaining when cycling samples
         autonomousTimer.reset();
 
+        // Establish our starting position on the field (in field coordinate system)
+        resetGlobalCoordinatePositionAuto( 38.6, 54.3, -90.0 );
+
+        // Drive away from the wall to a point that can see the obelisk
+        driveToPosition( 34.0, 45.0, -90.0, DRIVE_SPEED_30, TURN_SPEED_15, DRIVE_THRU);
+        driveToPosition( 24.2, 17.6, -20.0, DRIVE_SPEED_50, TURN_SPEED_15, DRIVE_TO);
+
+        // Process limelight for obelisk detection
+        for( int i=0; i<3; i++ ) {
+            telemetry.addData("ALLIANCE", "%s", ((redAlliance)? "RED":"BLUE"));
+            telemetry.addData("Odometry","x=%.2f y=%.2f  %.2f deg",
+                 robotGlobalXCoordinatePosition, robotGlobalYCoordinatePosition, Math.toDegrees(robotOrientationRadians) );
+            processLimelightObelisk();
+            telemetry.update();
+            // Pause briefly before looping
+            idle();
+        }
+
+        // We're done with the obelisk; switch to the pipeline for the Goal apriltag
+        robot.limelightPipelineSwitch( (redAlliance)? 7:6 );
+
         //---------------------------------------------------------------------------------
         // AUTONOMOUS ROUTINE:  The following method is our main autonomous.
-        // Assume turret position, flapper, and flywheel motor power is in position
-//      mainAutonomous( obeliskID );
-        // just park for now!
-        driveToPosition(19.0, 18.0, 0.0, DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_TO);
-
+//      unitTestOdometryDrive();
+        mainAutonomous( obeliskID );
         //---------------------------------------------------------------------------------
 
+        robot.limelightStop();
         telemetry.addData("Program", "Complete");
         telemetry.update();
 
@@ -76,21 +86,6 @@ public class AutonomousBlueNear extends AutonomousBase {
     } // testGyroDrive
 
     /*--------------------------------------------------------------------------------------------*/
-    // TEST CODE: Verify odometry-based motion functions against a tape measure
-    private void unitTestOdometryDrive() {
-        telemetry.addData("Target", "x=24.0, y=0.0f, 0.00 deg (100%)");
-        // reset our timer and drive forward 20"
-        autonomousTimer.reset();
-        driveToPosition(24.0, 0.0, 0.0, DRIVE_SPEED_100, TURN_SPEED_80, DRIVE_TO);
-        double driveTime = autonomousTimer.milliseconds() / 1000.0;
-        performEveryLoop();  // ensure our odometry is updated
-        telemetry.addData("Odometry", "x=%.2f, y=%.2f, %.2f deg", robotGlobalXCoordinatePosition, robotGlobalYCoordinatePosition, Math.toDegrees(robotOrientationRadians));
-        telemetry.addData("Drive Time", "%.3f sec", driveTime);
-        telemetry.update();
-        sleep(30000);
-    }
-
-    /*--------------------------------------------------------------------------------------------*/
     /* Autonomous Red Far:                                                                        */
     /*   1 Starting point                                                                         */
     /*   2 Score preloads                                                                         */
@@ -99,61 +94,50 @@ public class AutonomousBlueNear extends AutonomousBase {
     /*   5 Score collected balls                                                                  */
     /*--------------------------------------------------------------------------------------------*/
     private void mainAutonomous(BallOrder obeliskID) {
+        double shooterPowerNear = 0.45;
 
         // Do we start with an initial delay?
         if( startDelaySec > 0 ) {
             sleep( startDelaySec * 1000 );
         }
 
-        // Score Preload Balls
-        scorePreloadBalls( obeliskID );
-//      driveToFirstTickMark();
-//      scorePreloadBalls();
+        //===== Score Preload Balls (from the NEAR zone) ==========
+        // Enable collector/InKeeper so it's safe to spindex
+        robot.intakeMotor.setPower(0.90);
+        // Even if we delay, we want to immediately start up getting shooter up to speed
+        robot.shooterMotorsSetPower( shooterPowerNear );
+        // Enable automatic shooter power/angle as we drive the next segment
+        autoAimEnabled = true;
+        // Drive to where we can both shoot and refresh our field position based on the AprilTag
+        driveToPosition( 24.2, 17.6, +49.0, DRIVE_SPEED_30, TURN_SPEED_15, DRIVE_TO);
+        autoAimEnabled = false;
+        scoreThreeBallsFromField(obeliskID, PPG_23);
+        // update our field position based on the AprilTag
+        robot.setPinpointFieldPosition(robot.limelightFieldXpos, robot.limelightFieldYpos, robot.limelightFieldAngleDeg);
+/*
+        // Collect and Score 3rd spike mark
+        if( doSpikeMark3 ) {
+            collectSpikemark3FromNear( redAlliance );
+            scoreThreeBallsFromField(obeliskID, (redAlliance)? GPP_21:GPP_21 );
+        }
 
-        // Drive away from the score line for the MOVEMENT points
-        driveToPosition(-32.0, 0.0, 0.0, DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_TO);
+        // Collect and Score 2nd spike mark
+        if( doSpikeMark2 ) {
+            collectSpikemark2FromNear( redAlliance );
+            scoreThreeBallsFromField(obeliskID, (redAlliance)? PPG_23:PPG_23 );
+        }
+
+        // Collect and Score 1st spike mark
+        if( doSpikeMark1 ) {
+            collectSpikemark1FromNear(redAlliance);
+            scoreThreeBallsFromField(obeliskID, (redAlliance)? PGP_22:PGP_22 );
+        }
+*/
+        // Drive the final position we want for MOVEMENT points
+        driveToPosition(40.7, 17.6, +49.0, DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_TO);
 
         // ensure motors are turned off even if we run out of time
         robot.driveTrainMotorsZero();
     } // mainAutonomous
-
-    /*--------------------------------------------------------------------------------------------*/
-    private void scorePreloadBalls(BallOrder obeliskID) {
-        // Turn on flywheel motor
-        if( opModeIsActive() ) {
-            telemetry.addData("Motion", "Flywheel Ramp Up");
-            telemetry.update();
-            // Start to ramp up the shooter
-            double shooterPower = 0.55;
-            robot.shooterMotorsSetPower( shooterPower );
-            // Start with robot facing the goal (not the obelisk)
-            driveToPosition(-12.0, 0.0, 0.0, DRIVE_SPEED_10, TURN_SPEED_15, DRIVE_TO);
-            // Drive forward and rotate 180deg so we can shoot
-//          driveToPosition(11.0, 0.0, 0.0, DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_THRU);
-            // Point the turret toward the goal
-            robot.shooterServo.setPosition(0.5);  // NOT ACTUALLY USED
-            robot.turretServoSetPosition(0.43); // rotated left toward BLUE goal);
-//          driveToPosition(28.5, 11.5, -179.0, DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_TO);
-            // Turn on the collector to help retain balls during spindexing
-            robot.intakeMotor.setPower(0.90);
-            sleep(4000 ); // Wait a bit longer for flywheels to reach speed
-            // spindexer is loaded in P3=PURPLE P2=PURPLE P1=GREEN order
-            //  21 = GPP (green purple purple)
-            //  22 = PGP (purple green purple)
-            //  23 = PPG (purple purple green)
-            SpindexerState[] shootOrder = getObeliskShootOrder(obeliskID, PPG_23);
-            for(int i=0; i<shootOrder.length; i++) {
-                // rotate to the next position
-                robot.spinServoSetPosition( shootOrder[i] );
-                launchBall();
-                if( !opModeIsActive() ) break;
-                sleep(2000 );
-            }
-        } // opModeIsActive
-    } // scoreSamplePreload
-
-    private void driveToFirstTickMark() {
-//        driveToPosition()
-    }
 
 } /* AutonomousBlueNear */

@@ -42,8 +42,7 @@ public class AutonomousRedFar extends AutonomousBase {
         } // !isStarted
 
         robot.limelightStop();
-        resetGlobalCoordinatePosition();
-        scoringZones = 0;
+        resetGlobalCoordinatePositionAuto( 0.0, 0.0, 0.0 );
 
         // Start the autonomous timer so we know how much time is remaining when cycling samples
         autonomousTimer.reset();
@@ -121,7 +120,7 @@ public class AutonomousRedFar extends AutonomousBase {
     /*--------------------------------------------------------------------------------------------*/
     private void mainAutonomous(BallOrder obeliskID) {
         double shooterPowerFar = 0.55;
-        
+
         // Do we start with an initial delay?
         if( startDelaySec > 0 ) {
             sleep( startDelaySec * 1000 );
@@ -139,29 +138,29 @@ public class AutonomousRedFar extends AutonomousBase {
         // Must not go so far we are no longer within the scoring zone!
         driveToPosition( 11.0, 0.0, 0.0, DRIVE_SPEED_30, TURN_SPEED_15, DRIVE_TO);
         autoAimEnabled = false;
-        scoreThreeBallsFromFar(obeliskID, PPG_23);
+        scoreThreeBallsFromField(obeliskID, PPG_23);
 
         // Collect and Score corner balls
         if( doSpikeMark0 ) {
             collectSpikemark0FromFar(redAlliance, shooterPowerFar);
-            scoreThreeBallsFromFar(obeliskID, (redAlliance)? PPG_23:GPP_21 );
+            scoreThreeBallsFromField(obeliskID, (redAlliance)? PPG_23:GPP_21 );
         }
 
         // Collect and Score 1st spike mark
         if( doSpikeMark1 ) {
             collectSpikemark1FromFar(redAlliance, shooterPowerFar);
-            scoreThreeBallsFromFar(obeliskID, (redAlliance)? PGP_22:PGP_22 );
+            scoreThreeBallsFromField(obeliskID, (redAlliance)? PGP_22:PGP_22 );
         }
 
         // Collect and Score 2nd spike mark
         if( doSpikeMark2 ) {
             collectSpikemark2FromFar(redAlliance, shooterPowerFar);
-            scoreThreeBallsFromFar(obeliskID, (redAlliance)? PPG_23:PPG_23 );
+            scoreThreeBallsFromField(obeliskID, (redAlliance)? PPG_23:PPG_23 );
         }
         // Collect and Score 3rd spike mark
         if( doSpikeMark3 ) {
             collectSpikemark3FromFar( redAlliance,shooterPowerFar );
-            scoreThreeBallsFromFar(obeliskID, (redAlliance)? GPP_21:GPP_21 );
+            scoreThreeBallsFromField(obeliskID, (redAlliance)? GPP_21:GPP_21 );
         }
 
         // Drive away from the score line for the MOVEMENT points
