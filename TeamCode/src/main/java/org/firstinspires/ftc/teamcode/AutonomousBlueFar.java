@@ -53,9 +53,6 @@ public class AutonomousBlueFar extends AutonomousBase {
         mainAutonomous( obeliskID );
         //---------------------------------------------------------------------------------
 
-        // Ensure spindexer servo stops in case we exit while the spindexer is rotating
-//      robot.spinServoCR.setPower(0.0);
-
         telemetry.addData("Program", "Complete");
         telemetry.update();
 
@@ -72,9 +69,8 @@ public class AutonomousBlueFar extends AutonomousBase {
         gyroTurn(TURN_SPEED_20, (startAngle + 45) );   // Turn CW 45 degrees
     } // testGyroDrive
 
-
     /*--------------------------------------------------------------------------------------------*/
-    /* Autonomous Red Far:                                                                        */
+    /* Autonomous Red/Blue Far:                                                                   */
     /*   1 Starting point                                                                         */
     /*   2 Score preloads                                                                         */
     /*   3 Collect from tick marks (1, 2)                                                         */
@@ -83,7 +79,7 @@ public class AutonomousBlueFar extends AutonomousBase {
     /*--------------------------------------------------------------------------------------------*/
     private void mainAutonomous(BallOrder obeliskID) {
         double shooterPowerFar = 0.55;
-        
+
         // Do we start with an initial delay?
         if( startDelaySec > 0 ) {
             sleep( startDelaySec * 1000 );
@@ -91,7 +87,7 @@ public class AutonomousBlueFar extends AutonomousBase {
 
         //===== Score Preload Balls (from the FAR zone) ==========
         // Enable collector/InKeeper so it's safe to spindex
-        robot.intakeMotor.setPower(0.90);
+        robot.intakeMotor.setPower( robot.INTAKE_FWD_COLLECT );
         // Even if we delay, we want to immediately start up getting shooter up to speed
         robot.shooterMotorsSetPower( shooterPowerFar );
         // Enable automatic shooter power/angle as we drive the next segment
@@ -104,31 +100,32 @@ public class AutonomousBlueFar extends AutonomousBase {
         scoreThreeBallsFromField(obeliskID, PPG_23);
 
         // Collect and Score corner balls
-        if( doSpikeMark0 ) {
-            collectSpikemark0FromFar(redAlliance, shooterPowerFar);
+        if( doCorner3 ) {
+            collectCorner3FromFar(redAlliance);
             scoreThreeBallsFromField(obeliskID, (redAlliance)? PPG_23:GPP_21 );
         }
 
         // Collect and Score 1st spike mark
         if( doSpikeMark1 ) {
-            collectSpikemark1FromFar(redAlliance, shooterPowerFar);
+            collectSpikemarkFromFar(1,redAlliance);
             scoreThreeBallsFromField(obeliskID, (redAlliance)? PGP_22:PGP_22 );
         }
 
         // Collect and Score 2nd spike mark
         if( doSpikeMark2 ) {
-            collectSpikemark2FromFar(redAlliance, shooterPowerFar);
+            collectSpikemarkFromFar(2,redAlliance);
             scoreThreeBallsFromField(obeliskID, (redAlliance)? PPG_23:PPG_23 );
         }
         // Collect and Score 3rd spike mark
         if( doSpikeMark3 ) {
-            collectSpikemark3FromFar( redAlliance,shooterPowerFar );
+            collectSpikemarkFromFar(3,redAlliance);
             scoreThreeBallsFromField(obeliskID, (redAlliance)? GPP_21:GPP_21 );
         }
 
         // Drive away from the score line for the MOVEMENT points
         driveToPosition(32.0, 0.0, 0.0, DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_TO);
 
+        // TODO: Remove this once all FAR movements are shifted to the FIELD frame of reference (see NEAR)
         // Transfer this setting to the hardware class used by Telop, but
         // shift to center of the field as the frame of reference
         robot.resetGlobalCoordinatePosition( robotGlobalXCoordinatePosition - 62.8,

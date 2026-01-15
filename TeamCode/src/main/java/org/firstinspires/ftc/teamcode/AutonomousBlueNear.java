@@ -103,7 +103,7 @@ public class AutonomousBlueNear extends AutonomousBase {
 
         //===== Score Preload Balls (from the NEAR zone) ==========
         // Enable collector/InKeeper so it's safe to spindex
-        robot.intakeMotor.setPower(0.90);
+        robot.intakeMotor.setPower( robot.INTAKE_FWD_COLLECT );
         // Even if we delay, we want to immediately start up getting shooter up to speed
         robot.shooterMotorsSetPower( shooterPowerNear );
         // Enable automatic shooter power/angle as we drive the next segment
@@ -114,22 +114,23 @@ public class AutonomousBlueNear extends AutonomousBase {
         scoreThreeBallsFromField(obeliskID, PPG_23);
         // update our field position based on the AprilTag
         robot.setPinpointFieldPosition(robot.limelightFieldXpos, robot.limelightFieldYpos, robot.limelightFieldAngleDeg);
-/*
+
+/* TODO: replace the movements in here with those appropriate for NEAR driving paths
         // Collect and Score 3rd spike mark
         if( doSpikeMark3 ) {
-            collectSpikemark3FromNear( redAlliance );
+            collectSpikemarkFromNear(3,redAlliance );
             scoreThreeBallsFromField(obeliskID, (redAlliance)? GPP_21:GPP_21 );
         }
 
         // Collect and Score 2nd spike mark
         if( doSpikeMark2 ) {
-            collectSpikemark2FromNear( redAlliance );
+            collectSpikemarkFromNear(2,redAlliance );
             scoreThreeBallsFromField(obeliskID, (redAlliance)? PPG_23:PPG_23 );
         }
 
         // Collect and Score 1st spike mark
         if( doSpikeMark1 ) {
-            collectSpikemark1FromNear(redAlliance);
+            collectSpikemarkFromNear(1,redAlliance);
             scoreThreeBallsFromField(obeliskID, (redAlliance)? PGP_22:PGP_22 );
         }
 */

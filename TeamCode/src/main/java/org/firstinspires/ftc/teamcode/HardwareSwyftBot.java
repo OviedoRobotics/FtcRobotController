@@ -119,6 +119,9 @@ public class HardwareSwyftBot
     //====== 2025 DECODE SEASON MECHANISM MOTORS (RUN_USING_ENCODER) =====
     protected DcMotorEx intakeMotor     = null;
 
+    public final static double INTAKE_FWD_COLLECT = +0.90;  // aggressively collect
+    public final static double INTAKE_REV_REJECT  = -0.40;  // gently reject overcollect so don't send flying
+
     protected DcMotorEx shooterMotor1   = null;  // upper 
     protected DcMotorEx shooterMotor2   = null;  // lower
     public    double    shooterMotor1Vel = 0.0;  // encoder counts per second
@@ -362,7 +365,7 @@ public class HardwareSwyftBot
 
         //--------------------------------------------------------------------------------------------
         // Define and Initialize intake motor (left side on ROBOT1, right side on ROBOT2)
-        intakeMotor  = hwMap.get(DcMotorEx.class,"IntakeMotor");
+        intakeMotor = hwMap.get(DcMotorEx.class,"IntakeMotor");
         intakeMotor.setDirection( (isRobot2)? DcMotor.Direction.REVERSE :  DcMotor.Direction.FORWARD);
         intakeMotor.setPower( 0.0 );
         intakeMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);

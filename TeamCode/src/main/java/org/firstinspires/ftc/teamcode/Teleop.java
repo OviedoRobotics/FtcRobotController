@@ -491,7 +491,7 @@ public abstract class Teleop extends LinearOpMode {
         {
             if (intakeMotorOnFwd == false){
                 // Turn on collector in FORWARD
-                robot.intakeMotor.setPower(0.90);
+                robot.intakeMotor.setPower( robot.INTAKE_FWD_COLLECT );
                 intakeMotorOnFwd = true;
                 intakeMotorOnRev = false;
             } else{
@@ -506,7 +506,7 @@ public abstract class Teleop extends LinearOpMode {
         {
             if (intakeMotorOnRev == false){
                 // Turn on collector in REVERSE
-                robot.intakeMotor.setPower(-0.90);
+                robot.intakeMotor.setPower( robot.INTAKE_REV_REJECT );
                 intakeMotorOnFwd = false;
                 intakeMotorOnRev = true;
             } else{
