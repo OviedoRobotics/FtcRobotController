@@ -47,7 +47,7 @@ public class AutonomousBlueFar extends AutonomousBase {
         autonomousTimer.reset();
 
         // Establish our starting position on the field (in field coordinate system)
-        resetGlobalCoordinatePositionAuto(-62.8, transposeRedOrBlueY(0.0, 0.0, Alliance.BLUE), 0 );
+        resetGlobalCoordinatePositionAuto(-62.8, +14.3, 0 );
 
         //---------------------------------------------------------------------------------
         // AUTONOMOUS ROUTINE:  The following method is our main autonomous.
@@ -97,7 +97,7 @@ public class AutonomousBlueFar extends AutonomousBase {
         // Drive out away from wall, both to allow us to rotate the turret and not have the
         // shooter drive belt touch the field wall, but also to be closer to the goal.
         // Must not go so far we are no longer within the scoring zone!
-        driveToPosition(-51.8, transposeRedOrBlueY(0.0, 0.0, Alliance.BLUE), 0.0, DRIVE_SPEED_30, TURN_SPEED_15, DRIVE_TO);
+        driveToPosition(-51.8, +14.3, 0.0, DRIVE_SPEED_30, TURN_SPEED_15, DRIVE_TO);
         autoAimEnabled = false;
         scoreThreeBallsFromField(obeliskID, PPG_23);
 
