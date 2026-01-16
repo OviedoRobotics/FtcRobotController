@@ -1228,7 +1228,6 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
 
     /*--------------------------------------------------------------------------------------------*/
     public void collectCorner3FromFar( boolean isRed ) {
-        Alliance alliance = isRed ? Alliance.RED : Alliance.BLUE;
 
         // Transition from shooting zone to corner
         if( opModeIsActive() ) {
@@ -1276,7 +1275,6 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
 
     /*--------------------------------------------------------------------------------------------*/
     public void collectSpikemarkFromFar( int spikeMarkNumber, boolean isRed ) {
-        Alliance alliance = isRed ? Alliance.RED : Alliance.BLUE;
         double approach1x, approach2x, approach3x, redStartx, blueStartx, endx, xPos, yPos, angDeg;
         // Establish the numbers unique to each spike mark
         switch( spikeMarkNumber ) {
