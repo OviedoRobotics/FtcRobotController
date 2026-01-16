@@ -42,10 +42,12 @@ public class AutonomousBlueFar extends AutonomousBase {
         } // !isStarted
 
         robot.limelightStop();
-        resetGlobalCoordinatePositionAuto( 0.0, 0.0, 0.0 );
 
         // Start the autonomous timer so we know how much time is remaining when cycling samples
         autonomousTimer.reset();
+
+        // Establish our starting position on the field (in field coordinate system)
+        resetGlobalCoordinatePositionAuto( transposeX(0.0), transposeRedOrBlueY(0.0, 0.0, Alliance.BLUE), 0 );
 
         //---------------------------------------------------------------------------------
         // AUTONOMOUS ROUTINE:  The following method is our main autonomous.
@@ -78,7 +80,7 @@ public class AutonomousBlueFar extends AutonomousBase {
     /*   5 Score collected balls                                                                  */
     /*--------------------------------------------------------------------------------------------*/
     private void mainAutonomous(BallOrder obeliskID) {
-        double shooterPowerFar = 0.55;
+        double shooterVelocityNear = 1060;
 
         // Do we start with an initial delay?
         if( startDelaySec > 0 ) {
@@ -89,13 +91,13 @@ public class AutonomousBlueFar extends AutonomousBase {
         // Enable collector/InKeeper so it's safe to spindex
         robot.intakeMotor.setPower( robot.INTAKE_FWD_COLLECT );
         // Even if we delay, we want to immediately start up getting shooter up to speed
-        robot.shooterMotorsSetPower( shooterPowerFar );
+        robot.shooterMotorsSetVelocity( shooterVelocityNear );
         // Enable automatic shooter power/angle as we drive the next segment
         autoAimEnabled = true;
         // Drive out away from wall, both to allow us to rotate the turret and not have the
         // shooter drive belt touch the field wall, but also to be closer to the goal.
         // Must not go so far we are no longer within the scoring zone!
-        driveToPosition( 11.0, 0.0, 0.0, DRIVE_SPEED_30, TURN_SPEED_15, DRIVE_TO);
+        driveToPosition( transposeX(11.0), transposeRedOrBlueY(0.0, 0.0, Alliance.BLUE), 0.0, DRIVE_SPEED_30, TURN_SPEED_15, DRIVE_TO);
         autoAimEnabled = false;
         scoreThreeBallsFromField(obeliskID, PPG_23);
 
@@ -124,13 +126,6 @@ public class AutonomousBlueFar extends AutonomousBase {
 
         // Drive away from the score line for the MOVEMENT points
         driveToPosition(32.0, 0.0, 0.0, DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_TO);
-
-        // TODO: Remove this once all FAR movements are shifted to the FIELD frame of reference (see NEAR)
-        // Transfer this setting to the hardware class used by Telop, but
-        // shift to center of the field as the frame of reference
-        robot.resetGlobalCoordinatePosition( robotGlobalXCoordinatePosition - 62.8,
-                                             robotGlobalYCoordinatePosition + 14.3,
-                                             Math.toDegrees(robotOrientationRadians) - 0.0 );
 
         // ensure motors are turned off even if we run out of time
         robot.driveTrainMotorsZero();

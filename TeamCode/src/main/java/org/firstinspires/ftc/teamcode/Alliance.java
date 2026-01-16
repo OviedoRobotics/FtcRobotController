@@ -2,5 +2,9 @@ package org.firstinspires.ftc.teamcode;
 
 public enum Alliance {
     RED,
-    BLUE
+    BLUE;
+
+    double redOrBlue(double ifRed, double ifBlue) {
+        return this == RED ? ifRed : ifBlue;
+    }
 }

@@ -129,8 +129,7 @@ public class HardwareSwyftBot
     public    double    shooterMotor1Amps= 0.0;  // mA
     public    double    shooterMotor2Amps= 0.0;  // mA
 
-    public    double      shooterMotorsSet   = 0.0;   // TODO: these need to be velocities (not powers)
-    public    double      shooterMotorsGet   = 0.0;   // TODO: if we're going to check status
+    public    double      shooterMotorsSet   = 0.0;
     public    boolean     shooterMotorsReady = false; // Have we reached the target velocity?
     public    ElapsedTime shooterMotorsTimer = new ElapsedTime();
     public    double      shooterMotorsTime  = 0.0;   // how long it took to reach "ready" (msec)
@@ -504,10 +503,19 @@ public class HardwareSwyftBot
         //   getPower() / getVelocity() / getCurrent()
         shooterMotor1Vel = shooterMotor1.getVelocity();
         shooterMotor2Vel = shooterMotor2.getVelocity();
+        shooterMotorsReady = Math.abs(shooterMotorsSet - shooterMotor1Vel) < 10
+                && Math.abs(shooterMotorsSet - shooterMotor2Vel) < 10; // FIXME: is this a good threshold?
+        if(shooterMotorsTime == 0 && shooterMotorsReady) {
+            shooterMotorsTime = shooterMotorsTimer.time();
+        }
+
         // Where has the turret been commanded to?
         turretServoGet   = turretServo.getPosition();
         // Where is the turret currently located?  (average the two feedback values)
         turretServoPos   = (getTurretPosition(true) + getTurretPosition(false))/2.0;
+        if(turretServoIsBusy && Math.abs(turretServoSet - turretServoGet) < 0.01) {// FIXME: is this a good threshold?
+            turretServoIsBusy = false;
+        }
         // NOTE: motor mA data is NOT part of the bulk-read, so increases cycle time!
 //      shooterMotor1Amps = shooterMotor1.getCurrent(MILLIAMPS);
 //      shooterMotor2Amps = shooterMotor1.getCurrent(MILLIAMPS);
@@ -520,15 +528,17 @@ public class HardwareSwyftBot
     } // readBulkData
 
     /*--------------------------------------------------------------------------------------------*/
-    public void shooterMotorsSetPower( double shooterPower )
+    // Velocity in motor ticks per second.
+    public void shooterMotorsSetVelocity( double shooterVelocity )
     {
-        shooterMotor1.setPower( shooterPower );
-        shooterMotor2.setPower( shooterPower );
-        shooterMotorsSet = shooterPower;
+        shooterMotor1.setVelocity( shooterVelocity );
+        shooterMotor2.setVelocity( shooterVelocity );
+        shooterMotorsSet = shooterVelocity;
         // reset our "ready" flag and start a timer
-        shooterMotorsReady = false;  // TODO: Need to finish this logic
+        shooterMotorsReady = false;
         shooterMotorsTimer.reset();
-    } // shooterMotorsSetPower
+        shooterMotorsTime = 0;
+    } // shooterMotorsSetVelocity
 
     /*--------------------------------------------------------------------------------------------*/
     public void limelightPipelineSwitch( int pipeline_number )
@@ -699,8 +709,7 @@ public class HardwareSwyftBot
         
         // Store this setting so we can track progress of the turret motion
         turretServoSet    = targetPosition;
-        turretServoIsBusy = true;  // TODO: need performEveryLoop logic to clear/timeout!
-        
+        turretServoIsBusy = true;
     } // turretServoSetPosition
 
     /*--------------------------------------------------------------------------------------------*/
@@ -851,15 +860,15 @@ public class HardwareSwyftBot
     } // getShootDistance
 
     /*--------------------------------------------------------------------------------------------*/
-    // Convert distance from goal (inches) into a power setting for our shooter motors.
-    // Four our shooter and field layout, the value should be between 0.45 and 0.59
-    public static double computeShooterPower(double x) {
-        // power = 0.051 + (-2.53E-03)x + 3.9E-05x^2 + -1.21E-07x^3
-        double shooterPower = 0.51 + -2.53E-3 * x + 3.9E-5 * Math.pow(x,2) + -1.21E-7 * Math.pow(x,3);
-        shooterPower = Math.max(shooterPower, 0.45); // We should never be below 0.45
-        shooterPower = Math.min(shooterPower, 0.60); // We should never exceed 0.60
+    // Convert distance from goal (inches) into a velocity setting for our shooter motors.
+    // Four our shooter and field layout, the value should be between 1060 and 1340
+    public double computeShooterVelocity(double x) {
+        // power = 508 + 22.2x + -0.258x^2 + 1.05E-03x^3
+        double shooterPower = 508 + 22.2 * x + -0.258 * Math.pow(x,2) + 1.05E-03 * Math.pow(x,3);
+        shooterPower = Math.max(shooterPower, 1060); // We should never be below 1060
+        shooterPower = Math.min(shooterPower, 1340); // We should never exceed 1340
         return shooterPower;
-    } // computeShooterPower
+    } // computeShooterVelocity
 
     /*--------------------------------------------------------------------------------------------*/
     public double getShootAngleDeg(Alliance alliance) {
