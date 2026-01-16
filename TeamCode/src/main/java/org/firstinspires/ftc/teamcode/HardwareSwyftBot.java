@@ -871,6 +871,17 @@ public class HardwareSwyftBot
     } // computeShooterVelocity
 
     /*--------------------------------------------------------------------------------------------*/
+    // Convert distance from goal (inches) into a power setting for our shooter motors.
+    // Four our shooter and field layout, the value should be between 0.45 and 0.59
+    public double computeShooterPower(double x) {
+        // power = 0.051 + (-2.53E-03)x + 3.9E-05x^2 + -1.21E-07x^3
+        double shooterPower = 0.51 + -2.53E-3 * x + 3.9E-5 * Math.pow(x,2) + -1.21E-7 * Math.pow(x,3);
+        shooterPower = Math.max(shooterPower, 0.45); // We should never be below 0.45
+        shooterPower = Math.min(shooterPower, 0.60); // We should never exceed 0.60
+        return shooterPower;
+    } // computeShooterPower
+
+    /*--------------------------------------------------------------------------------------------*/
     public double getShootAngleDeg(Alliance alliance) {
         double currentX = robotGlobalXCoordinatePosition;
         double currentY = robotGlobalYCoordinatePosition;
