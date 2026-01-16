@@ -307,12 +307,12 @@ public abstract class AutonomousBase extends LinearOpMode {
         double currentY = robotGlobalYCoordinatePosition;
         double targetX, targetY;
         if( runningAutonomousFar ) {
-            targetX = alliance.redOrBlue(+62.2, +62.2);
-            targetY = alliance.redOrBlue(-61.3, +61.3);
+            targetX = redAlliance ? +62.2 : +62.2;
+            targetY = redAlliance ? -61.3 : +61.3;
         }
         else {
-            targetX = alliance.redOrBlue(+60.0, +60.0);  // 6ft = 72"
-            targetY = alliance.redOrBlue(-60.0, +60.0);  // 6ft = 72"
+            targetX = redAlliance ? +60.0 : +60.0;  // 6ft = 72"
+            targetY = redAlliance ? -60.0 : +60.0;  // 6ft = 72"
         }
         // Compute distance to target point inside the goal
         double deltaX = targetX - currentX;
@@ -334,7 +334,6 @@ public abstract class AutonomousBase extends LinearOpMode {
         else {
             targetX = (alliance == Alliance.BLUE)? +60.0 : +60.0;  // 6ft = 72"
             targetY = (alliance == Alliance.BLUE)? +57.0 : -58.0;  // 6ft = 72"
-
         }
        // Compute distance to target point inside the goal
         double deltaX = targetX - currentX;
@@ -1235,12 +1234,12 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
         if( opModeIsActive() ) {
           // Reset the spindexer for collecting GPP
           robot.spinServoSetPosition( (isRed)? SPIN_P1:SPIN_P3 );
-          driveToPosition( -56.4, alliance.redOrBlue(-36.8, +36.8), ((isRed)? -90.0:+90.0), DRIVE_SPEED_90, TURN_SPEED_10, DRIVE_THRU);
+          driveToPosition( -56.4, ((isRed)? -36.8 : +36.8), ((isRed)? -90.0:+90.0), DRIVE_SPEED_90, TURN_SPEED_10, DRIVE_THRU);
           // Turn on collector
           robot.intakeMotor.setPower( robot.INTAKE_FWD_COLLECT );
-          driveToPosition(-56.9, alliance.redOrBlue(-41.5, +41.5), ((isRed)? -98.0:+98.0), DRIVE_SPEED_90, TURN_SPEED_10, DRIVE_THRU);
+          driveToPosition(-56.9, ((isRed)? -41.5 : +41.5), ((isRed)? -98.0:+98.0), DRIVE_SPEED_90, TURN_SPEED_10, DRIVE_THRU);
           // collect balls 1 and 2 (constrains ball 3 with the wheel/bumper)
-          driveToPosition(-58.0, alliance.redOrBlue(-56.3, +56.3), ((isRed)? -108.0:+108.0), DRIVE_SPEED_20, TURN_SPEED_10, DRIVE_TO);
+          driveToPosition(-58.0, ((isRed)? -56.3 : +56.3), ((isRed)? -108.0:+108.0), DRIVE_SPEED_20, TURN_SPEED_10, DRIVE_TO);
           }
         // Collect the 3 corner balls
         if( opModeIsActive() ) {
@@ -1266,11 +1265,11 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
         if( opModeIsActive() ) {
             // reverse collector in case we over collected
             robot.intakeMotor.setPower( robot.INTAKE_REV_REJECT );
-            driveToPosition(-56.4, alliance.redOrBlue(-36.8, +36.8), ((isRed)? -90.0:+90), DRIVE_SPEED_90, TURN_SPEED_10, DRIVE_THRU);
+            driveToPosition(-56.4, ((isRed)? -36.8 : +36.8), ((isRed)? -90.0:+90), DRIVE_SPEED_90, TURN_SPEED_10, DRIVE_THRU);
             // Turn collector back on forward
             robot.intakeMotor.setPower( robot.INTAKE_FWD_COLLECT );
             autoAimEnabled = true;
-            driveToPosition(-50.8, alliance.redOrBlue(-16.3, +16.3), ((isRed)?  0.0:0.0), DRIVE_SPEED_80, TURN_SPEED_10, DRIVE_TO);
+            driveToPosition(-50.8, ((isRed)? -16.3 : +16.3), ((isRed)?  0.0:0.0), DRIVE_SPEED_80, TURN_SPEED_10, DRIVE_TO);
             autoAimEnabled = false;
         } // opModeIsActive
     } // collectCorner3FromFar
@@ -1292,9 +1291,9 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
         // Transition from shooting zone to spike-mark zone (spikemark #1)
         if( opModeIsActive() ) {
             // drive away from the far shooting zone in a curved path toward the 1st spike mark
-            driveToPosition( approach1x, alliance.redOrBlue(-15.3, +15.3), ((isRed)? -22.5:22.5), DRIVE_SPEED_90, TURN_SPEED_30, DRIVE_THRU);
-            driveToPosition( approach2x, alliance.redOrBlue(-17.3, +17.3), ((isRed)? -45.0:45.0), DRIVE_SPEED_90, TURN_SPEED_30, DRIVE_THRU);
-            driveToPosition( approach3x, alliance.redOrBlue(-21.3, +21.3), ((isRed)? -70.0:70.0), DRIVE_SPEED_90, TURN_SPEED_30, DRIVE_THRU);
+            driveToPosition( approach1x, ((isRed)? -15.3 : +15.3), ((isRed)? -22.5:22.5), DRIVE_SPEED_90, TURN_SPEED_30, DRIVE_THRU);
+            driveToPosition( approach2x, ((isRed)? -17.3 : +17.3), ((isRed)? -45.0:45.0), DRIVE_SPEED_90, TURN_SPEED_30, DRIVE_THRU);
+            driveToPosition( approach3x, ((isRed)? -21.3 : +21.3), ((isRed)? -70.0:70.0), DRIVE_SPEED_90, TURN_SPEED_30, DRIVE_THRU);
         }
         // Collect the 3 balls at that spike mark
         if( opModeIsActive() ) {
@@ -1302,30 +1301,30 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
             robot.intakeMotor.setPower( robot.INTAKE_FWD_COLLECT );
             // Drive to the final location prior to actual ball collection
             xPos   = (isRed)? redStartx : blueStartx;
-            yPos   = alliance.redOrBlue(-26.9, +26.9);
+            yPos   = ((isRed)? -26.9 : +26.9);
             angDeg = (isRed)? -90.0 : +90.0;
             driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_40, TURN_SPEED_30, DRIVE_THRU);
             // Drive into the 1st ball to collect it
-            yPos   = alliance.redOrBlue(-36.3, +36.3);
+            yPos   = ((isRed)? -36.3 : +36.3);
             driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_15, TURN_SPEED_15, DRIVE_THRU);
             robot.spinServoSetPosition( SPIN_P2 );
             // Drive into the 2nd ball to collect it
-            yPos   = alliance.redOrBlue(-42.3, +42.3);
+            yPos   = ((isRed)? -42.3 : +42.3);
             driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_15, TURN_SPEED_15, DRIVE_THRU);
             robot.spinServoSetPosition( SPIN_P3 );
             // Drive into the 3rd ball to collect it
-            yPos   = alliance.redOrBlue(-47.3, +47.3);
+            yPos   = ((isRed)? -47.3 : +47.3);
             driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_15, TURN_SPEED_15, DRIVE_TO);
         } // opModeIsActive
         // Drive back to the shooting zone (back the way we came!)
         if( opModeIsActive() ) {
             // reverse collector in case we over collected
             robot.intakeMotor.setPower( robot.INTAKE_REV_REJECT );
-            driveToPosition( endx, alliance.redOrBlue(-39.3, +39.3), ((isRed)? -80.0:80.0), DRIVE_SPEED_90, TURN_SPEED_30, DRIVE_THRU);
+            driveToPosition( endx, ((isRed)? -39.3 : +39.3), ((isRed)? -80.0:80.0), DRIVE_SPEED_90, TURN_SPEED_30, DRIVE_THRU);
             // Turn collector back on forward
             robot.intakeMotor.setPower( robot.INTAKE_FWD_COLLECT );
             autoAimEnabled = true;
-            driveToPosition(-50.8, alliance.redOrBlue(-16.3, +16.3), ((isRed)?  0.0:0.0), DRIVE_SPEED_80, TURN_SPEED_30, DRIVE_TO);
+            driveToPosition(-50.8, ((isRed)? -16.3 : +16.3), ((isRed)?  0.0:0.0), DRIVE_SPEED_80, TURN_SPEED_30, DRIVE_TO);
             autoAimEnabled = false;
         } // opModeIsActive
     } // collectSpikemarkFromFar
