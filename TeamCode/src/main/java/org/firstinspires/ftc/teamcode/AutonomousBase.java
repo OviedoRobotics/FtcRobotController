@@ -292,9 +292,9 @@ public abstract class AutonomousBase extends LinearOpMode {
         robot.processInjectionStateMachine();
 //      robot.processSpindexerControl();  // only for continuous rotation
         // Compute the power/angle needed for auto-aiming
-        autoAimDistance = getShootDistanceAutoFar( (redAlliance)? Alliance.RED : Alliance.BLUE );
+        autoAimDistance = getShootDistanceAutoFar();
         autoAimVelocity = robot.computeShooterVelocity(autoAimDistance);
-        autoAimAngleDeg = getShootAngleDegAutoFar( (redAlliance)? Alliance.RED : Alliance.BLUE );
+        autoAimAngleDeg = getShootAngleDegAutoFar();
         if( autoAimEnabled ) {
            robot.setTurretAngle(autoAimAngleDeg);
            robot.shooterMotorsSetVelocity(autoAimVelocity);
@@ -302,7 +302,7 @@ public abstract class AutonomousBase extends LinearOpMode {
     } // performEveryLoop
 
     /*--------------------------------------------------------------------------------------------*/
-    public double getShootDistanceAutoFar(Alliance alliance) {
+    public double getShootDistanceAutoFar() {
         double currentX = robotGlobalXCoordinatePosition;
         double currentY = robotGlobalYCoordinatePosition;
         double targetX, targetY;
@@ -322,18 +322,18 @@ public abstract class AutonomousBase extends LinearOpMode {
     } // getShootDistanceAutoFar    
 
     /*--------------------------------------------------------------------------------------------*/
-    public double getShootAngleDegAutoFar(Alliance alliance) {
+    public double getShootAngleDegAutoFar() {
         double currentX = robotGlobalXCoordinatePosition;
         double currentY = robotGlobalYCoordinatePosition;
         double targetX, targetY;
         // Compute distance to target point inside the goal
         if( runningAutonomousFar ) {
-            targetX = (alliance == Alliance.BLUE) ? +137 : +137;
-            targetY = (alliance == Alliance.BLUE) ? +47 : -47;
+            targetX = redAlliance ? +74.2 : +74.2;
+            targetY = redAlliance ? -61.3 : +61.3;
         }
         else {
-            targetX = (alliance == Alliance.BLUE)? +60.0 : +60.0;  // 6ft = 72"
-            targetY = (alliance == Alliance.BLUE)? +57.0 : -58.0;  // 6ft = 72"
+            targetX = redAlliance ? +60.0 : +60.0;  // 6ft = 72"
+            targetY = redAlliance ? -58.0 : +57.0;  // 6ft = 72"
         }
        // Compute distance to target point inside the goal
         double deltaX = targetX - currentX;

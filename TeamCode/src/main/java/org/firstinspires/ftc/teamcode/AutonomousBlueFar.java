@@ -125,7 +125,7 @@ public class AutonomousBlueFar extends AutonomousBase {
         }
 
         // Drive away from the score line for the MOVEMENT points
-        driveToPosition(32.0, 0.0, 0.0, DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_TO);
+        driveToPosition(-30.8, +14.3, 0.0, DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_TO);
 
         // ensure motors are turned off even if we run out of time
         robot.driveTrainMotorsZero();
