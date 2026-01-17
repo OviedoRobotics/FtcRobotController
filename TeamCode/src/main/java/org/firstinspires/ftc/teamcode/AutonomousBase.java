@@ -76,7 +76,7 @@ public abstract class AutonomousBase extends LinearOpMode {
 
     boolean runningAutonomousFar                = true;  // affects our target location
     double  autoAimDistance                     = 0.0;   // inches  (always calculated)
-    double  autoAimVelocity                     = 0.0;   // velocity   (always calculated)
+    double  autoAimPower                        = 0.0;   // power   (always calculated)
     double  autoAimAngleDeg                     = 0.0;   // degrees (always calculated)
     boolean autoAimEnabled                      = false; // turret power/angle only adjusted when this flag is enabled
     
@@ -293,11 +293,11 @@ public abstract class AutonomousBase extends LinearOpMode {
 //      robot.processSpindexerControl();  // only for continuous rotation
         // Compute the power/angle needed for auto-aiming
         autoAimDistance = getShootDistanceAutoFar();
-        autoAimVelocity = robot.computeShooterVelocity(autoAimDistance);
+        autoAimPower    = robot.computeShooterPower(autoAimDistance);
         autoAimAngleDeg = getShootAngleDegAutoFar();
         if( autoAimEnabled ) {
            robot.setTurretAngle(autoAimAngleDeg);
-           robot.shooterMotorsSetVelocity(autoAimVelocity);
+           robot.shooterMotorsSetPower(autoAimPower);
         }
     } // performEveryLoop
 
@@ -1404,7 +1404,7 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
             }
         } // opModeIsActive
         // Turn off shooter while we go collect more balls
-        robot.shooterMotorsSetVelocity( 0.0 );
+        robot.shooterMotorsSetPower( 0.0 );
         // Turn off collector
         robot.intakeMotor.setPower(0.0);
     } // scoreThreeBallsFromFar

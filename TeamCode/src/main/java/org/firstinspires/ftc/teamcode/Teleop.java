@@ -20,7 +20,7 @@ public abstract class Teleop extends LinearOpMode {
     boolean backwardDriveControl = false; // drive controls backward (other end of robot becomes "FRONT")
     boolean controlMultSegLinear = true;
 
-    double  shooterVelocity = 1300;  // far shooting default. scale for location.
+    double  shooterPower = 0.55;  // far shooting default. scale for location.
     double  odoShootDistance = 0.0;
     double  odoShootAngleDeg = 0.0;
     boolean autoAimEnabled   = false; // turret power/angle only adjusted when this flag is enabled
@@ -192,7 +192,7 @@ public abstract class Teleop extends LinearOpMode {
             telemetry.addData(" "," %.2f in/sec %.2f in/sec %.2f deg/sec", 
                    robot.robotGlobalXvelocity, robot.robotGlobalYvelocity, robot.robotAngleVelocity );
             telemetry.addData("Goal", "%s dist: %.2f in, angle: %.2f deg", ((blueAlliance)? "BLUE":"RED"), odoShootDistance, odoShootAngleDeg);
-            telemetry.addData("Shooter Velocity", "%.3f (P1 tri/cross to adjust)", shooterVelocity);
+//          telemetry.addData("Shooter POWER", "%.3f (P1 tri/cross to adjust)", shooterPower);
 //          telemetry.addData("Shooter RPM", "%.1f %.1f", robot.shooterMotor1Vel, robot.shooterMotor2Vel );
             telemetry.addData("Turret", "set %.3f get %.3f analog %.3f", robot.turretServoSet, robot.turretServoGet, robot.turretServoPos );
 //          telemetry.addData("Shooter mA", "%.1f %.1f", robot.shooterMotor1Amps, robot.shooterMotor2Amps );
@@ -564,14 +564,14 @@ public abstract class Teleop extends LinearOpMode {
     /*---------------------------------------------------------------------------------*/
     void processShooter() {
         if( gamepad1.triangleWasPressed() ) {
-            shooterVelocity += 10;
+            shooterPower += 0.01;
             if(shooterMotorsOn) {
-                robot.shooterMotorsSetVelocity( shooterVelocity );
+                robot.shooterMotorsSetPower( shooterPower );
             }
         } else if( gamepad1.crossWasPressed() ) {
-            shooterVelocity -= 10;
+            shooterPower -= 0.01;
             if(shooterMotorsOn) {
-                robot.shooterMotorsSetVelocity( shooterVelocity );
+                robot.shooterMotorsSetPower( shooterPower );
             }
         }
 
@@ -579,10 +579,10 @@ public abstract class Teleop extends LinearOpMode {
         if( gamepad2.circleWasPressed() )
         {
             if (shooterMotorsOn == false){
-                robot.shooterMotorsSetVelocity( shooterVelocity );
+                robot.shooterMotorsSetPower( shooterPower );
                 shooterMotorsOn = true;
             } else {
-                robot.shooterMotorsSetVelocity( 0.0 );
+                robot.shooterMotorsSetPower( 0.0 );
                 shooterMotorsOn = false;
             }
         }
@@ -599,9 +599,9 @@ public abstract class Teleop extends LinearOpMode {
             odoShootAngleDeg = robot.getShootAngleDeg( (blueAlliance)? Alliance.BLUE : Alliance.RED );
             // set the turret angle and shooter power
             robot.setTurretAngle(odoShootAngleDeg);
-            shooterVelocity = robot.computeShooterVelocity(odoShootDistance);
+            shooterPower = robot.computeShooterPower(odoShootDistance);
             if(shooterMotorsOn) {
-                robot.shooterMotorsSetVelocity(shooterVelocity);
+                robot.shooterMotorsSetPower(shooterPower);
             }
         } // autoAimEnabled
         else {
@@ -613,9 +613,9 @@ public abstract class Teleop extends LinearOpMode {
         if (gamepad1.rightBumperWasPressed()) {
             // reset turret to the center and reset shooter power to FAR zone
             robot.turretServoSetPosition(robot.TURRET_SERVO_INIT);
-            shooterVelocity = 1300;
+            shooterPower = 0.55;
             if(shooterMotorsOn) {
-                robot.computeShooterVelocity(shooterVelocity);
+                robot.shooterMotorsSetPower(shooterPower);
             }
         }
     } // processTurretAutoAim

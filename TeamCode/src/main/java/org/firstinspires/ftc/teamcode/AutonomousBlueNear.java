@@ -98,7 +98,7 @@ public class AutonomousBlueNear extends AutonomousBase {
     /*   5 Score collected balls                                                                  */
     /*--------------------------------------------------------------------------------------------*/
     private void mainAutonomous(BallOrder obeliskID) {
-        double shooterVelocityNear = 1060;
+        double shooterPowerNear = 0.45;
 
         // Do we start with an initial delay?
         if( startDelaySec > 0 ) {
@@ -109,7 +109,7 @@ public class AutonomousBlueNear extends AutonomousBase {
         // Enable collector/InKeeper so it's safe to spindex
         robot.intakeMotor.setPower( robot.INTAKE_FWD_COLLECT );
         // Even if we delay, we want to immediately start up getting shooter up to speed
-        robot.shooterMotorsSetVelocity( shooterVelocityNear );
+        robot.shooterMotorsSetPower( shooterPowerNear );
         // Enable automatic shooter power/angle as we drive the next segment
         autoAimEnabled = true;
         // Drive to where we can both shoot and refresh our field position based on the AprilTag

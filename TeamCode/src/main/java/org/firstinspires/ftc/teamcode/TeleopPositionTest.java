@@ -19,10 +19,10 @@ public class TeleopPositionTest extends LinearOpMode {
     // 4=lift/injecter servo
     // 5=goBilda RGB LED    
     int       selectedMechanism = 0;
-    double [] stepSizes = { 10, 1, 0.1, 0.01, 0.001, 0.0001 };
-    int       stepIndex = 2;
+    double [] stepSizes = { 0.1, 0.01, 0.001, 0.0001 };
+    int       stepIndex = 0;
     double    shooterPos, turretPos, spinPos, liftPos, ledValue;
-    double    shooterVelocity = 1180;
+    double    shooterPower = 0.50;
 
     long    nanoTimeCurr=0, nanoTimePrev=0;
     double  elapsedTime, elapsedHz;
@@ -141,10 +141,10 @@ public class TeleopPositionTest extends LinearOpMode {
                         robot.shooterServo.setPosition(shooterPos);
                         break;
                     case 1 :
-                        shooterVelocity -= stepSizes[stepIndex];
-                        if( shooterVelocity < 1060 ) shooterVelocity = 1060;
-                        if( shooterVelocity > 1340 ) shooterVelocity = 1340;
-                        robot.shooterMotorsSetVelocity( shooterVelocity );
+                        shooterPower -= stepSizes[stepIndex];
+                        if( shooterPower < 0.0 ) shooterPower = 0.0;
+                        if( shooterPower > 1.0 ) shooterPower = 1.0;
+                        robot.shooterMotorsSetPower( shooterPower );
                         break;
                     case 2 :
                         turretPos -= stepSizes[stepIndex];
@@ -188,10 +188,10 @@ public class TeleopPositionTest extends LinearOpMode {
                         robot.shooterServo.setPosition(shooterPos);
                         break;
                     case 1 :
-                        shooterVelocity += stepSizes[stepIndex];
-                        if( shooterVelocity < 1060 ) shooterVelocity = 1060;
-                        if( shooterVelocity > 1340 ) shooterVelocity = 1340;
-                        robot.shooterMotorsSetVelocity( shooterVelocity );
+                        shooterPower += stepSizes[stepIndex];
+                        if( shooterPower < 0.0 ) shooterPower = 0.0;
+                        if( shooterPower > 1.0 ) shooterPower = 1.0;
+                        robot.shooterMotorsSetPower( shooterPower );
                         break;
                     case 2 :
                         turretPos += stepSizes[stepIndex];

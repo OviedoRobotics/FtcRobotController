@@ -80,7 +80,7 @@ public class AutonomousBlueFar extends AutonomousBase {
     /*   5 Score collected balls                                                                  */
     /*--------------------------------------------------------------------------------------------*/
     private void mainAutonomous(BallOrder obeliskID) {
-        double shooterVelocityNear = 1060;
+        double shooterPowerFar = 0.55;
 
         // Do we start with an initial delay?
         if( startDelaySec > 0 ) {
@@ -91,7 +91,7 @@ public class AutonomousBlueFar extends AutonomousBase {
         // Enable collector/InKeeper so it's safe to spindex
         robot.intakeMotor.setPower( robot.INTAKE_FWD_COLLECT );
         // Even if we delay, we want to immediately start up getting shooter up to speed
-        robot.shooterMotorsSetVelocity( shooterVelocityNear );
+        robot.shooterMotorsSetPower( shooterPowerFar );
         // Enable automatic shooter power/angle as we drive the next segment
         autoAimEnabled = true;
         // Drive out away from wall, both to allow us to rotate the turret and not have the

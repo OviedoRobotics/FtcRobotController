@@ -129,7 +129,7 @@ public class HardwareSwyftBot
     public    double    shooterMotor1Amps= 0.0;  // mA
     public    double    shooterMotor2Amps= 0.0;  // mA
 
-    public    double      shooterMotorsSet   = 0.0;
+    public    double      shooterMotorsSet   = 0.0;   // TODO: these need to be velocities (not powers)
     public    boolean     shooterMotorsReady = false; // Have we reached the target velocity?
     public    ElapsedTime shooterMotorsTimer = new ElapsedTime();
     public    double      shooterMotorsTime  = 0.0;   // how long it took to reach "ready" (msec)
@@ -503,12 +503,6 @@ public class HardwareSwyftBot
         //   getPower() / getVelocity() / getCurrent()
         shooterMotor1Vel = shooterMotor1.getVelocity();
         shooterMotor2Vel = shooterMotor2.getVelocity();
-        shooterMotorsReady = Math.abs(shooterMotorsSet - shooterMotor1Vel) < 10
-                && Math.abs(shooterMotorsSet - shooterMotor2Vel) < 10; // FIXME: is this a good threshold?
-        if(shooterMotorsTime == 0 && shooterMotorsReady) {
-            shooterMotorsTime = shooterMotorsTimer.time();
-        }
-
         // Where has the turret been commanded to?
         turretServoGet   = turretServo.getPosition();
         // Where is the turret currently located?  (average the two feedback values)
@@ -528,17 +522,15 @@ public class HardwareSwyftBot
     } // readBulkData
 
     /*--------------------------------------------------------------------------------------------*/
-    // Velocity in motor ticks per second.
-    public void shooterMotorsSetVelocity( double shooterVelocity )
+    public void shooterMotorsSetPower( double shooterPower )
     {
-        shooterMotor1.setVelocity( shooterVelocity );
-        shooterMotor2.setVelocity( shooterVelocity );
-        shooterMotorsSet = shooterVelocity;
+        shooterMotor1.setPower( shooterPower );
+        shooterMotor2.setPower( shooterPower );
+        shooterMotorsSet = shooterPower;
         // reset our "ready" flag and start a timer
-        shooterMotorsReady = false;
+        shooterMotorsReady = false;  // TODO: Need to finish this logic
         shooterMotorsTimer.reset();
-        shooterMotorsTime = 0;
-    } // shooterMotorsSetVelocity
+    } // shooterMotorsSetPower
 
     /*--------------------------------------------------------------------------------------------*/
     public void limelightPipelineSwitch( int pipeline_number )
@@ -858,17 +850,6 @@ public class HardwareSwyftBot
         double distance = Math.sqrt( Math.pow(deltaX,2) + Math.pow(deltaY,2) );
         return distance;
     } // getShootDistance
-
-    /*--------------------------------------------------------------------------------------------*/
-    // Convert distance from goal (inches) into a velocity setting for our shooter motors.
-    // Four our shooter and field layout, the value should be between 1060 and 1340
-    public double computeShooterVelocity(double x) {
-        // power = 508 + 22.2x + -0.258x^2 + 1.05E-03x^3
-        double shooterPower = 508 + 22.2 * x + -0.258 * Math.pow(x,2) + 1.05E-03 * Math.pow(x,3);
-        shooterPower = Math.max(shooterPower, 1060); // We should never be below 1060
-        shooterPower = Math.min(shooterPower, 1340); // We should never exceed 1340
-        return shooterPower;
-    } // computeShooterVelocity
 
     /*--------------------------------------------------------------------------------------------*/
     // Convert distance from goal (inches) into a power setting for our shooter motors.
