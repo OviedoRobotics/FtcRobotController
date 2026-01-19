@@ -126,10 +126,11 @@ public class HardwareSwyftBot
     protected DcMotorEx shooterMotor2   = null;  // lower
     public    double    shooterMotor1Vel = 0.0;  // encoder counts per second
     public    double    shooterMotor2Vel = 0.0;  // encoder counts per second
+    public    double    shooterTargetVel = 0.0;  // encoder counts per second
     public    double    shooterMotor1Amps= 0.0;  // mA
     public    double    shooterMotor2Amps= 0.0;  // mA
 
-    public    double      shooterMotorsSet   = 0.0;   // TODO: these need to be velocities (not powers)
+    public    double      shooterMotorsSet   = 0.0;
     public    boolean     shooterMotorsReady = false; // Have we reached the target velocity?
     public    ElapsedTime shooterMotorsTimer = new ElapsedTime();
     public    double      shooterMotorsTime  = 0.0;   // how long it took to reach "ready" (msec)
@@ -503,11 +504,17 @@ public class HardwareSwyftBot
         //   getPower() / getVelocity() / getCurrent()
         shooterMotor1Vel = shooterMotor1.getVelocity();
         shooterMotor2Vel = shooterMotor2.getVelocity();
+        shooterMotorsReady = Math.abs(shooterTargetVel - shooterMotor1Vel) < 10
+                && Math.abs(shooterTargetVel - shooterMotor2Vel) < 10; // FIXME: is this a good threshold?
+        if(shooterMotorsTime == 0 && shooterMotorsReady) {
+            shooterMotorsTime = shooterMotorsTimer.time();
+        }
+
         // Where has the turret been commanded to?
         turretServoGet   = turretServo.getPosition();
         // Where is the turret currently located?  (average the two feedback values)
         turretServoPos   = (getTurretPosition(true) + getTurretPosition(false))/2.0;
-        if(turretServoIsBusy && Math.abs(turretServoSet - turretServoGet) < 0.01) {// FIXME: is this a good threshold?
+        if(turretServoIsBusy && Math.abs(turretServoPos - turretServoGet) < 0.01) {// FIXME: is this a good threshold?
             turretServoIsBusy = false;
         }
         // NOTE: motor mA data is NOT part of the bulk-read, so increases cycle time!
@@ -527,8 +534,9 @@ public class HardwareSwyftBot
         shooterMotor1.setPower( shooterPower );
         shooterMotor2.setPower( shooterPower );
         shooterMotorsSet = shooterPower;
+        shooterTargetVel = computeShooterVelocity(shooterPower);
         // reset our "ready" flag and start a timer
-        shooterMotorsReady = false;  // TODO: Need to finish this logic
+        shooterMotorsReady = false;
         shooterMotorsTimer.reset();
     } // shooterMotorsSetPower
 
@@ -861,6 +869,16 @@ public class HardwareSwyftBot
         shooterPower = Math.min(shooterPower, 0.60); // We should never exceed 0.60
         return shooterPower;
     } // computeShooterPower
+
+    // For a given shooter power, estimate what the expected velocity should be so we know when we get there.
+    private double computeShooterVelocity(double shooterMotorsSet) {
+        // velocity = -43396x^3 + 69296x^2 - 34252x + 6395.3
+        double x = shooterMotorsSet;
+        double velocity = 6395.3 + -34252 * x + 69296 * Math.pow(x,2) + -43396 * Math.pow(x,3);
+        velocity = Math.max(velocity, 1060); // We should never be below 1060
+        velocity = Math.min(velocity, 1340); // We should never exceed 1340
+        return velocity;
+    } // computeShooterVelocity
 
     /*--------------------------------------------------------------------------------------------*/
     public double getShootAngleDeg(Alliance alliance) {
