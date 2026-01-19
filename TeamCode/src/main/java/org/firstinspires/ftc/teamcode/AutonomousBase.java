@@ -1279,11 +1279,10 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
         // Establish the numbers unique to each spike mark
         switch( spikeMarkNumber ) {
             case 1  : approach1x=-46.8; approach2x=-42.8; approach3x=-39.8; redStartx=-37.8; blueStartx=-32.3; endx=-42.8; break;
-            case 2  : approach1x=-25.8; approach2x=-21.8; approach3x=-18.8; redStartx=-14.5; blueStartx=-9.0; endx=-20.8; break;
-            case 3  : approach1x=-0.8; approach2x=4.2; approach3x=8.2; redStartx=4.2; blueStartx=9.7; endx=-12.8; break;
+            case 2  : approach1x=-25.8; approach2x=-21.8; approach3x=-18.8; redStartx=-14.5; blueStartx=-9.0;  endx=-20.8; break;
+            case 3  : approach1x=-0.8;  approach2x=4.2;   approach3x=8.2;   redStartx=4.2;   blueStartx=9.7;   endx=-12.8; break;
             default : approach1x=-46.8; approach2x=-42.8; approach3x=-39.8; redStartx=-37.8; blueStartx=-32.3; endx=-42.8; break;
         } // switch
-
         // Reset the spindexer for collecting
         robot.spinServoSetPosition( SPIN_P1 );   // we collect in P1, P2, P3 order
         // Transition from shooting zone to spike-mark zone (spikemark #1)

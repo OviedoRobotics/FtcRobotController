@@ -504,17 +504,19 @@ public class HardwareSwyftBot
         //   getPower() / getVelocity() / getCurrent()
         shooterMotor1Vel = shooterMotor1.getVelocity();
         shooterMotor2Vel = shooterMotor2.getVelocity();
-        shooterMotorsReady = Math.abs(shooterTargetVel - shooterMotor1Vel) < 10
-                && Math.abs(shooterTargetVel - shooterMotor2Vel) < 10; // FIXME: is this a good threshold?
-        if(shooterMotorsTime == 0 && shooterMotorsReady) {
-            shooterMotorsTime = shooterMotorsTimer.time();
+        boolean shooterMotor1Ready = (Math.abs(shooterMotor1Vel - shooterTargetVel) < 20)? true:false;
+        boolean shooterMotor2Ready = (Math.abs(shooterMotor2Vel - shooterTargetVel) < 20)? true:false;
+        shooterMotorsReady = shooterMotor1Ready && shooterMotor2Ready; // FIXME: is this a good threshold?
+        if( shooterMotorsReady && (shooterMotorsTime == 0) ) {
+            shooterMotorsTime = shooterMotorsTimer.milliseconds();
         }
 
         // Where has the turret been commanded to?
         turretServoGet   = turretServo.getPosition();
         // Where is the turret currently located?  (average the two feedback values)
         turretServoPos   = (getTurretPosition(true) + getTurretPosition(false))/2.0;
-        if(turretServoIsBusy && Math.abs(turretServoPos - turretServoGet) < 0.01) {// FIXME: is this a good threshold?
+        boolean turretInPos = (Math.abs(turretServoPos - turretServoSet) < 0.01)? true:false;
+        if(turretServoIsBusy && turretInPos ) { // FIXME: is this a good threshold?
             turretServoIsBusy = false;
         }
         // NOTE: motor mA data is NOT part of the bulk-read, so increases cycle time!
@@ -538,6 +540,7 @@ public class HardwareSwyftBot
         // reset our "ready" flag and start a timer
         shooterMotorsReady = false;
         shooterMotorsTimer.reset();
+        shooterMotorsTime = 0.0;
     } // shooterMotorsSetPower
 
     /*--------------------------------------------------------------------------------------------*/
@@ -870,13 +873,13 @@ public class HardwareSwyftBot
         return shooterPower;
     } // computeShooterPower
 
-    // For a given shooter power, estimate what the expected velocity should be so we know when we get there.
+    // Compute the expected shooter motor velocity [ticks/sec] for the specified power setting
     private double computeShooterVelocity(double shooterMotorsSet) {
         // velocity = -43396x^3 + 69296x^2 - 34252x + 6395.3
         double x = shooterMotorsSet;
-        double velocity = 6395.3 + -34252 * x + 69296 * Math.pow(x,2) + -43396 * Math.pow(x,3);
-        velocity = Math.max(velocity, 1060); // We should never be below 1060
-        velocity = Math.min(velocity, 1340); // We should never exceed 1340
+        double velocity = 6395.3 + (-34252 * x) + (69296 * Math.pow(x,2)) + (-43396 * Math.pow(x,3));
+        velocity = Math.max(velocity, 1040); // We should never be below 1040
+        velocity = Math.min(velocity, 1400); // We should never exceed 1400
         return velocity;
     } // computeShooterVelocity
 

@@ -47,7 +47,7 @@ public class AutonomousRedFar extends AutonomousBase {
         autonomousTimer.reset();
 
         // Establish our starting position on the field (in field coordinate system)
-        resetGlobalCoordinatePositionAuto(-62.8, -14.3, 0 );
+        resetGlobalCoordinatePositionAuto(-62.8, -14.3, 0.0 );
 
         //---------------------------------------------------------------------------------
         // AUTONOMOUS ROUTINE:  The following method is our main autonomous.

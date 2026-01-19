@@ -199,8 +199,9 @@ public abstract class Teleop extends LinearOpMode {
                 telemetry.addData("Shooter Target Velocity", "%.1f", robot.shooterTargetVel );
             }
             telemetry.addData("Shooter Velocity", "%.1f %.1f", robot.shooterMotor1Vel, robot.shooterMotor2Vel );
-            telemetry.addData("Turret", "set %.3f get %.3f analog %.3f", robot.turretServoSet, robot.turretServoGet, robot.turretServoPos );
 //          telemetry.addData("Shooter mA", "%.1f %.1f", robot.shooterMotor1Amps, robot.shooterMotor2Amps );
+            telemetry.addData("Turret", "set %.3f get %.3f analog %.3f", robot.turretServoSet, robot.turretServoGet, robot.turretServoPos );
+            telemetry.addData(" ", "in position: %s", (robot.turretServoIsBusy)? "no":"YES");
 //          telemetry.addData("Spindexer", "set %.2f get %.2f time %.3f ms",
 //                  robot.spinServoSetPos, robot.getSpindexerPos(), robot.spinServoTime );
             telemetry.addLine( (robot.isRobot2)? "Robot2" : "Robot1");
