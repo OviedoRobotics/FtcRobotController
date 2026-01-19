@@ -20,6 +20,10 @@ public class AutonomousBlueNear extends AutonomousBase {
     @Override
     public void runOpMode() throws InterruptedException {
 
+        doSpikeMark1 = false;
+        doSpikeMark2 = false;
+        doSpikeMark3 = false;
+
         // Initialize robot hardware (autonomous mode)
         telemetry.addData("State", "Initializing (please wait)");
         telemetry.update();
@@ -115,7 +119,8 @@ public class AutonomousBlueNear extends AutonomousBase {
         // update our field position based on the AprilTag
         robot.setPinpointFieldPosition(robot.limelightFieldXpos, robot.limelightFieldYpos, robot.limelightFieldAngleDeg);
 
-/* TODO: replace the movements in here with those appropriate for NEAR driving paths
+        // TODO: doSpikeMark* disabled by default at the start of runOpMode. remove that when implemented.
+
         // Collect and Score 3rd spike mark
         if( doSpikeMark3 ) {
             collectSpikemarkFromNear(3,redAlliance );
@@ -133,7 +138,7 @@ public class AutonomousBlueNear extends AutonomousBase {
             collectSpikemarkFromNear(1,redAlliance);
             scoreThreeBallsFromField(obeliskID, (redAlliance)? PGP_22:PGP_22 );
         }
-*/
+
         // Drive the final position we want for MOVEMENT points
         driveToPosition(40.7, 17.6, +49.0, DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_TO);
 
