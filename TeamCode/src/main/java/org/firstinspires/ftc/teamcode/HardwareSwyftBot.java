@@ -514,7 +514,7 @@ public class HardwareSwyftBot
         turretServoGet   = turretServo.getPosition();
         // Where is the turret currently located?  (average the two feedback values)
         turretServoPos   = (getTurretPosition(true) + getTurretPosition(false))/2.0;
-        if(turretServoIsBusy && Math.abs(turretServoSet - turretServoGet) < 0.01) {// FIXME: is this a good threshold?
+        if(turretServoIsBusy && Math.abs(turretServoPos - turretServoGet) < 0.01) {// FIXME: is this a good threshold?
             turretServoIsBusy = false;
         }
         // NOTE: motor mA data is NOT part of the bulk-read, so increases cycle time!
