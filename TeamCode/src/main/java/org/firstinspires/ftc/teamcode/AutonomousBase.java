@@ -1399,7 +1399,12 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
                 // wait for the rotation to complete, then launch that ball
                 sleep(700);   // TODO: change to spindexer position feedback
                 launchBall();
-                if( !opModeIsActive() ) break;
+                // If our auto routine has run long, we want to stop shooting balls early and
+                // move forward from the launch line so we can still score the move bonus.
+                // This logic assumes we have enough time to at least shoot one ball.
+                // There could be scenarios where we even run out of time before we start shooting, but not currently handled.
+                boolean outOfAutoTime = autonomousTimer.seconds() >= 29; // TODO: verify 1 second is enough.
+                if( !opModeIsActive() || outOfAutoTime) break;
             }
         } // opModeIsActive
         // Turn off shooter while we go collect more balls
