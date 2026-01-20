@@ -596,6 +596,7 @@ public abstract class Teleop extends LinearOpMode {
 
     private void processTurretAutoAim() {
         // Do we want to use them? (so long as the button is held...)
+//      autoAimEnabled = true;
         autoAimEnabled = gamepad1.left_bumper;
         if( autoAimEnabled ) {
             // update pinpoint coordinates if conditions are good to do so

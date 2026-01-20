@@ -172,7 +172,7 @@ public class HardwareSwyftBot
     public final static double TURRET_SERVO_MIN  = 0.06; // -180deg
     public final static double TURRET_CTS_PER_DEG = (TURRET_SERVO_P90 - TURRET_SERVO_N90)/180.0;
 
-    public final static double TURRET_R1_OFFSET = -0.008; // ROBOT1 offset to align with reference
+    public final static double TURRET_R1_OFFSET = -0.005; // ROBOT1 offset to align with reference
     public final static double TURRET_R2_OFFSET =  0.000; // ROBOT2 offset to align with reference
 
     //====== SPINDEXER SERVO =====
@@ -246,13 +246,13 @@ public class HardwareSwyftBot
       //   173 (178)  . . .    (239)  235           <-- 5deg tolerance on RESET and INJECT
     public final static double LIFT_SERVO_RESET_ANG_R1  = 178.3;  // 0.520 = 173.3deg
     public final static double LIFT_SERVO_INJECT_ANG_R1 = 230.2;  // 0.330 = 235.2deg
-    //===== ROBOT2 injector/lift servo positions:
-    public final static double LIFT_SERVO_INIT_R2   = 0.510;
-    public final static double LIFT_SERVO_RESET_R2  = 0.510;
-    public final static double LIFT_SERVO_INJECT_R2 = 0.320;
-      //   176.95 (181)  . . .    (234)  238.7           <-- 5deg tolerance on RESET and INJECT
-    public final static double LIFT_SERVO_RESET_ANG_R2  = 181.0;  // 0.510 = 176.95deg
-    public final static double LIFT_SERVO_INJECT_ANG_R2 = 234.0;  // 0.320 = 238.7deg
+    //===== ROBOT2 injector/lift servo positions: (Axon Mini)
+    public final static double LIFT_SERVO_INIT_R2   = 0.590;
+    public final static double LIFT_SERVO_RESET_R2  = 0.590;
+    public final static double LIFT_SERVO_INJECT_R2 = 0.250;
+      //   167.6 (173)  . . .    (216)  221.2           <-- 5deg tolerance on RESET and INJECT
+    public final static double LIFT_SERVO_RESET_ANG_R2  = 172.6;  // 0.590 = 167.6deg
+    public final static double LIFT_SERVO_INJECT_ANG_R2 = 216.2;  // 0.250 = 221.2deg
     //===== These get populated after IMU init, when we know if we're ROBOT1 or ROBOT2
     public double LIFT_SERVO_INIT;
     public double LIFT_SERVO_RESET;
@@ -504,8 +504,8 @@ public class HardwareSwyftBot
         //   getPower() / getVelocity() / getCurrent()
         shooterMotor1Vel = shooterMotor1.getVelocity();
         shooterMotor2Vel = shooterMotor2.getVelocity();
-        boolean shooterMotor1Ready = (Math.abs(shooterMotor1Vel - shooterTargetVel) < 20)? true:false;
-        boolean shooterMotor2Ready = (Math.abs(shooterMotor2Vel - shooterTargetVel) < 20)? true:false;
+        boolean shooterMotor1Ready = (Math.abs(shooterMotor1Vel - shooterTargetVel) < 25)? true:false;
+        boolean shooterMotor2Ready = (Math.abs(shooterMotor2Vel - shooterTargetVel) < 25)? true:false;
         shooterMotorsReady = shooterMotor1Ready && shooterMotor2Ready; // FIXME: is this a good threshold?
         if( shooterMotorsReady && (shooterMotorsTime == 0) ) {
             shooterMotorsTime = shooterMotorsTimer.milliseconds();
@@ -515,8 +515,8 @@ public class HardwareSwyftBot
         turretServoGet   = turretServo.getPosition();
         // Where is the turret currently located?  (average the two feedback values)
         turretServoPos   = (getTurretPosition(true) + getTurretPosition(false))/2.0;
-        boolean turretInPos = (Math.abs(turretServoPos - turretServoSet) < 0.01)? true:false;
-        if(turretServoIsBusy && turretInPos ) { // FIXME: is this a good threshold?
+        boolean turretInPos = (Math.abs(turretServoPos - turretServoSet) < 0.009)? true:false;
+        if(turretServoIsBusy && turretInPos ) {
             turretServoIsBusy = false;
         }
         // NOTE: motor mA data is NOT part of the bulk-read, so increases cycle time!
