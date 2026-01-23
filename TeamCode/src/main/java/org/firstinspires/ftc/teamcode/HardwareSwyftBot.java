@@ -206,28 +206,47 @@ public class HardwareSwyftBot
     }
 
     //===== ROBOT1 spindexer servo positions:
-    public final static double SPIN_SERVO_P1_R1 = 0.130;  // position 1
-    public final static double SPIN_SERVO_P2_R1 = 0.500;  // position 2 (also the INIT position)
-    public final static double SPIN_SERVO_P3_R1 = 0.880;  // position 3
+    public final static double SPIN_SERVO_H1_R1 = 0.000;  // halfway1 (from R1)
+    public final static double SPIN_SERVO_P1_R1 = 0.130;  // POSITION 1
+    public final static double SPIN_SERVO_H2_R1 = 0.315;  // halfway2
+    public final static double SPIN_SERVO_P2_R1 = 0.500;  // POSITION 2
+    public final static double SPIN_SERVO_H3_R1 = 0.690;  // halfway3
+    public final static double SPIN_SERVO_P3_R1 = 0.880;  // POSITION 3 (also the INIT position)
+    public final static double SPIN_SERVO_H4_R1 = 1.000;  // halfway4 (from R3)
     //===== ROBOT2 spindexer servo positions:
-    public final static double SPIN_SERVO_P1_R2 = 0.105;  // position 1
-    public final static double SPIN_SERVO_P2_R2 = 0.490;  // position 2 (also the INIT position)
-    public final static double SPIN_SERVO_P3_R2 = 0.870;  // position 3
+    public final static double SPIN_SERVO_H1_R2 = 0.000;  // halfway1 (from R1)
+    public final static double SPIN_SERVO_P1_R2 = 0.105;  // POSITION 1
+    public final static double SPIN_SERVO_H2_R2 = 0.298;  // halfway2
+    public final static double SPIN_SERVO_P2_R2 = 0.490;  // POSITION 2
+    public final static double SPIN_SERVO_H3_R2 = 0.680;  // halfway3
+    public final static double SPIN_SERVO_P3_R2 = 0.870;  // POSITION 3 (also the INIT position)
+    public final static double SPIN_SERVO_H4_R2 = 1.000;  // halfway4 (from R3)
     //===== These get populated after IMU init, when we know if we're ROBOT1 or ROBOT2
-    public double SPIN_SERVO_P1;    // position 1
-    public double SPIN_SERVO_P2;    // position 2 (also the INIT position)
-    public double SPIN_SERVO_P3;    // position 3
+    public double SPIN_SERVO_H1;    // halfway1 (from R1)
+    public double SPIN_SERVO_P1;    // POSITION 1
+    public double SPIN_SERVO_H2;    // halfway2
+    public double SPIN_SERVO_P2;    // POSITION 2
+    public double SPIN_SERVO_H3;    // halfway3
+    public double SPIN_SERVO_P3;    // POSITION 3
+    public double SPIN_SERVO_H4;    // halfway4 (from R3)
 
     public enum SpindexerState {
+        SPIN_H1,
         SPIN_P1,
+        SPIN_H2,
         SPIN_P2,
+        SPIN_H3,
         SPIN_P3,
+        SPIN_H4,
         SPIN_INCREMENT,
         SPIN_DECREMENT
     }
     
-    public SpindexerState spinServoCurPos = SpindexerState.SPIN_P2;  // commanded spindexer enum
-    public double         spinServoSetPos = 0.0;  // commanded spindexer position
+    public SpindexerState spinServoCurPos = SpindexerState.SPIN_P3;  // commanded spindexer enum
+    public SpindexerState spinServoSavPos = SpindexerState.SPIN_P3;  // saved spindexer enum (half!)
+    public double         spinServoSetPos = 0.0;  // spindexer servo position commanded 
+    public double         spinServoGetPos = 0.0;  // spindexer position analog feedback
+    public boolean        spinServoMidPos = true; // are we in a temporary midway-position?
     public boolean        spinServoInPos  = true; // have we reached the commanded position
     public ElapsedTime    spinServoTimer  = new ElapsedTime();
     public double         spinServoTime   = 0.0;  // msec to get into position
@@ -304,9 +323,13 @@ public class HardwareSwyftBot
         initIMU( isAutonomous );
 
         // define the spindexer servo positions (fine-tuned uniquely for each robot)
+        SPIN_SERVO_H1 = (isRobot1)? SPIN_SERVO_H1_R1 : SPIN_SERVO_H1_R2;
         SPIN_SERVO_P1 = (isRobot1)? SPIN_SERVO_P1_R1 : SPIN_SERVO_P1_R2;
+        SPIN_SERVO_H2 = (isRobot1)? SPIN_SERVO_H2_R1 : SPIN_SERVO_H2_R2;
         SPIN_SERVO_P2 = (isRobot1)? SPIN_SERVO_P2_R1 : SPIN_SERVO_P2_R2;
+        SPIN_SERVO_H3 = (isRobot1)? SPIN_SERVO_H3_R1 : SPIN_SERVO_H3_R2;
         SPIN_SERVO_P3 = (isRobot1)? SPIN_SERVO_P3_R1 : SPIN_SERVO_P3_R2;
+        SPIN_SERVO_H4 = (isRobot1)? SPIN_SERVO_H4_R1 : SPIN_SERVO_H4_R2;
 
         // define the shooter lift/injector servo positions (fine-tuned uniquely for each robot)
         LIFT_SERVO_INIT       = (isRobot1)? LIFT_SERVO_INIT_R1 : LIFT_SERVO_INIT_R2;
@@ -523,7 +546,8 @@ public class HardwareSwyftBot
 //      shooterMotor1Amps = shooterMotor1.getCurrent(MILLIAMPS);
 //      shooterMotor2Amps = shooterMotor1.getCurrent(MILLIAMPS);
         // Has the spindexer reached the commanded position?
-        double spindexerError = Math.abs( spinServoSetPos - getSpindexerPos() );
+        spinServoGetPos = getSpindexerPos();
+        double spindexerError = Math.abs( spinServoSetPos - spinServoGetPos );
         if( !spinServoInPos && (spindexerError < 0.030) ) {
             spinServoTime = spinServoTimer.milliseconds();
             spinServoInPos = true;
@@ -982,9 +1006,19 @@ public class HardwareSwyftBot
     public void spinServoSetPosition( SpindexerState position )
     {
         switch( position ) {
+            case SPIN_H1 :
+                spinServoCurPos = SpindexerState.SPIN_H1;
+                spinServoSetPos = SPIN_SERVO_H1;
+                spinServo.setPosition(spinServoSetPos);
+                break;
             case SPIN_P1 :
                 spinServoCurPos = SpindexerState.SPIN_P1;
                 spinServoSetPos = SPIN_SERVO_P1;
+                spinServo.setPosition(spinServoSetPos);
+                break;
+            case SPIN_H2 :
+                spinServoCurPos = SpindexerState.SPIN_H2;
+                spinServoSetPos = SPIN_SERVO_H2;
                 spinServo.setPosition(spinServoSetPos);
                 break;
             case SPIN_P2 :
@@ -992,9 +1026,19 @@ public class HardwareSwyftBot
                 spinServoSetPos = SPIN_SERVO_P2;
                 spinServo.setPosition(spinServoSetPos);
                 break;
+            case SPIN_H3 :
+                spinServoCurPos = SpindexerState.SPIN_H3;
+                spinServoSetPos = SPIN_SERVO_H3;
+                spinServo.setPosition(spinServoSetPos);
+                break;
             case SPIN_P3 :
                 spinServoCurPos = SpindexerState.SPIN_P3;
                 spinServoSetPos = SPIN_SERVO_P3;
+                spinServo.setPosition(spinServoSetPos);
+                break;
+            case SPIN_H4 :
+                spinServoCurPos = SpindexerState.SPIN_H4;
+                spinServoSetPos = SPIN_SERVO_H4;
                 spinServo.setPosition(spinServoSetPos);
                 break;
             case SPIN_INCREMENT :
@@ -1019,7 +1063,7 @@ public class HardwareSwyftBot
                     spinServoCurPos = SpindexerState.SPIN_P1;
                     spinServoSetPos = SPIN_SERVO_P1;
                     spinServo.setPosition(spinServoSetPos);
-                } // else no room to increment further!
+                } // else no room to decrement further!
                 break;
             default:
                 break;
@@ -1031,28 +1075,32 @@ public class HardwareSwyftBot
     } // spinServoSetPosition
 
     /*--------------------------------------------------------------------------------------------*/
-    public void spinServoSetPositionCR( SpindexerState position )
+    public SpindexerState whichSpindexerHalfPosition( SpindexerState direction )
     {
-        switch( position ) {
-            case SPIN_P1 :
-                currentSpindexerTarget = SpindexerTargetPosition.P1;
-                break;
-            case SPIN_P2 :
-                currentSpindexerTarget = SpindexerTargetPosition.P2;
-                break;
-            case SPIN_P3 :
-                currentSpindexerTarget = SpindexerTargetPosition.P3;
-                break;
+        SpindexerState nextPos = spinServoCurPos;  // Default to CURRENT state
+        // Does operating want to go half-RIGHT or half-LEFT
+        switch( direction ) {
             case SPIN_INCREMENT :
-                cycleSpindexerTarget(+1);
+                switch( spinServoCurPos ) {
+                    case SPIN_P1 : nextPos = SpindexerState.SPIN_H2;  break;
+                    case SPIN_P2 : nextPos = SpindexerState.SPIN_H3;  break;
+                    case SPIN_P3 : nextPos = SpindexerState.SPIN_H4;  break;
+                    default : break;  // only valid for the full positions
+                } // switch()
                 break;
             case SPIN_DECREMENT :
-                cycleSpindexerTarget(-1);
+                switch( spinServoCurPos ) {
+                    case SPIN_P1 : nextPos = SpindexerState.SPIN_H1;  break;
+                    case SPIN_P2 : nextPos = SpindexerState.SPIN_H2;  break;
+                    case SPIN_P3 : nextPos = SpindexerState.SPIN_H3;  break;
+                    default : break;  // only valid for the full positions
+                } // switch()
                 break;
             default:
                 break;
         } // switch()
-    } // spinServoSetPositionCR
+        return nextPos;        
+    } // whichSpindexerHalfPosition
 
     /*--------------------------------------------------------------------------------------------*/
     public void startInjectionStateMachine()

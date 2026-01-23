@@ -202,8 +202,8 @@ public abstract class Teleop extends LinearOpMode {
 //          telemetry.addData("Shooter mA", "%.1f %.1f", robot.shooterMotor1Amps, robot.shooterMotor2Amps );
             telemetry.addData("Turret", "set %.3f get %.3f analog %.3f", robot.turretServoSet, robot.turretServoGet, robot.turretServoPos );
             telemetry.addData(" ", "in position: %s", (robot.turretServoIsBusy)? "no":"YES");
-//          telemetry.addData("Spindexer", "set %.2f get %.2f time %.3f ms",
-//                  robot.spinServoSetPos, robot.getSpindexerPos(), robot.spinServoTime );
+            telemetry.addData("Spindexer", "set %.2f get %.2f time %.3f ms",
+                    robot.spinServoSetPos, robot.getSpindexerPos(), robot.spinServoTime );
             telemetry.addLine( (robot.isRobot2)? "Robot2" : "Robot1");
 //          telemetry.addData("Driver Angle", "%.3f deg", driverAngle );
 //          telemetry.addData("IMU Angle", "%.3f deg", robot.headingIMU() );
@@ -526,24 +526,43 @@ public abstract class Teleop extends LinearOpMode {
 
     /*---------------------------------------------------------------------------------*/
     void processSpindexer() {
-        boolean safeToSpindex = (robot.getInjectorAngle() <= robot.LIFT_SERVO_RESET_ANG);
+        boolean safeToSpindex    = (robot.getInjectorAngle() <= robot.LIFT_SERVO_RESET_ANG);
+        boolean leftTriggerHeld  = (gamepad2.left_trigger  > 0.25)? true:false;
+        boolean rightTriggerHeld = (gamepad2.right_trigger > 0.25)? true:false;
         if( !safeToSpindex ) return;
-        // Rotate spindexer left one position?
+        // Rotate spindexer LEFT one FULL position?
         if( gamepad2.leftBumperWasPressed() ) {
             if (robot.spinServoCurPos != SPIN_P1)
-                robot.spinServoSetPosition(SPIN_DECREMENT);
+                robot.spinServoSetPosition( SPIN_DECREMENT );
             else
                 gamepad2.runRumbleEffect(spindexerRumbleL);
-//          robot.spinServoSetPositionCR(SPIN_DECREMENT);  // only for spinServoCR
         }
-        // Rotate spindexer right one position?
+        // Rotate spindexer RIGHT one FULL position?
         else if( gamepad2.rightBumperWasPressed() ) {
             if( robot.spinServoCurPos != SPIN_P3 )
                 robot.spinServoSetPosition( SPIN_INCREMENT );
             else
                 gamepad2.runRumbleEffect(spindexerRumbleR);
-//          robot.spinServoSetPositionCR(SPIN_INCREMENT);   // only for spinServoCR
-        } // bumper
+        }
+        // Temporarily rotate spindexer LFFT one HALF position?
+        else if( (leftTriggerHeld == true) && (robot.spinServoMidPos == false) ) {
+           robot.spinServoSavPos = robot.spinServoCurPos;  // save current position
+           HardwareSwyftBot.SpindexerState leftHalf = robot.whichSpindexerHalfPosition( SPIN_DECREMENT );
+           robot.spinServoSetPosition( leftHalf );
+           robot.spinServoMidPos = true;  // remember to undo!
+        }
+        // Temporarily rotate spindexer RIGHT one HALF position?
+        else if( (rightTriggerHeld == true) && (robot.spinServoMidPos == false) ) {
+           robot.spinServoSavPos = robot.spinServoCurPos;  // save current position
+            HardwareSwyftBot.SpindexerState rightHalf = robot.whichSpindexerHalfPosition( SPIN_INCREMENT );
+           robot.spinServoSetPosition( rightHalf );
+           robot.spinServoMidPos = true;  // remember to undo!
+        }
+        // Do we need to RESTORE from a temporary half position?
+        else if( (robot.spinServoMidPos == true) && (leftTriggerHeld == false) && (rightTriggerHeld == true)) {
+            robot.spinServoSetPosition( robot.spinServoSavPos );
+            robot.spinServoMidPos = false;
+        }
     } // processSpindexer
 
     /*---------------------------------------------------------------------------------*/
