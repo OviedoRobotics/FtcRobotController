@@ -55,7 +55,7 @@ public class TestLaserDigital extends LinearOpMode {
     @Override
     public void runOpMode() {
         // Get the digital sensor from the hardware map
-        laserInput = hardwareMap.get(DigitalChannel.class, "laserDigitalInput");
+        laserInput = hardwareMap.get(DigitalChannel.class, "leftPresence"); // digital 0 (0-1)
 
         // Set the channel as an input
         laserInput.setMode(DigitalChannel.Mode.INPUT);

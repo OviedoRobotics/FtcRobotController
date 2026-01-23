@@ -44,7 +44,7 @@ import com.qualcomm.robotcore.hardware.AnalogInput;
  * - Driver Station telemetry shows voltage and distance (mm).
  */
 @TeleOp(name = "TestLaserAnalog", group = "Test")
-//@Disabled
+@Disabled
 public class TestLaserAnalog extends LinearOpMode {
 
     private AnalogInput laserAnalog;
@@ -56,7 +56,7 @@ public class TestLaserAnalog extends LinearOpMode {
     @Override
     public void runOpMode() {
         // Map the analog device from the hardware configuration
-        laserAnalog = hardwareMap.get(AnalogInput.class, "laserAnalogInput");
+        laserAnalog = hardwareMap.get(AnalogInput.class, "leftPresence");  // analog 2 (2-3)
 
         // Wait for PLAY
         waitForStart();

@@ -246,7 +246,7 @@ public class HardwareSwyftBot
     public SpindexerState spinServoSavPos = SpindexerState.SPIN_P3;  // saved spindexer enum (half!)
     public double         spinServoSetPos = 0.0;  // spindexer servo position commanded 
     public double         spinServoGetPos = 0.0;  // spindexer position analog feedback
-    public boolean        spinServoMidPos = true; // are we in a temporary midway-position?
+    public boolean        spinServoMidPos = false; // are we in a temporary midway-position?
     public boolean        spinServoInPos  = true; // have we reached the commanded position
     public ElapsedTime    spinServoTimer  = new ElapsedTime();
     public double         spinServoTime   = 0.0;  // msec to get into position

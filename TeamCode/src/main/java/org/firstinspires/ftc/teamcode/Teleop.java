@@ -530,36 +530,36 @@ public abstract class Teleop extends LinearOpMode {
         boolean leftTriggerHeld  = (gamepad2.left_trigger  > 0.25)? true:false;
         boolean rightTriggerHeld = (gamepad2.right_trigger > 0.25)? true:false;
         if( !safeToSpindex ) return;
-        // Rotate spindexer LEFT one FULL position?
-        if( gamepad2.leftBumperWasPressed() ) {
+        // Rotate spindexer RIGHT one FULL position?
+        if( gamepad2.rightBumperWasPressed() ) {
             if (robot.spinServoCurPos != SPIN_P1)
                 robot.spinServoSetPosition( SPIN_DECREMENT );
             else
                 gamepad2.runRumbleEffect(spindexerRumbleL);
         }
-        // Rotate spindexer RIGHT one FULL position?
-        else if( gamepad2.rightBumperWasPressed() ) {
+        // Rotate spindexer LEFT one FULL position?
+        else if( gamepad2.leftBumperWasPressed() ) {
             if( robot.spinServoCurPos != SPIN_P3 )
                 robot.spinServoSetPosition( SPIN_INCREMENT );
             else
                 gamepad2.runRumbleEffect(spindexerRumbleR);
         }
-        // Temporarily rotate spindexer LFFT one HALF position?
-        else if( (leftTriggerHeld == true) && (robot.spinServoMidPos == false) ) {
+        // Temporarily rotate spindexer RIGHT one HALF position?
+        else if( (rightTriggerHeld == true) && (robot.spinServoMidPos == false) ) {
            robot.spinServoSavPos = robot.spinServoCurPos;  // save current position
            HardwareSwyftBot.SpindexerState leftHalf = robot.whichSpindexerHalfPosition( SPIN_DECREMENT );
            robot.spinServoSetPosition( leftHalf );
            robot.spinServoMidPos = true;  // remember to undo!
         }
-        // Temporarily rotate spindexer RIGHT one HALF position?
-        else if( (rightTriggerHeld == true) && (robot.spinServoMidPos == false) ) {
+        // Temporarily rotate spindexer LEFTT one HALF position?
+        else if( (leftTriggerHeld == true) && (robot.spinServoMidPos == false) ) {
            robot.spinServoSavPos = robot.spinServoCurPos;  // save current position
             HardwareSwyftBot.SpindexerState rightHalf = robot.whichSpindexerHalfPosition( SPIN_INCREMENT );
            robot.spinServoSetPosition( rightHalf );
            robot.spinServoMidPos = true;  // remember to undo!
         }
         // Do we need to RESTORE from a temporary half position?
-        else if( (robot.spinServoMidPos == true) && (leftTriggerHeld == false) && (rightTriggerHeld == true)) {
+        else if( (robot.spinServoMidPos == true) && (leftTriggerHeld == false) && (rightTriggerHeld == false)) {
             robot.spinServoSetPosition( robot.spinServoSavPos );
             robot.spinServoMidPos = false;
         }
@@ -648,8 +648,9 @@ public abstract class Teleop extends LinearOpMode {
 
     /*---------------------------------------------------------------------------------*/
     void processInjector() {
+        boolean safeToInject = (robot.spinServoMidPos == true)? false:true;
         // Check for an OFF-to-ON toggle of the gamepad2 TRIANGLE button (command ball injection!)
-        if( gamepad2.triangleWasPressed() ) {
+        if( safeToInject && gamepad2.triangleWasPressed() ) {
             // Ensure an earlier injection request isn't already underway
             if ((robot.liftServoBusyU == false) && (robot.liftServoBusyD == false)) {
                 robot.startInjectionStateMachine();
