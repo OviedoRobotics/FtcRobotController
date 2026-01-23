@@ -224,6 +224,7 @@ public abstract class Teleop extends LinearOpMode {
     void performEveryLoopTeleop() {
         robot.readBulkData();
         robot.processInjectionStateMachine();
+        robot.processColorDetection();
 //      robot.processSpindexerControl();  // only for spinServoCR (not currently used)
         if( enableOdometry ) {
             robot.updatePinpointFieldPosition();
