@@ -139,19 +139,6 @@ public class HardwareSwyftBot
     public final static double SHOOTER_MOTOR_MID  = 0.45;
     public final static double SHOOTER_MOTOR_AUTO = 0.45;
 
-    //====== SHOOTER DEFLECTOR SERVO =====
-    public Servo       shooterServo    = null;
-    public AnalogInput shooterServoPos = null;
-
-    public final static double SHOOTER_SERVO_INIT = 0.50;   // straight up
-    public final static double SHOOTER_SERVO_INIT_ANGLE = 180.0;
-    public final static double SHOOTER_SERVO_MIN = 0.50;
-    public final static double SHOOTER_SERVO_MIN_ANGLE = 180.0;
-    public final static double SHOOTER_SERVO_MAX = 0.50;
-    public final static double SHOOTER_SERVO_MAX_ANGLE = 180.0;
-
-    public double shooterServoCurPos = SHOOTER_SERVO_INIT;
-
     //====== TURRET 5-turn SERVOS =====
     public Servo       turretServo     = null;  // 2 servos! (controlled together via Y cable)
     public AnalogInput turretServoPos1 = null;
@@ -425,10 +412,6 @@ public class HardwareSwyftBot
         shooterMotor1.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, shooterPIDF);
         shooterMotor2.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, shooterPIDF);
 
-        // Initialize the servo on the shooter
-        shooterServo    = hwMap.servo.get("shooterServo");          // servo port 0 (Control Hub)
-//      shooterServoPos = hwMap.analogInput.get("shooterServoPos"); // Analog port ? (Control Hub)
-
         //--------------------------------------------------------------------------------------------
         // Initialize the servos that rotate the turret
         turretServo     = hwMap.servo.get("turretServo");            // servo port 2 (Control Hub)
@@ -474,7 +457,6 @@ public class HardwareSwyftBot
         // Initialize the injector servo first! (so it's out of the way for spindexer rotation)
         liftServo.setPosition(LIFT_SERVO_INIT);
         turretServoSetPosition( TURRET_SERVO_INIT );
-        shooterServo.setPosition(SHOOTER_SERVO_INIT);
         sleep(250);
         spinServoSetPosition(SpindexerState.SPIN_P3); // allows autonomous progression 3-2-1
         // Also initialize/calibrate the pinpoint odometry computer
@@ -633,41 +615,6 @@ public class HardwareSwyftBot
         return delta;
     }
 
-    public double computeAlignedFlapperPos() {
-        double deltaServoPos = computeLaunchAngle()/(thetaMaxFlapper - thetaMinFlapper) + SHOOTER_SERVO_HORIZONTAL_POSITION;
-        return SHOOTER_SERVO_INIT;
-        //return (deltaServoPos > SHOOTER_SERVO_POS_VERTICAL || deltaServoPos < SHOOTER_SERVO_HORIZONTAL_POSITION)? shooterServo.getPosition() : deltaServoPos;
-    }
-
-    public double computeLaunchAngle() {
-        double v = LAUNCH_EXIT_SPEED;
-        double d = Math.sqrt((Math.pow((X_BIN_L - robotGlobalXCoordinatePosition/12.0), 2) + Math.pow((Y_BIN_L - robotGlobalYCoordinatePosition/12.0),2)));
-        double h = Z_BIN - Z_SHOOTER;
-        double g = 32.174;  // ft/sec/sec gravitational constant
-
-        double discriminant = v * v * v * v - g * (g * d * d + 2 * v * v * h);
-
-        // Check if a real solution exists
-        if (discriminant < 0) return 999.9;
-
-        double sqrtTerm = Math.sqrt(discriminant);
-
-        // Two possible tangent values
-        double tanTheta1 = (v * v + sqrtTerm) / (g * d);
-        double tanTheta2 = (v * v - sqrtTerm) / (g * d);
-
-        // Compute angles in radians (2 of them)
-        double theta1 = Math.atan(tanTheta1);
-        double theta2 = Math.atan(tanTheta2);
-
-        // Ensure thetaUp > thetaDown
-        double thetaUp = Math.max(theta1, theta2);
-        double thetaDown = Math.min(theta1, theta2);
-
-        return Math.toDegrees(thetaUp);
-    } // computeAbsoluteAngle
-    //BRODY!!
-
     /*--------------------------------------------------------------------------------------------*/
     public void driveTrainMotors( double frontLeft, double frontRight, double rearLeft, double rearRight )
     {
@@ -740,16 +687,24 @@ public class HardwareSwyftBot
     } // turretServoSetPosition
 
     /*--------------------------------------------------------------------------------------------*/
-    // currently limited to +/- 90deg
-    public void setTurretAngle( double targetAngleDegrees )
+
+    /**
+     * @return true if the position was set successfully, false if range limited.
+     */
+    public boolean setTurretAngle( double targetAngleDegrees )
     {
         // convert degrees into servo position setting centered around the init position.
-        double targetAngleCounts = -(targetAngleDegrees * TURRET_CTS_PER_DEG) + TURRET_SERVO_INIT;
+        final double targetAngleCounts = -(targetAngleDegrees * TURRET_CTS_PER_DEG) + TURRET_SERVO_INIT;
+        double setAngleCounts = targetAngleCounts;
         // make sure it's within our safe range
-        if( targetAngleCounts < TURRET_SERVO_N90 ) targetAngleCounts = TURRET_SERVO_N90;
-        if( targetAngleCounts > TURRET_SERVO_MAX ) targetAngleCounts = TURRET_SERVO_MAX;
+        setAngleCounts = Math.max(setAngleCounts, TURRET_SERVO_N90); // We should never be below TURRET_SERVO_N90
+        setAngleCounts = Math.min(setAngleCounts, TURRET_SERVO_MAX); // We should never exceed TURRET_SERVO_MAX
+
         // set both turret servos (connected on Y cable)
-        turretServoSetPosition( targetAngleCounts );
+        turretServoSetPosition( setAngleCounts );
+
+        double epsilon = 0.000001d;
+        return Math.abs(targetAngleCounts - setAngleCounts) < epsilon;
     } // setTurretAngle
 
     /*--------------------------------------------------------------------------------------------*/
