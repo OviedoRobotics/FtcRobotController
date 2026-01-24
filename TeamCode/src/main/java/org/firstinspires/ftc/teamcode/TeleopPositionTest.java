@@ -21,7 +21,7 @@ public class TeleopPositionTest extends LinearOpMode {
     int       selectedMechanism = 1;
     double [] stepSizes = { 0.1, 0.01, 0.001, 0.0001 };
     int       stepIndex = 0;
-    double    shooterPos, turretPos, spinPos, liftPos, ledValue;
+    double    turretPos, spinPos, liftPos, ledValue;
     double    shooterPower = 0.50;
 
     long    nanoTimeCurr=0, nanoTimePrev=0;
@@ -74,7 +74,6 @@ public class TeleopPositionTest extends LinearOpMode {
             telemetry.addData("Use left/right BUMPERS to adjust setting lower/higher", " " );
             telemetry.addData("Step Size", "%.4f (O button)", stepSizes[stepIndex]);
             switch( selectedMechanism ) {
-                // 0= no longer used shooter servo
                 case 1 :
                     telemetry.addData("SELECTED:", "shooterMotor" );
                     telemetry.addData("Upper Motor Power", "%.2f",    robot.shooterMotor1.getPower() );
@@ -120,7 +119,7 @@ public class TeleopPositionTest extends LinearOpMode {
             if( gamepad1.crossWasPressed() )
             {
                 selectedMechanism += 1;
-                if( selectedMechanism > 5 ) selectedMechanism = 0;
+                if( selectedMechanism > 5 ) selectedMechanism = 1;
             } // cross
 
             //================ LEFT BUMPER DECREASES SERVO POSITION ================

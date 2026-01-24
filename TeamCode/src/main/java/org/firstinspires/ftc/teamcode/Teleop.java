@@ -25,7 +25,7 @@ public abstract class Teleop extends LinearOpMode {
     double  odoShootAngleDeg = 0.0;
     boolean isAutoShooterAngleGood = false; // false if the robot facing too far away from the target
     boolean isAutoShooterSpeedGood = false; // is shooter motor up to target speed
-    boolean autoAimEnabled   = false; // turret power/angle only adjusted when this flag is enabled
+    boolean autoAimEnabled   = true; // turret power/angle only adjusted when this flag is enabled
 
     boolean blueAlliance;   // set in the Blue/Red
     boolean farAlliance;    //
@@ -240,7 +240,7 @@ public abstract class Teleop extends LinearOpMode {
     void updatePinpointFieldPosition() {
         // Ensure we don't get a spurious zero/clear reading
         boolean canSeeAprilTag = (robot.limelightFieldXpos != 0.0) && (robot.limelightFieldYpos !=0.0) && (robot.limelightFieldAngleDeg != 0.0);
-        boolean qualityReading = (robot.limelightFieldXstd < 0.0015) && (robot.limelightFieldYstd < 0.0015);
+        boolean qualityReading = (robot.limelightFieldXstd < 0.0018) && (robot.limelightFieldYstd < 0.0018);
         boolean robotXslow = (Math.abs(robot.robotGlobalXvelocity) < 0.1)? true:false;
         boolean robotYslow = (Math.abs(robot.robotGlobalYvelocity) < 0.1)? true:false;
         boolean robotAslow = (Math.abs(robot.robotAngleVelocity)   < 0.1)? true:false;
@@ -596,8 +596,6 @@ public abstract class Teleop extends LinearOpMode {
 
     private void processTurretAutoAim() {
         // Do we want to use them? (so long as the button is held...)
-//      autoAimEnabled = true;
-        autoAimEnabled = gamepad1.left_bumper;
         if( autoAimEnabled ) {
             // update pinpoint coordinates if conditions are good to do so
             updatePinpointFieldPosition();
@@ -617,8 +615,12 @@ public abstract class Teleop extends LinearOpMode {
             odoShootAngleDeg = robot.getShootAngleDeg( (blueAlliance)? Alliance.BLUE : Alliance.RED );
         }
         // Has something gone wrong and we want to reset to manual straight-on mode?
-        if (gamepad1.rightBumperWasPressed()) {
+        if (gamepad1.leftBumperWasPressed()) {
+            autoAimEnabled = true;
+        }
+        else if (gamepad1.rightBumperWasPressed()) {
             // reset turret to the center and reset shooter power to FAR zone
+            autoAimEnabled = false;
             robot.turretServoSetPosition(robot.TURRET_SERVO_INIT);
             shooterPower = 0.55;
             if(shooterMotorsOn) {

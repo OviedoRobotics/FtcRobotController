@@ -255,10 +255,10 @@ public class HardwareSwyftBot
     //===== ROBOT2 injector/lift servo positions: (Axon Mini)
     public final static double LIFT_SERVO_INIT_R2   = 0.590;
     public final static double LIFT_SERVO_RESET_R2  = 0.590;
-    public final static double LIFT_SERVO_INJECT_R2 = 0.250;
-      //   167.6 (173)  . . .    (216)  221.2           <-- 5deg tolerance on RESET and INJECT
+    public final static double LIFT_SERVO_INJECT_R2 = 0.230;
+      //   167.6 (173)  . . .    (218)  221.2           <-- 5deg tolerance on RESET and INJECT
     public final static double LIFT_SERVO_RESET_ANG_R2  = 172.6;  // 0.590 = 167.6deg
-    public final static double LIFT_SERVO_INJECT_ANG_R2 = 216.2;  // 0.250 = 221.2deg
+    public final static double LIFT_SERVO_INJECT_ANG_R2 = 218.2;  // 0.230 = 223.2deg
     //===== These get populated after IMU init, when we know if we're ROBOT1 or ROBOT2
     public double LIFT_SERVO_INIT;
     public double LIFT_SERVO_RESET;
