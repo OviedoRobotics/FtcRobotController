@@ -270,13 +270,14 @@ public abstract class AutonomousBase extends LinearOpMode {
 
     /*--------------------------------------------------------------------------------------------*/
     // Resets odometry starting position and angle to zero accumulated encoder counts
-    public void resetGlobalCoordinatePositionAuto(double posX, double posY, double posAngleDegree ){
-//      robot.odom.resetPosAndIMU();   // don't need full recalibration; just reset our position in case of any movement
-        robot.setPinpointFieldPosition( posX, posY, posAngleDegree ); // in case we don't run autonomous first!
+    public void setStartingGlobalCoordinatePositionAuto(double posX, double posY, double posAngleDegree ){
+        // Assuming odom.recalibrateIMU() is called in robot.init, avoid recalling it here.
+        robot.setPinpointFieldPosition( posX, posY );
+        robot.setPinpointStartingHeading( posAngleDegree );
         robotGlobalXCoordinatePosition = posX;  // This will get overwritten the first time
         robotGlobalYCoordinatePosition = posY;  // we call robot.odom.update()!
         robotOrientationRadians        = Math.toRadians( posAngleDegree );
-    } // resetGlobalCoordinatePosition
+    } // setStartingGlobalCoordinatePositionAuto
 
     /*---------------------------------------------------------------------------------*/
     public void performEveryLoop() {

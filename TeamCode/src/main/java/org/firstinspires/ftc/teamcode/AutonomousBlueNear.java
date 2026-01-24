@@ -42,7 +42,7 @@ public class AutonomousBlueNear extends AutonomousBase {
         autonomousTimer.reset();
 
         // Establish our starting position on the field (in field coordinate system)
-        resetGlobalCoordinatePositionAuto( 38.6, 54.3, -90.0 );
+        setStartingGlobalCoordinatePositionAuto( 38.6, 54.3, -90.0 );
 
         // Drive away from the wall to a point that can see the obelisk
         driveToPosition( 34.0, 45.0, -90.0, DRIVE_SPEED_30, TURN_SPEED_15, DRIVE_THRU);
@@ -113,7 +113,7 @@ public class AutonomousBlueNear extends AutonomousBase {
         autoAimEnabled = false;
         scoreThreeBallsFromField(obeliskID, PPG_23);
         // update our field position based on the AprilTag
-        robot.setPinpointFieldPosition(robot.limelightFieldXpos, robot.limelightFieldYpos, robot.limelightFieldAngleDeg);
+        robot.setPinpointFieldPosition(robot.limelightFieldXpos, robot.limelightFieldYpos);
 
         // Collect and Score 3rd spike mark
         if( doSpikeMark3 ) {

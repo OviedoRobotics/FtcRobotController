@@ -494,18 +494,6 @@ public class HardwareSwyftBot
     } /* init */
 
     /*--------------------------------------------------------------------------------------------*/
-    // Resets odometry starting position and angle to the specified starting orientation
-    // Needed to either start at zero for Teleop if we haven't run Autonomous first, or to
-    // transfer any offset from autonomous to teleop if the frame of reference differs.
-    public void resetGlobalCoordinatePosition( double posX, double posY, double posAngleDegree ){
-//      robot.odom.resetPosAndIMU();   // don't need full recalibration; just reset our position in case of any movement
-        setPinpointFieldPosition( posX, posY, posAngleDegree ); // in case we don't run autonomous first!
-        robotGlobalXCoordinatePosition = posX;  // This will get overwritten the first time
-        robotGlobalYCoordinatePosition = posY;  // we call robot.odom.update()!
-        robotOrientationDegrees        = posAngleDegree;
-    } // resetGlobalCoordinatePosition
-
-    /*--------------------------------------------------------------------------------------------*/
     public void resetEncoders() throws InterruptedException {
         // Initialize the injector servo first! (so it's out of the way for spindexer rotation)
         liftServo.setPosition(LIFT_SERVO_INIT);
@@ -515,6 +503,9 @@ public class HardwareSwyftBot
         // Also initialize/calibrate the pinpoint odometry computer
         odom.resetPosAndIMU();
         imu.resetYaw();
+        robotGlobalXCoordinatePosition = 0.0;
+        robotGlobalYCoordinatePosition = 0.0;
+        robotOrientationDegrees        = 0.0;
     } // resetEncoders
 
     /*--------------------------------------------------------------------------------------------*/
@@ -811,13 +802,18 @@ public class HardwareSwyftBot
     } // updatePinpointFieldPosition
 
     /*--------------------------------------------------------------------------------------------*/
-    public void setPinpointFieldPosition( double X, double Y, double headingDeg ) {
-        Pose2D newFieldPosition = new Pose2D(DistanceUnit.INCH, X, Y, AngleUnit.DEGREES, headingDeg );
-        odom.setPosition( newFieldPosition );
+    public void setPinpointFieldPosition( double X, double Y ) {
+        odom.setPosX(X, DistanceUnit.INCH);
+        odom.setPosY(Y, DistanceUnit.INCH);
         robotGlobalXCoordinatePosition = X;
         robotGlobalYCoordinatePosition = Y;
-        robotOrientationDegrees        = headingDeg;
     } // setPinpointFieldPosition
+
+    /*--------------------------------------------------------------------------------------------*/
+    public void setPinpointStartingHeading(double headingDeg ) {
+        odom.setHeading(headingDeg, AngleUnit.DEGREES);
+        robotOrientationDegrees = headingDeg;
+    } // setPinpointStartingFieldHeading
 
     /*--------------------------------------------------------------------------------------------*/
     public void updateLimelightFieldPosition() {
