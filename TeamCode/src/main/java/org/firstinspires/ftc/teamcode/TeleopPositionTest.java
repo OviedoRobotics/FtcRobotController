@@ -18,10 +18,10 @@ public class TeleopPositionTest extends LinearOpMode {
     // 3=spin servo
     // 4=lift/injecter servo
     // 5=goBilda RGB LED    
-    int       selectedMechanism = 0;
+    int       selectedMechanism = 1;
     double [] stepSizes = { 0.1, 0.01, 0.001, 0.0001 };
     int       stepIndex = 0;
-    double    shooterPos, turretPos, spinPos, liftPos, ledValue;
+    double    turretPos, spinPos, liftPos, ledValue;
     double    shooterPower = 0.50;
 
     long    nanoTimeCurr=0, nanoTimePrev=0;
@@ -38,10 +38,6 @@ public class TeleopPositionTest extends LinearOpMode {
 
         // Initialize robot hardware (autonomous=true initializes servos)
         robot.init(hardwareMap,true);
-
-        // Preload each variable with the initialization position
-        shooterPos = robot.SHOOTER_SERVO_INIT;
-        robot.shooterServo.setPosition(shooterPos);
 
         turretPos = robot.TURRET_SERVO_INIT;
         robot.turretServoSetPosition(turretPos);
@@ -77,11 +73,7 @@ public class TeleopPositionTest extends LinearOpMode {
             telemetry.addData("Use CROSS to toggle between mechanisms", " " );
             telemetry.addData("Use left/right BUMPERS to adjust setting lower/higher", " " );
             telemetry.addData("Step Size", "%.4f (O button)", stepSizes[stepIndex]);
-            switch( selectedMechanism ) { // 0=shooter servo
-                case 0 :
-                    telemetry.addData("SELECTED:", "shooterServo" );
-                    telemetry.addData("Shoooter Servo Position", "%.3f", robot.shooterServo.getPosition() );
-                    break;
+            switch( selectedMechanism ) {
                 case 1 :
                     telemetry.addData("SELECTED:", "shooterMotor" );
                     telemetry.addData("Upper Motor Power", "%.2f",    robot.shooterMotor1.getPower() );
@@ -114,7 +106,7 @@ public class TeleopPositionTest extends LinearOpMode {
                     }
                     break;
                 default :
-                    selectedMechanism = 0;
+                    selectedMechanism = 1;
                     break;
             } // switch()
 
@@ -127,19 +119,13 @@ public class TeleopPositionTest extends LinearOpMode {
             if( gamepad1.crossWasPressed() )
             {
                 selectedMechanism += 1;
-                if( selectedMechanism > 5 ) selectedMechanism = 0;
+                if( selectedMechanism > 5 ) selectedMechanism = 1;
             } // cross
 
             //================ LEFT BUMPER DECREASES SERVO POSITION ================
             if( gamepad1.leftBumperWasPressed() )
             {
                 switch( selectedMechanism ) {
-                    case 0 :
-                        shooterPos -= stepSizes[stepIndex];
-                        if( shooterPos < 0.0 ) shooterPos = 0.0;
-                        if( shooterPos > 1.0 ) shooterPos = 1.0;
-                        robot.shooterServo.setPosition(shooterPos);
-                        break;
                     case 1 :
                         shooterPower -= stepSizes[stepIndex];
                         if( shooterPower < 0.0 ) shooterPower = 0.0;
@@ -181,12 +167,6 @@ public class TeleopPositionTest extends LinearOpMode {
             else if( gamepad1.rightBumperWasReleased() )
             {
                 switch( selectedMechanism ) {
-                    case 0 :
-                        shooterPos += stepSizes[stepIndex];
-                        if( shooterPos < 0.0 ) shooterPos = 0.0;
-                        if( shooterPos > 1.0 ) shooterPos = 1.0;
-                        robot.shooterServo.setPosition(shooterPos);
-                        break;
                     case 1 :
                         shooterPower += stepSizes[stepIndex];
                         if( shooterPower < 0.0 ) shooterPower = 0.0;

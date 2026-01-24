@@ -20,10 +20,6 @@ public class AutonomousRedNear extends AutonomousBase {
     @Override
     public void runOpMode() throws InterruptedException {
 
-        doSpikeMark1 = false;
-        doSpikeMark2 = false;
-        doSpikeMark3 = false;
-
         // Initialize robot hardware (autonomous mode)
         telemetry.addData("State", "Initializing (please wait)");
         telemetry.update();

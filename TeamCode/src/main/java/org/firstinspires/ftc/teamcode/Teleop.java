@@ -23,7 +23,9 @@ public abstract class Teleop extends LinearOpMode {
     double  shooterPower = 0.55;  // far shooting default. scale for location.
     double  odoShootDistance = 0.0;
     double  odoShootAngleDeg = 0.0;
-    boolean autoAimEnabled   = false; // turret power/angle only adjusted when this flag is enabled
+    boolean isAutoShooterAngleGood = false; // false if the robot facing too far away from the target
+    boolean isAutoShooterSpeedGood = false; // is shooter motor up to target speed
+    boolean autoAimEnabled   = true; // turret power/angle only adjusted when this flag is enabled
 
     boolean blueAlliance;   // set in the Blue/Red
     boolean farAlliance;    //
@@ -172,7 +174,6 @@ public abstract class Teleop extends LinearOpMode {
             processCollector();
             processTurretAutoAim();
             processSpindexer();
-            processShooterFlap();
             processShooter();
             processInjector();
 
@@ -223,6 +224,7 @@ public abstract class Teleop extends LinearOpMode {
     /*---------------------------------------------------------------------------------*/
     void performEveryLoopTeleop() {
         robot.readBulkData();
+        isAutoShooterSpeedGood = robot.shooterMotorsReady;
         robot.processInjectionStateMachine();
         robot.processColorDetection();
 //      robot.processSpindexerControl();  // only for spinServoCR (not currently used)
@@ -239,7 +241,7 @@ public abstract class Teleop extends LinearOpMode {
     void updatePinpointFieldPosition() {
         // Ensure we don't get a spurious zero/clear reading
         boolean canSeeAprilTag = (robot.limelightFieldXpos != 0.0) && (robot.limelightFieldYpos !=0.0) && (robot.limelightFieldAngleDeg != 0.0);
-        boolean qualityReading = (robot.limelightFieldXstd < 0.002) && (robot.limelightFieldYstd < 0.002);
+        boolean qualityReading = (robot.limelightFieldXstd < 0.0018) && (robot.limelightFieldYstd < 0.0018);
         boolean robotXslow = (Math.abs(robot.robotGlobalXvelocity) < 0.1)? true:false;
         boolean robotYslow = (Math.abs(robot.robotGlobalYvelocity) < 0.1)? true:false;
         boolean robotAslow = (Math.abs(robot.robotAngleVelocity)   < 0.1)? true:false;
@@ -567,27 +569,6 @@ public abstract class Teleop extends LinearOpMode {
     } // processSpindexer
 
     /*---------------------------------------------------------------------------------*/
-    void processShooterFlap() {
-    // Check for an OFF-to-ON toggle of gamepad2 DPAD buttons (controls shooter flapper up/down)
-        if( gamepad2.dpadDownWasPressed() ) {
-            // aim LOWER
-            robot.shooterServoCurPos += 0.01;
-            // Don't exceed our mechanical limits
-            if( robot.shooterServoCurPos > robot.SHOOTER_SERVO_MAX )
-                robot.shooterServoCurPos = robot.SHOOTER_SERVO_MAX;
-            robot.shooterServo.setPosition( robot.shooterServoCurPos );
-        }
-        else if( gamepad2.dpadUpWasPressed() ) {
-            // aim HIGHER
-            robot.shooterServoCurPos -= 0.01;
-            // Don't exceed our mechanical limits
-            if( robot.shooterServoCurPos < robot.SHOOTER_SERVO_MIN )
-                robot.shooterServoCurPos = robot.SHOOTER_SERVO_MIN;
-            robot.shooterServo.setPosition( robot.shooterServoCurPos );
-        }
-    }   // processShooterFlap
-
-    /*---------------------------------------------------------------------------------*/
     void processShooter() {
         if( gamepad1.triangleWasPressed() ) {
             shooterPower += 0.005;
@@ -616,8 +597,6 @@ public abstract class Teleop extends LinearOpMode {
 
     private void processTurretAutoAim() {
         // Do we want to use them? (so long as the button is held...)
-//      autoAimEnabled = true;
-        autoAimEnabled = gamepad1.left_bumper;
         if( autoAimEnabled ) {
             // update pinpoint coordinates if conditions are good to do so
             updatePinpointFieldPosition();
@@ -625,7 +604,7 @@ public abstract class Teleop extends LinearOpMode {
             odoShootDistance = robot.getShootDistance( (blueAlliance)? Alliance.BLUE : Alliance.RED );
             odoShootAngleDeg = robot.getShootAngleDeg( (blueAlliance)? Alliance.BLUE : Alliance.RED );
             // set the turret angle and shooter power
-            robot.setTurretAngle(odoShootAngleDeg);
+            isAutoShooterAngleGood = robot.setTurretAngle(odoShootAngleDeg);
             shooterPower = robot.computeShooterPower(odoShootDistance);
             if(shooterMotorsOn) {
                 robot.shooterMotorsSetPower(shooterPower);
@@ -637,8 +616,12 @@ public abstract class Teleop extends LinearOpMode {
             odoShootAngleDeg = robot.getShootAngleDeg( (blueAlliance)? Alliance.BLUE : Alliance.RED );
         }
         // Has something gone wrong and we want to reset to manual straight-on mode?
-        if (gamepad1.rightBumperWasPressed()) {
+        if (gamepad1.leftBumperWasPressed()) {
+            autoAimEnabled = true;
+        }
+        else if (gamepad1.rightBumperWasPressed()) {
             // reset turret to the center and reset shooter power to FAR zone
+            autoAimEnabled = false;
             robot.turretServoSetPosition(robot.TURRET_SERVO_INIT);
             shooterPower = 0.55;
             if(shooterMotorsOn) {
