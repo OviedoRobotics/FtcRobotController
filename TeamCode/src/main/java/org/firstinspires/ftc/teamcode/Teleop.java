@@ -227,7 +227,6 @@ public abstract class Teleop extends LinearOpMode {
         isAutoShooterSpeedGood = robot.shooterMotorsReady;
         robot.processInjectionStateMachine();
         robot.processColorDetection();
-//      robot.processSpindexerControl();  // only for spinServoCR (not currently used)
         if( enableOdometry ) {
             robot.updatePinpointFieldPosition();
             robot.updateLimelightFieldPosition();

@@ -41,31 +41,6 @@ import android.graphics.Color;
  */
 public class HardwareSwyftBot
 {
-
-    public enum Ball
-    {
-        None,
-        Purple,
-        Green
-    }
-
-    protected DigitalChannel leftBallPresenceSensor;
-    protected NormalizedColorSensor leftBallColorSensor;
-    public Ball leftBall = Ball.None;
-    public boolean leftBallWasPresent = false;
-    public boolean leftBallIsPresent = false;
-    public boolean leftBallDetectingColor = false;
-
-    private DigitalChannel rightBallPresenceSensor;
-    protected NormalizedColorSensor rightBallColorSensor;
-    public Ball rightBall = Ball.None;
-    public boolean rightBallWasPresent = false;
-    public boolean rightBallIsPresent = false;
-    public boolean rightBallDetectingColor = false;
-
-    public int ballColorDetectingReads = 0;
-    public static int MAX_BALL_COLOR_READS = 10;
-
     //====== REV CONTROL/EXPANSION HUBS =====
     LynxModule controlHub;
     LynxModule expansionHub;
@@ -313,6 +288,30 @@ public class HardwareSwyftBot
         MOTIF_PPG   // PURPLE, PURPLE, GREEN
     }
 
+    public enum Ball
+    {
+        None,
+        Purple,
+        Green
+    }
+
+    protected DigitalChannel        leftBallPresenceSensor;
+    protected NormalizedColorSensor leftBallColorSensor;
+    public Ball    leftBall = Ball.None;
+    public boolean leftBallWasPresent     = false;
+    public boolean leftBallIsPresent      = false;
+    public boolean leftBallDetectingColor = false;
+
+    private DigitalChannel          rightBallPresenceSensor;
+    protected NormalizedColorSensor rightBallColorSensor;
+    public Ball    rightBall = Ball.None;
+    public boolean rightBallWasPresent     = false;
+    public boolean rightBallIsPresent      = false;
+    public boolean rightBallDetectingColor = false;
+
+    public int ballColorDetectingReads = 0;
+    public static int MAX_BALL_COLOR_READS = 10;
+
     /* local OpMode members. */
     protected HardwareMap hwMap = null;
     private final ElapsedTime period  = new ElapsedTime();
@@ -371,28 +370,6 @@ public class HardwareSwyftBot
         // Locate the limelight3a camera in our hardware settings
         // NOTE: Control Hub is assigned eth0 address 172.29.0.1 by limelight DHCP server
         limelight = hwMap.get(Limelight3A.class, "limelight");
-
-        //--------------------------------------------------------------------------------------------
-        // Ball detector sensors
-        leftBallColorSensor = hwMap.get(NormalizedColorSensor.class, "LeftColorSensor");
-        rightBallColorSensor = hwMap.get(NormalizedColorSensor.class, "RightColorSensor");
-
-        // If possible, turn the light on in the beginning (it might already be on anyway,
-        // we just make sure it is if we can).
-        if (leftBallColorSensor instanceof SwitchableLight) {
-            ((SwitchableLight) leftBallColorSensor).enableLight(true);
-        }
-        leftBallColorSensor.setGain(10.0F);
-        if (rightBallColorSensor instanceof SwitchableLight) {
-            ((SwitchableLight) rightBallColorSensor).enableLight(true);
-        }
-        rightBallColorSensor.setGain(10.0F);
-
-        leftBallPresenceSensor = hwMap.get(DigitalChannel.class, "leftPresence"); // digital 0 (0-1)
-        rightBallPresenceSensor = hwMap.get(DigitalChannel.class, "rightPresence"); // digital 0 (0-1)
-
-        leftBallPresenceSensor.setMode(DigitalChannel.Mode.INPUT);
-        rightBallPresenceSensor.setMode(DigitalChannel.Mode.INPUT);
 
         //--------------------------------------------------------------------------------------------
         // Define and Initialize drivetrain motors
@@ -485,6 +462,29 @@ public class HardwareSwyftBot
         //--------------------------------------------------------------------------------------------
         // Initialize servo control of the goBilda LED
         ledServo = hwMap.tryGet(Servo.class, "ledServo");
+
+        //--------------------------------------------------------------------------------------------
+        // Ball detector sensors
+        leftBallColorSensor  = hwMap.get(NormalizedColorSensor.class, "LeftColorSensor");
+        rightBallColorSensor = hwMap.get(NormalizedColorSensor.class, "RightColorSensor");
+
+        // If possible, turn the light on in the beginning
+        // (it might already be on anyway, we just make sure it is if we can).
+        if (leftBallColorSensor instanceof SwitchableLight) {
+            ((SwitchableLight) leftBallColorSensor).enableLight(true);
+        }
+        leftBallColorSensor.setGain(10.0F);
+
+        if (rightBallColorSensor instanceof SwitchableLight) {
+            ((SwitchableLight) rightBallColorSensor).enableLight(true);
+        }
+        rightBallColorSensor.setGain(10.0F);
+
+        leftBallPresenceSensor  = hwMap.get(DigitalChannel.class, "leftPresence");  // digital 0 (0-1)
+        rightBallPresenceSensor = hwMap.get(DigitalChannel.class, "rightPresence"); // digital 0 (0-1)
+
+        leftBallPresenceSensor.setMode(DigitalChannel.Mode.INPUT);
+        rightBallPresenceSensor.setMode(DigitalChannel.Mode.INPUT);
 
         // Ensure all servos are in the initialize position (YES for auto; NO for teleop)
         if( isAutonomous ) {
@@ -589,10 +589,10 @@ public class HardwareSwyftBot
         }
 
         // Read presence sensors
-        leftBallWasPresent = leftBallIsPresent;
-        leftBallIsPresent = leftBallPresenceSensor.getState();
+        leftBallWasPresent  = leftBallIsPresent;
+        leftBallIsPresent   = leftBallPresenceSensor.getState();
         rightBallWasPresent = rightBallIsPresent;
-        rightBallIsPresent = rightBallPresenceSensor.getState();
+        rightBallIsPresent  = rightBallPresenceSensor.getState();
     } // readBulkData
 
     /*--------------------------------------------------------------------------------------------*/
@@ -1199,9 +1199,9 @@ public class HardwareSwyftBot
                 ballColorDetectingReads = 0;
             }
         }
-
         return detectedBall;
     }
+
     public void processColorDetection ()
     {
         // First check if there are balls present
@@ -1225,7 +1225,7 @@ public class HardwareSwyftBot
         // If we are checking for a color
         if((leftBallDetectingColor) || (rightBallDetectingColor))
         {
-            // Left side detection
+            // Left side detection cycle
             if((ballColorDetectingReads % 2) == 0)
             {
                 if(leftBallDetectingColor)
@@ -1236,8 +1236,8 @@ public class HardwareSwyftBot
                         leftBallDetectingColor = false;
                     }
                 }
-                else
-                {
+                else // it is left's turn, but not in need.  If we're in here
+                {    // then right must have a need.  Use this cycle to scan it.
                     rightBall = getBallColor(rightBallColorSensor);
                     if(rightBall != Ball.None)
                     {
@@ -1245,7 +1245,7 @@ public class HardwareSwyftBot
                     }
                 }
             }
-            // Right side detection
+            // Right side detection cycle
             else
             {
                 if(rightBallDetectingColor)
@@ -1256,8 +1256,8 @@ public class HardwareSwyftBot
                         rightBallDetectingColor = false;
                     }
                 }
-                else
-                {
+                else // it is rights's turn, but not in need.  If we're in here
+                {    // then left must have a need.  Use this cycle to scan it.
                     leftBall = getBallColor(leftBallColorSensor);
                     if(leftBall != Ball.None)
                     {
@@ -1267,6 +1267,7 @@ public class HardwareSwyftBot
             }
         }
     } // processColorDetection
+
     /*--------------------------------------------------------------------------------------------*/
 
     /***
