@@ -36,6 +36,10 @@ import static java.lang.Thread.sleep;
 
 import android.graphics.Color;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 /*
  * Hardware class for Swyft Robotics SWYFT DRIVE V2 chassis with 86mm mecanum wheels
  */
@@ -295,16 +299,29 @@ public class HardwareSwyftBot
         Green
     }
 
+    // The position the spindexer is currently at. Init sets it to left.
+    // -1 = Right
+    // 0 = Centered
+    // +1 = Left
+    public final static int SPINDEXER_RIGHT = -1;
+    public final static int SPINDEXER_CENTER = 0;
+    public final static int SPINDEXER_LEFT = 1;
+    protected int spindex = 1;
+    public int spindexerRight = 1;
+    public int spindexerCenter = 2;
+    public int spindexerLeft = 0;
+    // Index 0 = Right - Rotate -1 to fire
+    // Index 1 = Center - No rotation to fire
+    // Index 2 = Left - Rotate +1 to fire
+    public List<Ball> spinventory = new ArrayList<>(Arrays.asList(Ball.None, Ball.None, Ball.None));
     protected DigitalChannel        leftBallPresenceSensor;
     protected NormalizedColorSensor leftBallColorSensor;
-    public Ball    leftBall = Ball.None;
     public boolean leftBallWasPresent     = false;
     public boolean leftBallIsPresent      = false;
     public boolean leftBallDetectingColor = false;
 
     private DigitalChannel          rightBallPresenceSensor;
     protected NormalizedColorSensor rightBallColorSensor;
-    public Ball    rightBall = Ball.None;
     public boolean rightBallWasPresent     = false;
     public boolean rightBallIsPresent      = false;
     public boolean rightBallDetectingColor = false;
@@ -1028,6 +1045,8 @@ public class HardwareSwyftBot
             case SPIN_P1 :
                 spinServoCurPos = SpindexerState.SPIN_P1;
                 spinServoSetPos = SPIN_SERVO_P1;
+                // Right
+                setSpindexPosition(SPINDEXER_RIGHT);
                 spinServo.setPosition(spinServoSetPos);
                 break;
             case SPIN_H2 :
@@ -1038,6 +1057,8 @@ public class HardwareSwyftBot
             case SPIN_P2 :
                 spinServoCurPos = SpindexerState.SPIN_P2;
                 spinServoSetPos = SPIN_SERVO_P2;
+                // Center
+                setSpindexPosition(SPINDEXER_CENTER);
                 spinServo.setPosition(spinServoSetPos);
                 break;
             case SPIN_H3 :
@@ -1048,6 +1069,8 @@ public class HardwareSwyftBot
             case SPIN_P3 :
                 spinServoCurPos = SpindexerState.SPIN_P3;
                 spinServoSetPos = SPIN_SERVO_P3;
+                // Left
+                setSpindexPosition(SPINDEXER_LEFT);
                 spinServo.setPosition(spinServoSetPos);
                 break;
             case SPIN_H4 :
@@ -1059,11 +1082,15 @@ public class HardwareSwyftBot
                 if( spinServoCurPos == SpindexerState.SPIN_P1 ) {
                     spinServoCurPos = SpindexerState.SPIN_P2;
                     spinServoSetPos = SPIN_SERVO_P2;
+                    // Center
+                    spindex = 0;
                     spinServo.setPosition(spinServoSetPos);
                 }
                 else if( spinServoCurPos == SpindexerState.SPIN_P2 ) {
                     spinServoCurPos = SpindexerState.SPIN_P3;
                     spinServoSetPos = SPIN_SERVO_P3;
+                    // Left
+                    spindex = 1;
                     spinServo.setPosition(spinServoSetPos);
                 } // else no room to increment further!
                 break;
@@ -1071,11 +1098,15 @@ public class HardwareSwyftBot
                 if( spinServoCurPos == SpindexerState.SPIN_P3 ) {
                     spinServoCurPos = SpindexerState.SPIN_P2;
                     spinServoSetPos = SPIN_SERVO_P2;
+                    // Center
+                    spindex = 0;
                     spinServo.setPosition(spinServoSetPos);
                 }
                 else if( spinServoCurPos == SpindexerState.SPIN_P2 ) {
                     spinServoCurPos = SpindexerState.SPIN_P1;
                     spinServoSetPos = SPIN_SERVO_P1;
+                    // Right
+                    setSpindexPosition(SPINDEXER_RIGHT);
                     spinServo.setPosition(spinServoSetPos);
                 } // else no room to decrement further!
                 break;
@@ -1139,12 +1170,15 @@ public class HardwareSwyftBot
             servoTimeoutU = (liftServoTimer.milliseconds() > 750);
             // Has the injector servo reached the desired position? (or timed-out?)
             if( servoFullyInjected || servoTimeoutU ) {
-              liftServoBusyU = false;  // the UP phase is complete
-              // Begin the DOWN/reset phase
-              liftServo.setPosition( LIFT_SERVO_RESET );
-              liftServoTimer.reset();
-              liftServoBusyD = true;
-              }
+                liftServoBusyU = false;  // the UP phase is complete
+                // Begin the DOWN/reset phase
+                liftServo.setPosition( LIFT_SERVO_RESET );
+                liftServoTimer.reset();
+                liftServoBusyD = true;
+                // Empty the spinventory
+                int centerIndex = Math.floorMod(1 + spindex, 3);
+                spinventory.set(centerIndex, Ball.None);
+            }
         } // UP
         
         // Process the RESETTING case (AxonMax+ no-load 60deg rotation = 115 msec
@@ -1173,6 +1207,31 @@ public class HardwareSwyftBot
        liftServoBusyD = true;        
     } // abortInjectionStateMachine
 
+    public void setSpindexPosition(int spindexSetting)
+    {
+        spindex = spindexSetting;
+        spindexerRight = Math.floorMod(spindex, 3);
+        spindexerCenter = Math.floorMod(1 + spindex, 3);
+        spindexerLeft = Math.floorMod(2 + spindex, 3);
+    }
+    public void setStartingSpinventory(Ball left, Ball center, Ball right)
+    {
+        spinventory.set(spindexerRight, right);
+        spinventory.set(spindexerCenter, center);
+        spinventory.set(spindexerLeft, left);
+    }
+    public Ball getRightBall()
+    {
+        return spinventory.get(spindexerRight);
+    }
+    public Ball getCenterBall()
+    {
+        return spinventory.get(spindexerCenter);
+    }
+    public Ball getLeftBall()
+    {
+        return spinventory.get(spindexerLeft);
+    }
     public Ball getBallColor(NormalizedColorSensor colorSensor)
     {
         Ball detectedBall = Ball.None;
@@ -1204,22 +1263,18 @@ public class HardwareSwyftBot
 
     public void processColorDetection ()
     {
-        // First check if there are balls present
-        if(leftBallIsPresent)
+        int leftIndex = Math.floorMod(2 + spindex, 3);
+        int rightIndex = Math.floorMod(spindex, 3);
+        // First check if there are undetected balls present
+        if((leftBallIsPresent) && (!leftBallWasPresent) && (spinventory.get(leftIndex) == Ball.None))
         {
-            if(!leftBallWasPresent)
-            {
-                leftBallDetectingColor = true;
-                ballColorDetectingReads = 0;
-            }
+            leftBallDetectingColor = true;
+            ballColorDetectingReads = 0;
         }
-        if(rightBallIsPresent)
+        if((rightBallIsPresent) && (!rightBallWasPresent) && (spinventory.get(rightIndex) == Ball.None))
         {
-            if(!rightBallWasPresent)
-            {
-                rightBallDetectingColor = true;
-                ballColorDetectingReads = 0;
-            }
+            rightBallDetectingColor = true;
+            ballColorDetectingReads = 0;
         }
 
         // If we are checking for a color
@@ -1230,16 +1285,16 @@ public class HardwareSwyftBot
             {
                 if(leftBallDetectingColor)
                 {
-                    leftBall = getBallColor(leftBallColorSensor);
-                    if(leftBall != Ball.None)
+                    spinventory.set(leftIndex, getBallColor(leftBallColorSensor));
+                    if(spinventory.get(leftIndex) != Ball.None)
                     {
                         leftBallDetectingColor = false;
                     }
                 }
                 else // it is left's turn, but not in need.  If we're in here
                 {    // then right must have a need.  Use this cycle to scan it.
-                    rightBall = getBallColor(rightBallColorSensor);
-                    if(rightBall != Ball.None)
+                    spinventory.set(rightIndex, getBallColor(rightBallColorSensor));
+                    if(spinventory.get(rightIndex) != Ball.None)
                     {
                         rightBallDetectingColor = false;
                     }
@@ -1250,16 +1305,16 @@ public class HardwareSwyftBot
             {
                 if(rightBallDetectingColor)
                 {
-                    rightBall = getBallColor(rightBallColorSensor);
-                    if(rightBall != Ball.None)
+                    spinventory.set(rightIndex, getBallColor(rightBallColorSensor));
+                    if(spinventory.get(rightIndex) != Ball.None)
                     {
                         rightBallDetectingColor = false;
                     }
                 }
                 else // it is rights's turn, but not in need.  If we're in here
                 {    // then left must have a need.  Use this cycle to scan it.
-                    leftBall = getBallColor(leftBallColorSensor);
-                    if(leftBall != Ball.None)
+                    spinventory.set(leftIndex, getBallColor(leftBallColorSensor));
+                    if(spinventory.get(leftIndex) != Ball.None)
                     {
                         leftBallDetectingColor = false;
                     }

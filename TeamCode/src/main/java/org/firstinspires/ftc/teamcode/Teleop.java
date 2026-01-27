@@ -211,6 +211,8 @@ public abstract class Teleop extends LinearOpMode {
 //          telemetry.addData("Driver Centric", "%.3f deg", (driverAngle - robot.headingIMU()) );
             telemetry.addData("Robot velocity", "x=%.2f y=%.2f ang=%.2f",
                 robot.robotGlobalXvelocity, robot.robotGlobalYvelocity, robot.robotAngleVelocity );
+            telemetry.addData("Spinventory", "Left: %s Center: %s Right: %s", robot.getLeftBall(),
+                    robot.getCenterBall(), robot.getRightBall());
             telemetry.addData("CycleTime", "%.1f msec (%.1f Hz)", cycleTimeElapsed, cycleTimeHz);
             telemetry.update();
 
