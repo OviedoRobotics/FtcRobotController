@@ -1088,14 +1088,14 @@ public class HardwareSwyftBot
                     spinServoCurPos = SpindexerState.SPIN_P2;
                     spinServoSetPos = SPIN_SERVO_P2;
                     // Center
-                    spindex = 0;
+                    setSpindexPosition(SPINDEXER_CENTER);
                     spinServo.setPosition(spinServoSetPos);
                 }
                 else if( spinServoCurPos == SpindexerState.SPIN_P2 ) {
                     spinServoCurPos = SpindexerState.SPIN_P3;
                     spinServoSetPos = SPIN_SERVO_P3;
                     // Left
-                    spindex = 1;
+                    setSpindexPosition(SPINDEXER_LEFT);
                     spinServo.setPosition(spinServoSetPos);
                 } // else no room to increment further!
                 break;
@@ -1104,7 +1104,7 @@ public class HardwareSwyftBot
                     spinServoCurPos = SpindexerState.SPIN_P2;
                     spinServoSetPos = SPIN_SERVO_P2;
                     // Center
-                    spindex = 0;
+                    setSpindexPosition(SPINDEXER_CENTER);
                     spinServo.setPosition(spinServoSetPos);
                 }
                 else if( spinServoCurPos == SpindexerState.SPIN_P2 ) {
