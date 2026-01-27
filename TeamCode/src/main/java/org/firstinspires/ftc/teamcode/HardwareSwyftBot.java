@@ -482,26 +482,29 @@ public class HardwareSwyftBot
 
         //--------------------------------------------------------------------------------------------
         // Ball detector sensors
-        leftBallColorSensor  = hwMap.get(NormalizedColorSensor.class, "LeftColorSensor");
-        rightBallColorSensor = hwMap.get(NormalizedColorSensor.class, "RightColorSensor");
+        if(isRobot1)
+        {
+            leftBallColorSensor = hwMap.get(NormalizedColorSensor.class, "LeftColorSensor");
+            rightBallColorSensor = hwMap.get(NormalizedColorSensor.class, "RightColorSensor");
 
-        // If possible, turn the light on in the beginning
-        // (it might already be on anyway, we just make sure it is if we can).
-        if (leftBallColorSensor instanceof SwitchableLight) {
-            ((SwitchableLight) leftBallColorSensor).enableLight(true);
+            // If possible, turn the light on in the beginning
+            // (it might already be on anyway, we just make sure it is if we can).
+            if (leftBallColorSensor instanceof SwitchableLight) {
+                ((SwitchableLight) leftBallColorSensor).enableLight(true);
+            }
+            leftBallColorSensor.setGain(10.0F);
+
+            if (rightBallColorSensor instanceof SwitchableLight) {
+                ((SwitchableLight) rightBallColorSensor).enableLight(true);
+            }
+            rightBallColorSensor.setGain(10.0F);
+
+            leftBallPresenceSensor  = hwMap.get(DigitalChannel.class, "leftPresence");  // digital 0 (0-1)
+            rightBallPresenceSensor = hwMap.get(DigitalChannel.class, "rightPresence"); // digital 0 (0-1)
+
+            leftBallPresenceSensor.setMode(DigitalChannel.Mode.INPUT);
+            rightBallPresenceSensor.setMode(DigitalChannel.Mode.INPUT);
         }
-        leftBallColorSensor.setGain(10.0F);
-
-        if (rightBallColorSensor instanceof SwitchableLight) {
-            ((SwitchableLight) rightBallColorSensor).enableLight(true);
-        }
-        rightBallColorSensor.setGain(10.0F);
-
-        leftBallPresenceSensor  = hwMap.get(DigitalChannel.class, "leftPresence");  // digital 0 (0-1)
-        rightBallPresenceSensor = hwMap.get(DigitalChannel.class, "rightPresence"); // digital 0 (0-1)
-
-        leftBallPresenceSensor.setMode(DigitalChannel.Mode.INPUT);
-        rightBallPresenceSensor.setMode(DigitalChannel.Mode.INPUT);
 
         // Ensure all servos are in the initialize position (YES for auto; NO for teleop)
         if( isAutonomous ) {
@@ -606,10 +609,12 @@ public class HardwareSwyftBot
         }
 
         // Read presence sensors
-        leftBallWasPresent  = leftBallIsPresent;
-        leftBallIsPresent   = leftBallPresenceSensor.getState();
-        rightBallWasPresent = rightBallIsPresent;
-        rightBallIsPresent  = rightBallPresenceSensor.getState();
+        if(isRobot1) {
+            leftBallWasPresent = leftBallIsPresent;
+            leftBallIsPresent = leftBallPresenceSensor.getState();
+            rightBallWasPresent = rightBallIsPresent;
+            rightBallIsPresent = rightBallPresenceSensor.getState();
+        }
     } // readBulkData
 
     /*--------------------------------------------------------------------------------------------*/
@@ -1263,6 +1268,8 @@ public class HardwareSwyftBot
 
     public void processColorDetection ()
     {
+        if(!isRobot1) return;
+
         int leftIndex = Math.floorMod(2 + spindex, 3);
         int rightIndex = Math.floorMod(spindex, 3);
         // First check if there are undetected balls present
