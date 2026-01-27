@@ -16,6 +16,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
 
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.teamcode.HardwareSwyftBot.SpindexerState;
 
 import java.io.File;
@@ -272,7 +273,8 @@ public abstract class AutonomousBase extends LinearOpMode {
     // Resets odometry starting position and angle to zero accumulated encoder counts
     public void resetGlobalCoordinatePositionAuto(double posX, double posY, double posAngleDegree ){
 //      robot.odom.resetPosAndIMU();   // don't need full recalibration; just reset our position in case of any movement
-        robot.setPinpointFieldPosition( posX, posY, posAngleDegree ); // in case we don't run autonomous first!
+        robot.setPinpointFieldPosition( posX, posY ); // in case we don't run autonomous first!
+        robot.odom.setHeading(posAngleDegree, AngleUnit.DEGREES);
         robotGlobalXCoordinatePosition = posX;  // This will get overwritten the first time
         robotGlobalYCoordinatePosition = posY;  // we call robot.odom.update()!
         robotOrientationRadians        = Math.toRadians( posAngleDegree );

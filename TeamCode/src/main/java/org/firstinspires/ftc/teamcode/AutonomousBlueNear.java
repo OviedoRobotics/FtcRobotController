@@ -113,7 +113,7 @@ public class AutonomousBlueNear extends AutonomousBase {
         autoAimEnabled = false;
         scoreThreeBallsFromField(obeliskID, PPG_23);
         // update our field position based on the AprilTag
-        robot.setPinpointFieldPosition(robot.limelightFieldXpos, robot.limelightFieldYpos, robot.limelightFieldAngleDeg);
+        robot.setPinpointFieldPosition(robot.limelightFieldXpos, robot.limelightFieldYpos);
 
         // Collect and Score 3rd spike mark
         if( doSpikeMark3 ) {
