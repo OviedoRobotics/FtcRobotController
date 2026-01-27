@@ -42,7 +42,7 @@ public class AutonomousBlueNear extends AutonomousBase {
         autonomousTimer.reset();
 
         // Establish our starting position on the field (in field coordinate system)
-        setStartingGlobalCoordinatePositionAuto( 38.6, 54.3, -90.0 );
+        resetGlobalCoordinatePositionAuto( 38.6, 54.3, -90.0 );
 
         // Drive away from the wall to a point that can see the obelisk
         driveToPosition( 34.0, 45.0, -90.0, DRIVE_SPEED_30, TURN_SPEED_15, DRIVE_THRU);

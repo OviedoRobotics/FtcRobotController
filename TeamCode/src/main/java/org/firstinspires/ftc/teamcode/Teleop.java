@@ -85,10 +85,8 @@ public abstract class Teleop extends LinearOpMode {
         while (!isStarted()) {
             // Send telemetry message to signify robot waiting;
             telemetry.addData("State", "Ready");
-            telemetry.addLine("(To run Teleop without Auto first)");
-            telemetry.addLine("(... orient the robot to 0 deg, then)");
             telemetry.addLine("Press X (cross) to reset encoders");
-            telemetry.addLine("(after start, press touchpad facing apriltag)");
+            telemetry.addLine("(to run Teleop without Auto first)");
             // Bulk-refresh the hub data and updates our state machines (spindexer!)
             performEveryLoopTeleop();
             telemetry.addData("Limelight","x=%.2f y=%.2f  %.2f deg (Apriltag)",
@@ -103,6 +101,7 @@ public abstract class Teleop extends LinearOpMode {
             // Normally autonomous resets encoders/odometry.  Do we need to for teleop??
             if( gamepad1.crossWasPressed() ) {
                 robot.resetEncoders();
+                robot.resetGlobalCoordinatePosition( 0.0, 0.0, 0.0 );
             }
             // Pause briefly before looping
             idle();
