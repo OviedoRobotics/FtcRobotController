@@ -1221,21 +1221,33 @@ public class HardwareSwyftBot
     }
     public void setStartingSpinventory(Ball left, Ball center, Ball right)
     {
-        spinventory.set(spindexerRight, right);
-        spinventory.set(spindexerCenter, center);
-        spinventory.set(spindexerLeft, left);
+        setRightBall(right);
+        setCenterBall(center);
+        setLeftBall(left);
     }
     public Ball getRightBall()
     {
         return spinventory.get(spindexerRight);
     }
+    public void setRightBall(Ball rightBall)
+    {
+        spinventory.set(spindexerRight, rightBall);
+    }
     public Ball getCenterBall()
     {
         return spinventory.get(spindexerCenter);
     }
+    public void setCenterBall(Ball centerBall)
+    {
+        spinventory.set(spindexerCenter, centerBall);
+    }
     public Ball getLeftBall()
     {
         return spinventory.get(spindexerLeft);
+    }
+    public void setLeftBall(Ball leftBall)
+    {
+        spinventory.set(spindexerLeft, leftBall);
     }
     public Ball getBallColor(NormalizedColorSensor colorSensor)
     {
@@ -1270,15 +1282,13 @@ public class HardwareSwyftBot
     {
         if(!isRobot1) return;
 
-        int leftIndex = Math.floorMod(2 + spindex, 3);
-        int rightIndex = Math.floorMod(spindex, 3);
         // First check if there are undetected balls present
-        if((leftBallIsPresent) && (!leftBallWasPresent) && (spinventory.get(leftIndex) == Ball.None))
+        if((leftBallIsPresent) && (!leftBallWasPresent) && (getLeftBall() == Ball.None))
         {
             leftBallDetectingColor = true;
             ballColorDetectingReads = 0;
         }
-        if((rightBallIsPresent) && (!rightBallWasPresent) && (spinventory.get(rightIndex) == Ball.None))
+        if((rightBallIsPresent) && (!rightBallWasPresent) && (getRightBall() == Ball.None))
         {
             rightBallDetectingColor = true;
             ballColorDetectingReads = 0;
@@ -1292,16 +1302,16 @@ public class HardwareSwyftBot
             {
                 if(leftBallDetectingColor)
                 {
-                    spinventory.set(leftIndex, getBallColor(leftBallColorSensor));
-                    if(spinventory.get(leftIndex) != Ball.None)
+                    setLeftBall(getBallColor(leftBallColorSensor));
+                    if(getLeftBall() != Ball.None)
                     {
                         leftBallDetectingColor = false;
                     }
                 }
                 else // it is left's turn, but not in need.  If we're in here
                 {    // then right must have a need.  Use this cycle to scan it.
-                    spinventory.set(rightIndex, getBallColor(rightBallColorSensor));
-                    if(spinventory.get(rightIndex) != Ball.None)
+                    setRightBall(getBallColor(rightBallColorSensor));
+                    if(getRightBall() != Ball.None)
                     {
                         rightBallDetectingColor = false;
                     }
@@ -1312,16 +1322,16 @@ public class HardwareSwyftBot
             {
                 if(rightBallDetectingColor)
                 {
-                    spinventory.set(rightIndex, getBallColor(rightBallColorSensor));
-                    if(spinventory.get(rightIndex) != Ball.None)
+                    setRightBall(getBallColor(rightBallColorSensor));
+                    if(getRightBall() != Ball.None)
                     {
                         rightBallDetectingColor = false;
                     }
                 }
                 else // it is rights's turn, but not in need.  If we're in here
                 {    // then left must have a need.  Use this cycle to scan it.
-                    spinventory.set(leftIndex, getBallColor(leftBallColorSensor));
-                    if(spinventory.get(leftIndex) != Ball.None)
+                    setLeftBall(getBallColor(leftBallColorSensor));
+                    if(getLeftBall() != Ball.None)
                     {
                         leftBallDetectingColor = false;
                     }
