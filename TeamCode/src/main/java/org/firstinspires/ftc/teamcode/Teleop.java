@@ -203,16 +203,18 @@ public abstract class Teleop extends LinearOpMode {
 //          telemetry.addData("Shooter mA", "%.1f %.1f", robot.shooterMotor1Amps, robot.shooterMotor2Amps );
             telemetry.addData("Turret", "set %.3f get %.3f analog %.3f", robot.turretServoSet, robot.turretServoGet, robot.turretServoPos );
             telemetry.addData(" ", "in position: %s", (robot.turretServoIsBusy)? "no":"YES");
-            telemetry.addData("Spindexer", "set %.2f get %.2f time %.3f ms",
+            telemetry.addData("Spindexer", "set=%.2f get=%.2f time=%.3f ms",
                     robot.spinServoSetPos, robot.getSpindexerPos(), robot.spinServoTime );
-            telemetry.addLine( (robot.isRobot2)? "Robot2" : "Robot1");
+            telemetry.addData(" ", "delta=%.3f InPos=%s timeout=%f msec",
+                    robot.spinServoDelta, ((robot.spinServoInPos)? "YES":"no"), robot.spinServoTimeout );
 //          telemetry.addData("Driver Angle", "%.3f deg", driverAngle );
 //          telemetry.addData("IMU Angle", "%.3f deg", robot.headingIMU() );
 //          telemetry.addData("Driver Centric", "%.3f deg", (driverAngle - robot.headingIMU()) );
-            telemetry.addData("Robot velocity", "x=%.2f y=%.2f ang=%.2f",
-                robot.robotGlobalXvelocity, robot.robotGlobalYvelocity, robot.robotAngleVelocity );
-            telemetry.addData("Spinventory", "Left: %s Center: %s Right: %s", robot.getLeftBall(),
-                    robot.getCenterBall(), robot.getRightBall());
+//          telemetry.addData("Robot velocity", "x=%.2f y=%.2f ang=%.2f",
+//              robot.robotGlobalXvelocity, robot.robotGlobalYvelocity, robot.robotAngleVelocity );
+            telemetry.addData("Spinventory", "Left: %s Center: %s Right: %s", 
+                robot.getLeftBall(), robot.getCenterBall(), robot.getRightBall() );
+            telemetry.addLine( (robot.isRobot2)? "Robot2" : "Robot1");
             telemetry.addData("CycleTime", "%.1f msec (%.1f Hz)", cycleTimeElapsed, cycleTimeHz);
             telemetry.update();
 

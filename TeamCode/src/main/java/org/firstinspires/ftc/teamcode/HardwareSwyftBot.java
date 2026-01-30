@@ -174,10 +174,13 @@ public class HardwareSwyftBot
 
     //====== SPINDEXER SERVO =====
     public Servo       spinServo    = null;
-    public CRServo     spinServoCR  = null;
     public AnalogInput spinServoPos = null;
 
-    public enum SpindexerTargetPosition {
+/* ========== ONLY USED FOR CONTINUOUS ROTATION MODE SPINDEXING! ==========
+
+    public CRServo     spinServoCR  = null;
+
+    public enum SpindexerTargetPosition {  // Position 1/2/3 angles [degrees]
         P1(47),
         P2(167),
         P3(287);
@@ -201,6 +204,8 @@ public class HardwareSwyftBot
         if (index >= values.length) index = 0;
         currentSpindexerTarget = values[index];
     }
+
+   ========== ONLY USED FOR CONTINUOUS ROTATION MODE SPINDEXING! ========== */
 
     //===== ROBOT1 spindexer servo positions:
     public final static double SPIN_SERVO_H1_R1 = 0.000;  // halfway1 (from R1)
@@ -243,8 +248,11 @@ public class HardwareSwyftBot
     public SpindexerState spinServoSavPos = SpindexerState.SPIN_P3;  // saved spindexer enum (half!)
     public double         spinServoSetPos = 0.0;   // spindexer servo position commanded 
     public double         spinServoGetPos = 0.0;   // spindexer position analog feedback
+    public double         spinServoDelta  = 0.0;   // spindexer distance to travel (0.0 to 1.0)
+    public double         spinServoTimeout= 0.0;   // allowed travel time [msec] before we assume a problem
     public boolean        spinServoMidPos = false; // are we in a temporary midway-position?
     public boolean        spinServoInPos  = true;  // have we reached the commanded position
+    public boolean        spinServoAbort  = false; // are we currently in an aborted state?
     public ElapsedTime    spinServoTimer  = new ElapsedTime();
     public double         spinServoTime   = 0.0;  // msec to get into position
 
@@ -585,10 +593,13 @@ public class HardwareSwyftBot
         shooterMotor2Vel = shooterMotor2.getVelocity();
         boolean shooterMotor1Ready = (Math.abs(shooterMotor1Vel - shooterTargetVel) < 25)? true:false;
         boolean shooterMotor2Ready = (Math.abs(shooterMotor2Vel - shooterTargetVel) < 25)? true:false;
-        shooterMotorsReady = shooterMotor1Ready && shooterMotor2Ready; // FIXME: is this a good threshold?
+        shooterMotorsReady = shooterMotor1Ready && shooterMotor2Ready;
         if( shooterMotorsReady && (shooterMotorsTime == 0) ) {
             shooterMotorsTime = shooterMotorsTimer.milliseconds();
         }
+        // NOTE: motor mA data is NOT part of the bulk-read, so increases cycle time!
+//      shooterMotor1Amps = shooterMotor1.getCurrent(MILLIAMPS);
+//      shooterMotor2Amps = shooterMotor1.getCurrent(MILLIAMPS);
 
         // Where has the turret been commanded to?
         turretServoGet   = turretServo.getPosition();
@@ -598,16 +609,9 @@ public class HardwareSwyftBot
         if(turretServoIsBusy && turretInPos ) {
             turretServoIsBusy = false;
         }
-        // NOTE: motor mA data is NOT part of the bulk-read, so increases cycle time!
-//      shooterMotor1Amps = shooterMotor1.getCurrent(MILLIAMPS);
-//      shooterMotor2Amps = shooterMotor1.getCurrent(MILLIAMPS);
-        // Has the spindexer reached the commanded position?
+
+        // Update spindexer current position using spinServoPos analog feedback
         spinServoGetPos = getSpindexerPos();
-        double spindexerError = Math.abs( spinServoSetPos - spinServoGetPos );
-        if( !spinServoInPos && (spindexerError < 0.030) ) {
-            spinServoTime = spinServoTimer.milliseconds();
-            spinServoInPos = true;
-        }
 
         // Read presence sensors
         if(isRobot1) {
@@ -997,7 +1001,14 @@ public class HardwareSwyftBot
     } // getSpindexerAngle
 
     /*--------------------------------------------------------------------------------------------*/
-    public double computeSpindexerError(double targetDeg, double actualDeg) { // only used for CR mode spindexer
+    public double getInjectorAngle()
+    {
+      return computeAxonAngle( liftServoPos.getVoltage() );
+    } // getInjectorAngle
+
+/* ========== ONLY USED FOR CONTINUOUS ROTATION MODE SPINDEXING! ==========
+
+    public double computeSpindexerError(double targetDeg, double actualDeg) {
         // Shortest angular error considering wrap-around at 360°
         double diff = targetDeg - actualDeg;
         // Normalize to -180..+180
@@ -1006,8 +1017,7 @@ public class HardwareSwyftBot
         return diff;
     } // getSpindexerError
 
-    /*--------------------------------------------------------------------------------------------*/
-    double spindexerProportionalControl(double errorDeg) { // only used for CR mode spindexer
+    double spindexerProportionalControl(double errorDeg) {
         final double MIN_POWER_TO_ROTATE = 0.08; // 8% servo power
         double rawPower;
         if (Math.abs(errorDeg) <= 1.5 )  {
@@ -1025,7 +1035,7 @@ public class HardwareSwyftBot
         return Range.clip(rawPower, -0.97, 0.97 );
     } // spindexerProportionalControl
 
-    public void processSpindexerControl() { // only used for CR mode spindexer
+    public void processSpindexerControl() {
         // read current angle (0 to 360)
         double currentDegrees = getSpindexerAngle();
         // compute angular error from our target
@@ -1035,96 +1045,71 @@ public class HardwareSwyftBot
         spinServoCR.setPower( spindexerPowerSetting );
     } // processSpindexerControl
 
-    /*--------------------------------------------------------------------------------------------*/
-    public double getInjectorAngle()
-    {
-      return computeAxonAngle( liftServoPos.getVoltage() );
-    } // getInjectorAngle
+   ========== ONLY USED FOR CONTINUOUS ROTATION MODE SPINDEXING! ========== */
 
     /*--------------------------------------------------------------------------------------------*/
     public void spinServoSetPosition( SpindexerState position )
     {
+        // NOTE: As we convert from the desired state as an "enum" to an actual servo position,
+        // it's not a one-to-one (enum vs. servo setting) at definition time because we have 2 robots!
+        // Consequently, we maintain a servo position as a "double" for each enumerated state.
+        // That association is handled below.
         switch( position ) {
             case SPIN_H1 :
-                spinServoCurPos = SpindexerState.SPIN_H1;
-                spinServoSetPos = SPIN_SERVO_H1;
-                spinServo.setPosition(spinServoSetPos);
+                initSpindexerMovement( SPIN_SERVO_H1, SpindexerState.SPIN_H1 );
                 break;
             case SPIN_P1 :
-                spinServoCurPos = SpindexerState.SPIN_P1;
-                spinServoSetPos = SPIN_SERVO_P1;
                 // Right
                 setSpindexPosition(SPINDEXER_RIGHT);
-                spinServo.setPosition(spinServoSetPos);
+                initSpindexerMovement( SPIN_SERVO_P1, SpindexerState.SPIN_P1 );
                 break;
             case SPIN_H2 :
-                spinServoCurPos = SpindexerState.SPIN_H2;
-                spinServoSetPos = SPIN_SERVO_H2;
-                spinServo.setPosition(spinServoSetPos);
+                initSpindexerMovement( SPIN_SERVO_H2, SpindexerState.SPIN_H2 );
                 break;
             case SPIN_P2 :
-                spinServoCurPos = SpindexerState.SPIN_P2;
-                spinServoSetPos = SPIN_SERVO_P2;
                 // Center
                 setSpindexPosition(SPINDEXER_CENTER);
-                spinServo.setPosition(spinServoSetPos);
+                initSpindexerMovement( SPIN_SERVO_P2, SpindexerState.SPIN_P2 );
                 break;
             case SPIN_H3 :
-                spinServoCurPos = SpindexerState.SPIN_H3;
-                spinServoSetPos = SPIN_SERVO_H3;
-                spinServo.setPosition(spinServoSetPos);
+                initSpindexerMovement( SPIN_SERVO_H3, SpindexerState.SPIN_H3 );
                 break;
             case SPIN_P3 :
-                spinServoCurPos = SpindexerState.SPIN_P3;
-                spinServoSetPos = SPIN_SERVO_P3;
                 // Left
                 setSpindexPosition(SPINDEXER_LEFT);
-                spinServo.setPosition(spinServoSetPos);
+                initSpindexerMovement( SPIN_SERVO_P3, SpindexerState.SPIN_P3 );
                 break;
             case SPIN_H4 :
-                spinServoCurPos = SpindexerState.SPIN_H4;
-                spinServoSetPos = SPIN_SERVO_H4;
-                spinServo.setPosition(spinServoSetPos);
+                initSpindexerMovement( SPIN_SERVO_H4, SpindexerState.SPIN_H4 );
                 break;
             case SPIN_INCREMENT :
                 if( spinServoCurPos == SpindexerState.SPIN_P1 ) {
-                    spinServoCurPos = SpindexerState.SPIN_P2;
-                    spinServoSetPos = SPIN_SERVO_P2;
                     // Center
                     setSpindexPosition(SPINDEXER_CENTER);
-                    spinServo.setPosition(spinServoSetPos);
+                    initSpindexerMovement( SPIN_SERVO_P2, SpindexerState.SPIN_P2 );
                 }
                 else if( spinServoCurPos == SpindexerState.SPIN_P2 ) {
-                    spinServoCurPos = SpindexerState.SPIN_P3;
-                    spinServoSetPos = SPIN_SERVO_P3;
                     // Left
                     setSpindexPosition(SPINDEXER_LEFT);
-                    spinServo.setPosition(spinServoSetPos);
+                    initSpindexerMovement( SPIN_SERVO_P3, SpindexerState.SPIN_P3 );
                 } // else no room to increment further!
                 break;
             case SPIN_DECREMENT :
                 if( spinServoCurPos == SpindexerState.SPIN_P3 ) {
-                    spinServoCurPos = SpindexerState.SPIN_P2;
-                    spinServoSetPos = SPIN_SERVO_P2;
                     // Center
                     setSpindexPosition(SPINDEXER_CENTER);
-                    spinServo.setPosition(spinServoSetPos);
+                    initSpindexerMovement( SPIN_SERVO_P2, SpindexerState.SPIN_P2 );
                 }
                 else if( spinServoCurPos == SpindexerState.SPIN_P2 ) {
-                    spinServoCurPos = SpindexerState.SPIN_P1;
-                    spinServoSetPos = SPIN_SERVO_P1;
                     // Right
                     setSpindexPosition(SPINDEXER_RIGHT);
-                    spinServo.setPosition(spinServoSetPos);
+                    initSpindexerMovement( SPIN_SERVO_P1, SpindexerState.SPIN_P1 );
                 } // else no room to decrement further!
                 break;
             default:
                 break;
         } // switch()
 
-        // reset our flag and start a timer
-        spinServoInPos = false;
-        spinServoTimer.reset();
     } // spinServoSetPosition
 
     /*--------------------------------------------------------------------------------------------*/
@@ -1156,19 +1141,85 @@ public class HardwareSwyftBot
     } // whichSpindexerHalfPosition
 
     /*--------------------------------------------------------------------------------------------*/
-    public void initSpindexerMovement()
+    public void initSpindexerMovement( double servoTargetValue, SpindexerState spindexerTargetState )
     {
-        // see processViperSlideExtension in 2023 pixelbot
+        // Store the target position (enumerated state); only valid once InPos is achieved!
+        spinServoCurPos = spindexerTargetState;
+
+        // Store the target position (servo position value)
+        // NOTE: we can monitor for this value with our analog position feedback
+        spinServoSetPos  = servoTargetValue;
+
+        // Establish timeout based on a 1-pos (0.380) or 2-pos (0.750) movement
+        spinServoDelta   = Math.abs( spinServoSetPos - spinServoGetPos );
+        spinServoTimeout = (spinServoDelta < 0.500)? 375:750; // msec
+        
+        // Initiate servo movement toward that target setting
+        spinServo.setPosition( spinServoSetPos );
+
+        // Start a timer and reset our status flags
+        spinServoTimer.reset();
+        spinServoInPos = false;
+        spinServoAbort = false;
+        
     } // initSpindexerMovement
+
+    /*--------------------------------------------------------------------------------------------*/
+    // NOTE: Measured timing data for spindexer movements using AxonMax+ MK2 servo
+    //                     +-------+-------+-------+-------+-------+-------+
+    //   [times in msec]   | P1-P2 | P2-P1 | P2-P3 | P3-P2 | P1-P3 | P3-P1 |
+    //                     +-------+-------+-------+-------+-------+-------+
+    //   ROBOT1: (0 balls) |  000  |  000  |  000  |  000  |  000  |  000  |
+    //           (3 balls) |  000  |  000  |  000  |  000  |  000  |  000  |
+    //   ROBOT2: (0 balls) |  000  |  000  |  000  |  000  |  000  |  000  |
+    //           (3 balls) |  000  |  000  |  000  |  000  |  000  |  000  |
+    //                     +-------+-------+-------+-------+-------+-------+
+    /*--------------------------------------------------------------------------------------------*/
 
     /*--------------------------------------------------------------------------------------------*/
     public void processSpindexerMovement()
     {
+        // Are we already in position?
+        if( spinServoInPos == true ) {
+           return;
+        }
+        
+        // Has the spindexer moved within tolerance of the commanded position?
+        // (spinServoGetPos is updated during every bulk read)
+        double spindexerError = Math.abs( spinServoSetPos - spinServoGetPos );
+        if( spindexerError < 0.030 ) {
+            spinServoTime = spinServoTimer.milliseconds();
+            spinServoInPos = true;
+        }
+
+        // Have we timed-out for this movement?
+        else if( spinServoTimer.milliseconds() > spinServoTimeout ) {
+           // Is the timeout because the servo stopped outside our expected tolerance
+           // (but close enough to still be usable)?           
+           if( spindexerError < 0.045 ) {  // TODO: find true tolerance required
+              spinServoTime = spinServoTimer.milliseconds();
+              spinServoInPos = true;
+           } else {
+               // TODO: handle cases where spindexer is pinned/jammed on ball
+           }
+        } // timeout
+        
     } // processSpindexerMovement
 
     /*--------------------------------------------------------------------------------------------*/
     public void abortSpindexerMovement()
     {
+        // Is an automated movement currently underway that we need to abort?
+        if( spinServoInPos == false ) {
+          // We monitor current servo position every bulk read.  Use that
+          // servo position to abort any in-process movement by re-commanding
+          // to the current position.
+          spinServo.setPosition( spinServoGetPos );
+          spinServoAbort = true;
+        }
+        
+        // TODO: decide how to safely/properly use this...
+        
     } // abortSpindexerMovement
 
     /*--------------------------------------------------------------------------------------------*/
