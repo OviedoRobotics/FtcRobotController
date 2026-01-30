@@ -232,7 +232,7 @@ public class HardwareSwyftBot
     public double SPIN_SERVO_P3;    // POSITION 3
     public double SPIN_SERVO_H4;    // halfway4 (from R3)
 
-    public enum SpindexerState {
+    public enum SpindexerState {  // enumerated end-states:  Position1/2/3 or Half-positions 1/2/3/4
         SPIN_H1,
         SPIN_P1,
         SPIN_H2,
@@ -255,6 +255,24 @@ public class HardwareSwyftBot
     public boolean        spinServoAbort  = false; // are we currently in an aborted state?
     public ElapsedTime    spinServoTimer  = new ElapsedTime();
     public double         spinServoTime   = 0.0;  // msec to get into position
+
+    public enum Shoot3state {
+        SHOOT3_IDLE,
+        SHOOT3_SPIN_P1,
+        SHOOT3_SPIN_P2,
+        SHOOT3_SPIN_P3,
+        SHOOT3_SPIN_WAIT,
+        SHOOT3_INJECT,
+        SHOOT3_INJECT_WAIT
+    }
+    public Shoot3state currentShoot3state = Shoot3state.SHOOT3_IDLE;
+
+    public enum Shoot3order {   // other orders may be needed for motif shooting (132, 231, 312)
+        SHOOT3_123,
+        SHOOT3_213,
+        SHOOT3_321
+    }
+    public Shoot3order desiredShoot3order = Shoot3order.SHOOT3_123;
 
     //====== INJECTOR/LIFTER SERVO =====
     public Servo       liftServo      = null;
@@ -309,18 +327,18 @@ public class HardwareSwyftBot
 
     // The position the spindexer is currently at. Init sets it to left.
     // -1 = Right
-    // 0 = Centered
+    //  0 = Centered
     // +1 = Left
-    public final static int SPINDEXER_RIGHT = -1;
+    public final static int SPINDEXER_RIGHT  = -1;
     public final static int SPINDEXER_CENTER = 0;
-    public final static int SPINDEXER_LEFT = 1;
+    public final static int SPINDEXER_LEFT   = 1;
     protected int spindex = 1;
-    public int spindexerRight = 1;
+    public int spindexerRight  = 1;
     public int spindexerCenter = 2;
-    public int spindexerLeft = 0;
-    // Index 0 = Right - Rotate -1 to fire
+    public int spindexerLeft   = 0;
+    // Index 0 = Right  - Rotate -1 to fire
     // Index 1 = Center - No rotation to fire
-    // Index 2 = Left - Rotate +1 to fire
+    // Index 2 = Left   - Rotate +1 to fire
     public List<Ball> spinventory = new ArrayList<>(Arrays.asList(Ball.None, Ball.None, Ball.None));
     protected DigitalChannel        leftBallPresenceSensor;
     protected NormalizedColorSensor leftBallColorSensor;
@@ -490,7 +508,7 @@ public class HardwareSwyftBot
 
         //--------------------------------------------------------------------------------------------
         // Ball detector sensors
-        if(isRobot1)
+        if(isRobot2)
         {
             leftBallColorSensor = hwMap.get(NormalizedColorSensor.class, "LeftColorSensor");
             rightBallColorSensor = hwMap.get(NormalizedColorSensor.class, "RightColorSensor");
@@ -507,8 +525,8 @@ public class HardwareSwyftBot
             }
             rightBallColorSensor.setGain(10.0F);
 
-            leftBallPresenceSensor  = hwMap.get(DigitalChannel.class, "leftPresence");  // digital 0 (0-1)
-            rightBallPresenceSensor = hwMap.get(DigitalChannel.class, "rightPresence"); // digital 0 (0-1)
+            leftBallPresenceSensor  = hwMap.get(DigitalChannel.class, "LeftPresence");  // digital 0 (0-1)
+            rightBallPresenceSensor = hwMap.get(DigitalChannel.class, "RightPresence"); // digital 0 (0-1)
 
             leftBallPresenceSensor.setMode(DigitalChannel.Mode.INPUT);
             rightBallPresenceSensor.setMode(DigitalChannel.Mode.INPUT);
@@ -614,7 +632,7 @@ public class HardwareSwyftBot
         spinServoGetPos = getSpindexerPos();
 
         // Read presence sensors
-        if(isRobot1) {
+        if(isRobot2) {
             leftBallWasPresent  = leftBallIsPresent;
             leftBallIsPresent   = leftBallPresenceSensor.getState();
             rightBallWasPresent = rightBallIsPresent;
@@ -970,8 +988,10 @@ public class HardwareSwyftBot
     /*--------------------------------------------------------------------------------------------*/
     public double computeAxonPos( double measuredVoltage )
     {
-        final double MAX_ANALOG_VOLTAGE   = 3.3;    // 3.3V maximum analog feedback output
-        double measuredPos = (measuredVoltage / MAX_ANALOG_VOLTAGE);
+        final double MAX_ANALOG_VOLTAGE = 3.3;    // 3.3V maximum analog feedback output
+        double Vscale  = (isRobot1)?  1.02 : 0.00;
+        double Poffset = (isRobot1)? -0.01 : 0.00;
+        double measuredPos = ((measuredVoltage * Vscale) / MAX_ANALOG_VOLTAGE) + Poffset;
         return measuredPos;
     } // computeAxonPos
 
@@ -1152,7 +1172,7 @@ public class HardwareSwyftBot
 
         // Establish timeout based on a 1-pos (0.380) or 2-pos (0.750) movement
         spinServoDelta   = Math.abs( spinServoSetPos - spinServoGetPos );
-        spinServoTimeout = (spinServoDelta < 0.500)? 375:750; // msec
+        spinServoTimeout = (spinServoDelta < 0.500)? 350:700; // msec
         
         // Initiate servo movement toward that target setting
         spinServo.setPosition( spinServoSetPos );
@@ -1174,7 +1194,6 @@ public class HardwareSwyftBot
     //   ROBOT2: (0 balls) |  000  |  000  |  000  |  000  |  000  |  000  |
     //           (3 balls) |  000  |  000  |  000  |  000  |  000  |  000  |
     //                     +-------+-------+-------+-------+-------+-------+
-    /*--------------------------------------------------------------------------------------------*/
 
     /*--------------------------------------------------------------------------------------------*/
     public void processSpindexerMovement()
@@ -1194,9 +1213,9 @@ public class HardwareSwyftBot
 
         // Have we timed-out for this movement?
         else if( spinServoTimer.milliseconds() > spinServoTimeout ) {
-           // Is the timeout because the servo stopped outside our expected tolerance
-           // (but close enough to still be usable)?           
-           if( spindexerError < 0.045 ) {  // TODO: find true tolerance required
+           // Is the timeout because the servo stopped outside our expected tolerance?
+           // (but we're close enough to still be usable)
+           if( spindexerError < 0.040 ) {  // TODO: find true tolerance required
               spinServoTime = spinServoTimer.milliseconds();
               spinServoInPos = true;
            } else {
@@ -1221,6 +1240,86 @@ public class HardwareSwyftBot
         // TODO: decide how to safely/properly use this...
         
     } // abortSpindexerMovement
+
+    /*--------------------------------------------------------------------------------------------*/
+    public void startTripleShotStateMachine()
+    {
+        // Determine SHOOTING ORDER based on initial spindexer orientation
+        // Engage state machine to shoot the ball in the current position
+       switch( spinServoCurPos ) {
+          case SPIN_P1 : 
+            desiredShoot3order = Shoot3order.SHOOT3_123;
+            currentShoot3state = Shoot3state.SHOOT3_INJECT;
+            break;
+          case SPIN_P2 :
+            desiredShoot3order = Shoot3order.SHOOT3_213;
+            currentShoot3state = Shoot3state.SHOOT3_INJECT;
+            break;
+          case SPIN_P3 :
+            desiredShoot3order = Shoot3order.SHOOT3_321;
+            currentShoot3state = Shoot3state.SHOOT3_INJECT;
+            break;
+          default :   // should never happen
+            desiredShoot3order = Shoot3order.SHOOT3_123;
+            currentShoot3state = Shoot3state.SHOOT3_INJECT;
+            break;
+          } // switch()
+
+    } // startTripleShotStateMachine
+
+    /*--------------------------------------------------------------------------------------------*/
+    public void processTripleShotStateMachine()
+    {
+       switch( currentShoot3state ) {
+           case SHOOT3_IDLE :
+             // nothing to do
+             break;
+           case SHOOT3_SPIN_P1 :
+             initSpindexerMovement( SPIN_SERVO_P1, SpindexerState.SPIN_P1 );
+             currentShoot3state = Shoot3state.SHOOT3_SPIN_WAIT;
+             break;
+           case SHOOT3_SPIN_P2 :
+             initSpindexerMovement( SPIN_SERVO_P2, SpindexerState.SPIN_P2 );
+             currentShoot3state = Shoot3state.SHOOT3_SPIN_WAIT;
+             break;
+           case SHOOT3_SPIN_P3 :
+             initSpindexerMovement( SPIN_SERVO_P3, SpindexerState.SPIN_P3 );
+             currentShoot3state = Shoot3state.SHOOT3_SPIN_WAIT;
+             break;
+           case SHOOT3_SPIN_WAIT :
+             if( spinServoInPos ) {
+                 currentShoot3state = Shoot3state.SHOOT3_INJECT;
+             } else {
+                // still waiting...
+             }
+             break;
+           case SHOOT3_INJECT :
+             startInjectionStateMachine();
+             currentShoot3state = Shoot3state.SHOOT3_INJECT_WAIT;
+             break;
+           case SHOOT3_INJECT_WAIT :
+             if( liftServoBusyU || liftServoBusyD ) {
+                 // still waiting...
+             }
+             else {
+                 // TODO: Figure out where to go next!  P1/P2/P3 or IDLE
+                 //   spinServoCurPos
+                 //   desiredShoot3order
+             }
+             break;
+           default:
+             break;
+       } // switch
+    } // processTripleShotStateMachine
+
+    /*--------------------------------------------------------------------------------------------*/
+    public void abortTripleShotStateMachine()
+    {
+        // Abort any current triple-shot movement in effect.
+        // Spindexing and Injecting will finish their current movements.
+        currentShoot3state = Shoot3state.SHOOT3_IDLE;
+
+    } // abortTripleShotStateMachine
 
     /*--------------------------------------------------------------------------------------------*/
     public void startInjectionStateMachine()
@@ -1258,12 +1357,7 @@ public class HardwareSwyftBot
         
         // Process the RESETTING case (AxonMax+ no-load 60deg rotation = 115 msec
         if( liftServoBusyD ) {
-            // Are we "done" because the servo position is now close enough? (Axon position feedback)
-            if (isRobot1) {
-                servoFullyReset = false;
-            } else { // robot2 has Axon position feedback wired up
-                servoFullyReset = (getInjectorAngle() <= LIFT_SERVO_RESET_ANG);
-            }
+            servoFullyReset = (getInjectorAngle() <= LIFT_SERVO_RESET_ANG);
             servoTimeoutD = (liftServoTimer.milliseconds() > 500);
             // Has the injector servo reached the desired position? (or timed-out?)
             if( servoFullyReset || servoTimeoutD ) {
@@ -1274,6 +1368,7 @@ public class HardwareSwyftBot
                 
     } // processInjectionStateMachine
 
+    /*--------------------------------------------------------------------------------------------*/
     public void abortInjectionStateMachine()
     {
        // if we don't want to wait for injection
@@ -1282,12 +1377,13 @@ public class HardwareSwyftBot
        liftServoBusyD = true;        
     } // abortInjectionStateMachine
 
+    /*--------------------------------------------------------------------------------------------*/
     public void setSpindexPosition(int spindexSetting)
     {
         spindex = spindexSetting;
-        spindexerRight = Math.floorMod(spindex, 3);
+        spindexerRight  = Math.floorMod(spindex, 3);
         spindexerCenter = Math.floorMod(1 + spindex, 3);
-        spindexerLeft = Math.floorMod(2 + spindex, 3);
+        spindexerLeft   = Math.floorMod(2 + spindex, 3);
     }
     public void setStartingSpinventory(Ball left, Ball center, Ball right)
     {
@@ -1350,7 +1446,7 @@ public class HardwareSwyftBot
 
     public void processColorDetection ()
     {
-        if(!isRobot1) return;
+        if(isRobot1) return;
 
         // First check if there are undetected balls present
         if((leftBallIsPresent) && (!leftBallWasPresent) && (getLeftBall() == Ball.None))

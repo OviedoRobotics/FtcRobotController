@@ -293,8 +293,9 @@ public abstract class AutonomousBase extends LinearOpMode {
         // Update the limelight field positions based on the goal apriltag
         robot.updateLimelightFieldPosition();
         // process other hardware state machines
-        robot.processInjectionStateMachine();
+        robot.processSpindexerMovement();
 //      robot.processSpindexerControl();  // only for continuous rotation
+        robot.processInjectionStateMachine();
         // Compute the power/angle needed for auto-aiming
         autoAimDistance = getShootDistanceAutoFar();
         autoAimPower    = robot.computeShooterPower(autoAimDistance);
@@ -1400,7 +1401,8 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
                 // rotate (if necessary) to the next position
                 robot.spinServoSetPosition( shootOrder[i] );
                 // wait for the rotation to complete, then launch that ball
-                sleep(700);   // TODO: change to spindexer position feedback
+                while( robot.spinServoInPos == false ) { sleep(15); }
+//              sleep(700);
                 launchBall();
                 // If our auto routine has run long, we want to stop shooting balls early and
                 // move forward from the launch line so we can still score the move bonus.

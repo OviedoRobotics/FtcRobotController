@@ -203,10 +203,11 @@ public abstract class Teleop extends LinearOpMode {
 //          telemetry.addData("Shooter mA", "%.1f %.1f", robot.shooterMotor1Amps, robot.shooterMotor2Amps );
             telemetry.addData("Turret", "set %.3f get %.3f analog %.3f", robot.turretServoSet, robot.turretServoGet, robot.turretServoPos );
             telemetry.addData(" ", "in position: %s", (robot.turretServoIsBusy)? "no":"YES");
-            telemetry.addData("Spindexer", "set=%.2f get=%.2f time=%.3f ms",
+            telemetry.addData("Spindexer", "set=%.2f get=%.2f time=%f msec",
                     robot.spinServoSetPos, robot.getSpindexerPos(), robot.spinServoTime );
             telemetry.addData(" ", "delta=%.3f InPos=%s timeout=%f msec",
                     robot.spinServoDelta, ((robot.spinServoInPos)? "YES":"no"), robot.spinServoTimeout );
+            telemetry.addData("Spindexer",robot.spinServoCurPos  );
 //          telemetry.addData("Driver Angle", "%.3f deg", driverAngle );
 //          telemetry.addData("IMU Angle", "%.3f deg", robot.headingIMU() );
 //          telemetry.addData("Driver Centric", "%.3f deg", (driverAngle - robot.headingIMU()) );
@@ -229,7 +230,9 @@ public abstract class Teleop extends LinearOpMode {
     void performEveryLoopTeleop() {
         robot.readBulkData();
         isAutoShooterSpeedGood = robot.shooterMotorsReady;
+        robot.processSpindexerMovement();
         robot.processInjectionStateMachine();
+        robot.processTripleShotStateMachine();
         robot.processColorDetection();
         if( enableOdometry ) {
             robot.updatePinpointFieldPosition();
@@ -635,13 +638,22 @@ public abstract class Teleop extends LinearOpMode {
 
     /*---------------------------------------------------------------------------------*/
     void processInjector() {
-        boolean safeToInject = (robot.spinServoMidPos == true)? false:true;
-        // Check for an OFF-to-ON toggle of the gamepad2 TRIANGLE button (command ball injection!)
+        // Has the spindexer achieved one of the 3 valid shooting positions?
+        boolean safeToInject = (robot.spinServoInPos && !robot.spinServoMidPos)? true:false;
+        // TRIANGLE button is a single-shot command
         if( safeToInject && gamepad2.triangleWasPressed() ) {
             // Ensure an earlier injection request isn't already underway
             if ((robot.liftServoBusyU == false) && (robot.liftServoBusyD == false)) {
                 robot.startInjectionStateMachine();
             }
+        }
+        // DPAD UP is the triple-shot command
+        if( safeToInject && gamepad2.dpadUpWasPressed() ) {
+//          robot.startTripleShotStateMachine();  // pew pew pew
+        }
+        // DPAD DOWN cancels triple-shot
+        else if( gamepad2.dpadDownWasPressed() ) {
+            robot.abortTripleShotStateMachine();
         }
     } // processInjector
 
