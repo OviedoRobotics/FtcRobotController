@@ -115,8 +115,6 @@ public class AutonomousRedNear extends AutonomousBase {
         // update our field position based on the AprilTag
         robot.setPinpointFieldPosition(robot.limelightFieldXpos, robot.limelightFieldYpos);
 
-        // TODO: doSpikeMark* disabled by default at the start of runOpMode. remove that when implemented.
-
         // Collect and Score 3rd spike mark
         if( doSpikeMark3 ) {
             collectSpikemarkFromNear(3,redAlliance );

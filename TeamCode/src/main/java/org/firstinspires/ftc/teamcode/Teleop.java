@@ -242,7 +242,7 @@ public abstract class Teleop extends LinearOpMode {
     void updatePinpointFieldPosition() {
         // Ensure we don't get a spurious zero/clear reading
         boolean canSeeAprilTag = (robot.limelightFieldXpos != 0.0) && (robot.limelightFieldYpos !=0.0) && (robot.limelightFieldAngleDeg != 0.0);
-        boolean qualityReading = (robot.limelightFieldXstd < 0.0018) && (robot.limelightFieldYstd < 0.0018);
+        boolean qualityReading = (robot.limelightFieldXstd < 0.002) && (robot.limelightFieldYstd < 0.002);
         boolean robotXslow = (Math.abs(robot.robotGlobalXvelocity) < 0.1)? true:false;
         boolean robotYslow = (Math.abs(robot.robotGlobalYvelocity) < 0.1)? true:false;
         boolean robotAslow = (Math.abs(robot.robotAngleVelocity)   < 0.1)? true:false;

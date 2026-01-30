@@ -241,10 +241,10 @@ public class HardwareSwyftBot
     
     public SpindexerState spinServoCurPos = SpindexerState.SPIN_P3;  // commanded spindexer enum
     public SpindexerState spinServoSavPos = SpindexerState.SPIN_P3;  // saved spindexer enum (half!)
-    public double         spinServoSetPos = 0.0;  // spindexer servo position commanded 
-    public double         spinServoGetPos = 0.0;  // spindexer position analog feedback
+    public double         spinServoSetPos = 0.0;   // spindexer servo position commanded 
+    public double         spinServoGetPos = 0.0;   // spindexer position analog feedback
     public boolean        spinServoMidPos = false; // are we in a temporary midway-position?
-    public boolean        spinServoInPos  = true; // have we reached the commanded position
+    public boolean        spinServoInPos  = true;  // have we reached the commanded position
     public ElapsedTime    spinServoTimer  = new ElapsedTime();
     public double         spinServoTime   = 0.0;  // msec to get into position
 
@@ -611,10 +611,10 @@ public class HardwareSwyftBot
 
         // Read presence sensors
         if(isRobot1) {
-            leftBallWasPresent = leftBallIsPresent;
-            leftBallIsPresent = leftBallPresenceSensor.getState();
+            leftBallWasPresent  = leftBallIsPresent;
+            leftBallIsPresent   = leftBallPresenceSensor.getState();
             rightBallWasPresent = rightBallIsPresent;
-            rightBallIsPresent = rightBallPresenceSensor.getState();
+            rightBallIsPresent  = rightBallPresenceSensor.getState();
         }
     } // readBulkData
 
@@ -834,6 +834,9 @@ public class HardwareSwyftBot
     } // updatePinpointFieldPosition
 
     /*--------------------------------------------------------------------------------------------*/
+    // This function lets us update the Pinpoint odometry X,Y location using information from
+	// a field-mounted Apriltag.  Using the limelight3a Metatag2 values only provides X,Y
+	// not angle, so we depend on the Pinpoint internal high-accuracy IMU to maintain angle.
     public void setPinpointFieldPosition( double X, double Y ) {
         odom.setPosX(X, DistanceUnit.INCH);
         odom.setPosY(Y, DistanceUnit.INCH);
@@ -985,7 +988,7 @@ public class HardwareSwyftBot
     public double getSpindexerPos()
     {
         return computeAxonPos( spinServoPos.getVoltage() );
-    } // getSpindexerAngle
+    } // getSpindexerPos
 
     /*--------------------------------------------------------------------------------------------*/
     public double getSpindexerAngle()
@@ -994,7 +997,7 @@ public class HardwareSwyftBot
     } // getSpindexerAngle
 
     /*--------------------------------------------------------------------------------------------*/
-    public double computeSpindexerError(double targetDeg, double actualDeg) {
+    public double computeSpindexerError(double targetDeg, double actualDeg) { // only used for CR mode spindexer
         // Shortest angular error considering wrap-around at 360°
         double diff = targetDeg - actualDeg;
         // Normalize to -180..+180
@@ -1004,7 +1007,7 @@ public class HardwareSwyftBot
     } // getSpindexerError
 
     /*--------------------------------------------------------------------------------------------*/
-    double spindexerProportionalControl(double errorDeg) {
+    double spindexerProportionalControl(double errorDeg) { // only used for CR mode spindexer
         final double MIN_POWER_TO_ROTATE = 0.08; // 8% servo power
         double rawPower;
         if (Math.abs(errorDeg) <= 1.5 )  {
@@ -1022,7 +1025,7 @@ public class HardwareSwyftBot
         return Range.clip(rawPower, -0.97, 0.97 );
     } // spindexerProportionalControl
 
-    public void processSpindexerControl() {
+    public void processSpindexerControl() { // only used for CR mode spindexer
         // read current angle (0 to 360)
         double currentDegrees = getSpindexerAngle();
         // compute angular error from our target
@@ -1151,6 +1154,22 @@ public class HardwareSwyftBot
         } // switch()
         return nextPos;        
     } // whichSpindexerHalfPosition
+
+    /*--------------------------------------------------------------------------------------------*/
+    public void initSpindexerMovement()
+    {
+        // see processViperSlideExtension in 2023 pixelbot
+    } // initSpindexerMovement
+
+    /*--------------------------------------------------------------------------------------------*/
+    public void processSpindexerMovement()
+    {
+    } // processSpindexerMovement
+
+    /*--------------------------------------------------------------------------------------------*/
+    public void abortSpindexerMovement()
+    {
+    } // abortSpindexerMovement
 
     /*--------------------------------------------------------------------------------------------*/
     public void startInjectionStateMachine()
