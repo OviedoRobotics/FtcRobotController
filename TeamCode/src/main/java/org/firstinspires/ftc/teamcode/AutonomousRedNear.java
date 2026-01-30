@@ -113,7 +113,7 @@ public class AutonomousRedNear extends AutonomousBase {
         autoAimEnabled = false;
         scoreThreeBallsFromField(obeliskID, PPG_23);
         // update our field position based on the AprilTag
-        robot.setPinpointFieldPosition(robot.limelightFieldXpos, robot.limelightFieldYpos, robot.limelightFieldAngleDeg);
+        robot.setPinpointFieldPosition(robot.limelightFieldXpos, robot.limelightFieldYpos);
 
         // TODO: doSpikeMark* disabled by default at the start of runOpMode. remove that when implemented.
 

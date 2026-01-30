@@ -519,7 +519,8 @@ public class HardwareSwyftBot
     // transfer any offset from autonomous to teleop if the frame of reference differs.
     public void resetGlobalCoordinatePosition( double posX, double posY, double posAngleDegree ){
 //      robot.odom.resetPosAndIMU();   // don't need full recalibration; just reset our position in case of any movement
-        setPinpointFieldPosition( posX, posY, posAngleDegree ); // in case we don't run autonomous first!
+        setPinpointFieldPosition( posX, posY); // in case we don't run autonomous first!
+        odom.setHeading(posAngleDegree, AngleUnit.DEGREES);
         robotGlobalXCoordinatePosition = posX;  // This will get overwritten the first time
         robotGlobalYCoordinatePosition = posY;  // we call robot.odom.update()!
         robotOrientationDegrees        = posAngleDegree;
@@ -833,12 +834,11 @@ public class HardwareSwyftBot
     } // updatePinpointFieldPosition
 
     /*--------------------------------------------------------------------------------------------*/
-    public void setPinpointFieldPosition( double X, double Y, double headingDeg ) {
-        Pose2D newFieldPosition = new Pose2D(DistanceUnit.INCH, X, Y, AngleUnit.DEGREES, headingDeg );
-        odom.setPosition( newFieldPosition );
+    public void setPinpointFieldPosition( double X, double Y ) {
+        odom.setPosX(X, DistanceUnit.INCH);
+        odom.setPosY(Y, DistanceUnit.INCH);
         robotGlobalXCoordinatePosition = X;
         robotGlobalYCoordinatePosition = Y;
-        robotOrientationDegrees        = headingDeg;
     } // setPinpointFieldPosition
 
     /*--------------------------------------------------------------------------------------------*/

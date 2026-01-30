@@ -248,7 +248,7 @@ public abstract class Teleop extends LinearOpMode {
         boolean robotAslow = (Math.abs(robot.robotAngleVelocity)   < 0.1)? true:false;
         boolean notDriving = (robotXslow && robotYslow && robotAslow)?  true:false;
         if( canSeeAprilTag && qualityReading && notDriving ) {
-            robot.setPinpointFieldPosition(robot.limelightFieldXpos, robot.limelightFieldYpos, robot.limelightFieldAngleDeg);
+            robot.setPinpointFieldPosition(robot.limelightFieldXpos, robot.limelightFieldYpos);
         }
     }  // updatePinpointFieldPosition
 
