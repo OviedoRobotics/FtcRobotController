@@ -1400,9 +1400,10 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
             for(int i=0; i<shootOrder.length; i++) {
                 // rotate (if necessary) to the next position
                 robot.spinServoSetPosition( shootOrder[i] );
-                // wait for the rotation to complete, then launch that ball
-                while( robot.spinServoInPos == false ) { sleep(15); }
-//              sleep(700);
+                // wait for the rotation to complete and shooter to be at speed, then launch that ball
+                while( (robot.spinServoInPos == false) || (robot.shooterMotorsReady == false) ) {
+                    performEveryLoop();
+                }
                 launchBall();
                 // If our auto routine has run long, we want to stop shooting balls early and
                 // move forward from the launch line so we can still score the move bonus.

@@ -203,9 +203,9 @@ public abstract class Teleop extends LinearOpMode {
 //          telemetry.addData("Shooter mA", "%.1f %.1f", robot.shooterMotor1Amps, robot.shooterMotor2Amps );
             telemetry.addData("Turret", "set %.3f get %.3f analog %.3f", robot.turretServoSet, robot.turretServoGet, robot.turretServoPos );
             telemetry.addData(" ", "in position: %s", (robot.turretServoIsBusy)? "no":"YES");
-            telemetry.addData("Spindexer", "set=%.2f get=%.2f time=%f msec",
+            telemetry.addData("Spindexer", "set=%.2f get=%.2f time=%.0f msec",
                     robot.spinServoSetPos, robot.getSpindexerPos(), robot.spinServoTime );
-            telemetry.addData(" ", "delta=%.3f InPos=%s timeout=%f msec",
+            telemetry.addData(" ", "delta=%.3f InPos=%s timeout=%.0f msec",
                     robot.spinServoDelta, ((robot.spinServoInPos)? "YES":"no"), robot.spinServoTimeout );
             telemetry.addData("Spindexer",robot.spinServoCurPos  );
 //          telemetry.addData("Driver Angle", "%.3f deg", driverAngle );

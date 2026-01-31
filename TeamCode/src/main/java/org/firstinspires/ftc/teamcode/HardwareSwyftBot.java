@@ -989,8 +989,8 @@ public class HardwareSwyftBot
     public double computeAxonPos( double measuredVoltage )
     {
         final double MAX_ANALOG_VOLTAGE = 3.3;    // 3.3V maximum analog feedback output
-        double Vscale  = (isRobot1)?  1.02 : 0.00;
-        double Poffset = (isRobot1)? -0.01 : 0.00;
+        double Vscale  = (isRobot1)?  1.14 :  1.18;
+        double Poffset = (isRobot1)? -0.07 : -0.077;
         double measuredPos = ((measuredVoltage * Vscale) / MAX_ANALOG_VOLTAGE) + Poffset;
         return measuredPos;
     } // computeAxonPos
@@ -1172,7 +1172,7 @@ public class HardwareSwyftBot
 
         // Establish timeout based on a 1-pos (0.380) or 2-pos (0.750) movement
         spinServoDelta   = Math.abs( spinServoSetPos - spinServoGetPos );
-        spinServoTimeout = (spinServoDelta < 0.500)? 350:700; // msec
+        spinServoTimeout = (spinServoDelta < 0.500)? 300:700; // msec
         
         // Initiate servo movement toward that target setting
         spinServo.setPosition( spinServoSetPos );
@@ -1189,8 +1189,8 @@ public class HardwareSwyftBot
     //                     +-------+-------+-------+-------+-------+-------+
     //   [times in msec]   | P1-P2 | P2-P1 | P2-P3 | P3-P2 | P1-P3 | P3-P1 |
     //                     +-------+-------+-------+-------+-------+-------+
-    //   ROBOT1: (0 balls) |  000  |  000  |  000  |  000  |  000  |  000  |
-    //           (3 balls) |  000  |  000  |  000  |  000  |  000  |  000  |
+    //   ROBOT1: (0 balls) |  250  |  264  |  253  |  257  |  000  |  000  |
+    //           (3 balls) |  266  |  265  |  267  |  292  |  000  |  000  |
     //   ROBOT2: (0 balls) |  000  |  000  |  000  |  000  |  000  |  000  |
     //           (3 balls) |  000  |  000  |  000  |  000  |  000  |  000  |
     //                     +-------+-------+-------+-------+-------+-------+
@@ -1206,7 +1206,7 @@ public class HardwareSwyftBot
         // Has the spindexer moved within tolerance of the commanded position?
         // (spinServoGetPos is updated during every bulk read)
         double spindexerError = Math.abs( spinServoSetPos - spinServoGetPos );
-        if( spindexerError < 0.030 ) {
+        if( spindexerError < 0.02 ) {
             spinServoTime = spinServoTimer.milliseconds();
             spinServoInPos = true;
         }
@@ -1215,7 +1215,7 @@ public class HardwareSwyftBot
         else if( spinServoTimer.milliseconds() > spinServoTimeout ) {
            // Is the timeout because the servo stopped outside our expected tolerance?
            // (but we're close enough to still be usable)
-           if( spindexerError < 0.040 ) {  // TODO: find true tolerance required
+           if( spindexerError < 0.04 ) {  // TODO: find true tolerance required
               spinServoTime = spinServoTimer.milliseconds();
               spinServoInPos = true;
            } else {
