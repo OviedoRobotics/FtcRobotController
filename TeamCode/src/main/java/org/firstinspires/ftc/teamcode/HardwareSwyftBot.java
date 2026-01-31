@@ -254,7 +254,9 @@ public class HardwareSwyftBot
     public boolean        spinServoInPos  = true;  // have we reached the commanded position
     public boolean        spinServoAbort  = false; // are we currently in an aborted state?
     public ElapsedTime    spinServoTimer  = new ElapsedTime();
-    public double         spinServoTime   = 0.0;  // msec to get into position
+    public double         spinServoTime   = 0.0;   // msec to get into position
+    public ElapsedTime    shoot3Timer     = new ElapsedTime();
+    public double         shoot3Time      = 0.0;   // msec to shoot all 3 balls
 
     public enum Shoot3state {
         SHOOT3_IDLE,
@@ -263,7 +265,8 @@ public class HardwareSwyftBot
         SHOOT3_SPIN_P3,
         SHOOT3_SPIN_WAIT,
         SHOOT3_INJECT,
-        SHOOT3_INJECT_WAIT
+        SHOOT3_INJECT_WAIT,
+        SHOOT3_DONE,
     }
     public Shoot3state currentShoot3state = Shoot3state.SHOOT3_IDLE;
 
@@ -289,11 +292,11 @@ public class HardwareSwyftBot
     public final static double LIFT_SERVO_RESET_ANG_R1  = 178.3;  // 0.520 = 173.3deg
     public final static double LIFT_SERVO_INJECT_ANG_R1 = 230.2;  // 0.330 = 235.2deg
     //===== ROBOT2 injector/lift servo positions: (Axon Mini)
-    public final static double LIFT_SERVO_INIT_R2   = 0.590;
-    public final static double LIFT_SERVO_RESET_R2  = 0.590;
+    public final static double LIFT_SERVO_INIT_R2   = 0.570;
+    public final static double LIFT_SERVO_RESET_R2  = 0.570;
     public final static double LIFT_SERVO_INJECT_R2 = 0.230;
-      //   167.6 (173)  . . .    (218)  221.2           <-- 5deg tolerance on RESET and INJECT
-    public final static double LIFT_SERVO_RESET_ANG_R2  = 172.6;  // 0.590 = 167.6deg
+      //   168 (173)  . . .    (218)  221           <-- 5deg tolerance on RESET and INJECT
+    public final static double LIFT_SERVO_RESET_ANG_R2  = 173.4;  // 0.570 = 168.4deg
     public final static double LIFT_SERVO_INJECT_ANG_R2 = 218.2;  // 0.230 = 223.2deg
     //===== These get populated after IMU init, when we know if we're ROBOT1 or ROBOT2
     public double LIFT_SERVO_INIT;
@@ -649,8 +652,8 @@ public class HardwareSwyftBot
         shooterTargetVel = computeShooterVelocity(shooterPower);
         // reset our "ready" flag and start a timer
         shooterMotorsReady = false;
+        shooterMotorsTime = 0.0;  // lets us only capture time ONCE, when shooter reaches ready
         shooterMotorsTimer.reset();
-        shooterMotorsTime = 0.0;
     } // shooterMotorsSetPower
 
     /*--------------------------------------------------------------------------------------------*/
@@ -1196,6 +1199,7 @@ public class HardwareSwyftBot
     //                     +-------+-------+-------+-------+-------+-------+
 
     /*--------------------------------------------------------------------------------------------*/
+    // Must be called from performEveryLoop() in AutonomousBase and performEveryLoopTeleop()
     public void processSpindexerMovement()
     {
         // Are we already in position?
@@ -1214,8 +1218,8 @@ public class HardwareSwyftBot
         // Have we timed-out for this movement?
         else if( spinServoTimer.milliseconds() > spinServoTimeout ) {
            // Is the timeout because the servo stopped outside our expected tolerance?
-           // (but we're close enough to still be usable)
-           if( spindexerError < 0.04 ) {  // TODO: find true tolerance required
+           // (but we're rotated close enough to still be able to inject the ball)
+           if( spindexerError < 0.04 ) {
               spinServoTime = spinServoTimer.milliseconds();
               spinServoInPos = true;
            } else {
@@ -1245,25 +1249,21 @@ public class HardwareSwyftBot
     public void startTripleShotStateMachine()
     {
         // Determine SHOOTING ORDER based on initial spindexer orientation
-        // Engage state machine to shoot the ball in the current position
-       switch( spinServoCurPos ) {
-          case SPIN_P1 : 
-            desiredShoot3order = Shoot3order.SHOOT3_123;
-            currentShoot3state = Shoot3state.SHOOT3_INJECT;
-            break;
-          case SPIN_P2 :
-            desiredShoot3order = Shoot3order.SHOOT3_213;
-            currentShoot3state = Shoot3state.SHOOT3_INJECT;
-            break;
-          case SPIN_P3 :
-            desiredShoot3order = Shoot3order.SHOOT3_321;
-            currentShoot3state = Shoot3state.SHOOT3_INJECT;
-            break;
-          default :   // should never happen
-            desiredShoot3order = Shoot3order.SHOOT3_123;
-            currentShoot3state = Shoot3state.SHOOT3_INJECT;
-            break;
-          } // switch()
+        switch( spinServoCurPos ) {
+            case SPIN_P1 : desiredShoot3order = Shoot3order.SHOOT3_123;  break;
+            case SPIN_P2 : desiredShoot3order = Shoot3order.SHOOT3_213;  break;
+            case SPIN_P3 : desiredShoot3order = Shoot3order.SHOOT3_321;  break;
+            default      : desiredShoot3order = Shoot3order.SHOOT3_123;  break; // error case
+        } // switch()
+
+        // Engage state machine by shooting the ball in the current position
+        currentShoot3state = Shoot3state.SHOOT3_INJECT;
+        // NOTE: this initial state will have to change if we shoot in motif color order
+        // (the 1st entry in shoot order will no longer be CURRENT POSITION)
+
+        // Keep track of how long it takes to shoot all 3 (compare AxonMax to AxonMini !)
+        shoot3Timer.reset();
+        shoot3Time = 0.0;
 
     } // startTripleShotStateMachine
 
@@ -1272,7 +1272,7 @@ public class HardwareSwyftBot
     {
        switch( currentShoot3state ) {
            case SHOOT3_IDLE :
-             // nothing to do
+             // nothing to do, waiting for next sequence to begin
              break;
            case SHOOT3_SPIN_P1 :
              initSpindexerMovement( SPIN_SERVO_P1, SpindexerState.SPIN_P1 );
@@ -1287,6 +1287,7 @@ public class HardwareSwyftBot
              currentShoot3state = Shoot3state.SHOOT3_SPIN_WAIT;
              break;
            case SHOOT3_SPIN_WAIT :
+             // As soon as the spindexer get to the position, transition to shooting
              if( spinServoInPos ) {
                  currentShoot3state = Shoot3state.SHOOT3_INJECT;
              } else {
@@ -1294,23 +1295,68 @@ public class HardwareSwyftBot
              }
              break;
            case SHOOT3_INJECT :
-             startInjectionStateMachine();
-             currentShoot3state = Shoot3state.SHOOT3_INJECT_WAIT;
+             // We're in position but is shooter up to speed?
+               if( shooterMotorsReady ){
+                   startInjectionStateMachine(); // start the injection cycle
+                   currentShoot3state = Shoot3state.SHOOT3_INJECT_WAIT;
+               }
              break;
            case SHOOT3_INJECT_WAIT :
              if( liftServoBusyU || liftServoBusyD ) {
                  // still waiting...
              }
              else {
-                 // TODO: Figure out where to go next!  P1/P2/P3 or IDLE
-                 //   spinServoCurPos
-                 //   desiredShoot3order
+                 // We've finished shooting this spindexer position; where to next?
+                 setNextShoot3state();
              }
              break;
+           case SHOOT3_DONE :
+               shoot3Time = shoot3Timer.milliseconds();
+               currentShoot3state = Shoot3state.SHOOT3_IDLE;
+               break;
            default:
+               currentShoot3state = Shoot3state.SHOOT3_IDLE;
              break;
        } // switch
     } // processTripleShotStateMachine
+
+    /*--------------------------------------------------------------------------------------------*/
+    public void setNextShoot3state()
+    {
+       // Where we go next is a function of the specified shoot-order
+       switch( desiredShoot3order ) {
+           case SHOOT3_123 :
+              // What have we completed so far?
+              switch( spinServoCurPos ) {
+                 case SPIN_P1 : currentShoot3state = Shoot3state.SHOOT3_SPIN_P2;  break;
+                 case SPIN_P2 : currentShoot3state = Shoot3state.SHOOT3_SPIN_P3;  break;
+                 case SPIN_P3 : currentShoot3state = Shoot3state.SHOOT3_DONE;     break;
+                 default      : currentShoot3state = Shoot3state.SHOOT3_IDLE;     break; // error case
+                 } // switch()
+              break;
+           case SHOOT3_213 :
+              // What have we completed so far?
+              switch( spinServoCurPos ) {
+                 case SPIN_P1 : currentShoot3state = Shoot3state.SHOOT3_SPIN_P3;  break;
+                 case SPIN_P2 : currentShoot3state = Shoot3state.SHOOT3_SPIN_P1;  break;
+                 case SPIN_P3 : currentShoot3state = Shoot3state.SHOOT3_DONE;     break;
+                 default      : currentShoot3state = Shoot3state.SHOOT3_IDLE;     break; // error case
+                 } // switch()
+              break;
+           case SHOOT3_321 :
+              // What have we completed so far?
+              switch( spinServoCurPos ) {
+                 case SPIN_P1 : currentShoot3state = Shoot3state.SHOOT3_DONE;     break;
+                 case SPIN_P2 : currentShoot3state = Shoot3state.SHOOT3_SPIN_P1;  break;
+                 case SPIN_P3 : currentShoot3state = Shoot3state.SHOOT3_SPIN_P2;  break;
+                 default      : currentShoot3state = Shoot3state.SHOOT3_IDLE;     break; // error case
+                 } // switch()
+              break;
+           default :
+              currentShoot3state = Shoot3state.SHOOT3_IDLE; // error case
+              break;
+       }
+    } // setNextShoot3state
 
     /*--------------------------------------------------------------------------------------------*/
     public void abortTripleShotStateMachine()
