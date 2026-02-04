@@ -86,7 +86,7 @@ public class AutonomousBlueNear extends AutonomousBase {
     } // testGyroDrive
 
     /*--------------------------------------------------------------------------------------------*/
-    /* Autonomous Red Far:                                                                        */
+    /* Autonomous Red/Blue Near:                                                                        */
     /*   1 Starting point                                                                         */
     /*   2 Score preloads                                                                         */
     /*   3 Collect from tick marks (1, 2)                                                         */
@@ -95,6 +95,8 @@ public class AutonomousBlueNear extends AutonomousBase {
     /*--------------------------------------------------------------------------------------------*/
     private void mainAutonomous(BallOrder obeliskID) {
         double shooterPowerNear = 0.45;
+        HardwareSwyftBot.SpindexerState firstBall;
+        BallOrder loadOrder;
 
         // Do we start with an initial delay?
         if( startDelaySec > 0 ) {
@@ -106,33 +108,43 @@ public class AutonomousBlueNear extends AutonomousBase {
         robot.intakeMotor.setPower( robot.INTAKE_FWD_COLLECT );
         // Even if we delay, we want to immediately start up getting shooter up to speed
         robot.shooterMotorsSetPower( shooterPowerNear );
+        // Pre-index to the first spindexer position
+        loadOrder = PPG_23;
+        firstBall = getObeliskFirstBall(obeliskID,loadOrder);
+        robot.spinServoSetPosition( firstBall );
         // Enable automatic shooter power/angle as we drive the next segment
         autoAimEnabled = true;
         // Drive to where we can both shoot and refresh our field position based on the AprilTag
         driveToPosition( 24.2, 17.6, +49.0, DRIVE_SPEED_30, TURN_SPEED_15, DRIVE_TO);
         autoAimEnabled = false;
-        scoreThreeBallsFromField(obeliskID, PPG_23);
+        scoreThreeBallsFromField(obeliskID,loadOrder);
         // update our field position based on the AprilTag
         robot.setPinpointFieldPosition(robot.limelightFieldXpos, robot.limelightFieldYpos);
-
+/*
         // Collect and Score 3rd spike mark
         if( doSpikeMark3 ) {
-            collectSpikemarkFromNear(3,redAlliance );
-            scoreThreeBallsFromField(obeliskID, (redAlliance)? GPP_21:GPP_21 );
+            loadOrder = (redAlliance)? GPP_21:GPP_21;
+            firstBall = getObeliskFirstBall(obeliskID,loadOrder);
+            collectSpikemarkFromNear(3,redAlliance,firstBall);
+            scoreThreeBallsFromField(obeliskID,loadOrder);
         }
 
         // Collect and Score 2nd spike mark
         if( doSpikeMark2 ) {
-            collectSpikemarkFromNear(2,redAlliance );
-            scoreThreeBallsFromField(obeliskID, (redAlliance)? PPG_23:PPG_23 );
+            loadOrder = (redAlliance)? PPG_23:PPG_23;
+            firstBall = getObeliskFirstBall(obeliskID,loadOrder);
+            collectSpikemarkFromNear(2,redAlliance,firstBall);
+            scoreThreeBallsFromField(obeliskID,loadOrder);
         }
 
         // Collect and Score 1st spike mark
         if( doSpikeMark1 ) {
-            collectSpikemarkFromNear(1,redAlliance);
-            scoreThreeBallsFromField(obeliskID, (redAlliance)? PGP_22:PGP_22 );
+            loadOrder = (redAlliance)? PGP_22:PGP_22;
+            firstBall = getObeliskFirstBall(obeliskID,loadOrder);
+            collectSpikemarkFromNear(1,redAlliance,firstBall);
+            scoreThreeBallsFromField(obeliskID,loadOrder);
         }
-
+*/
         // Drive the final position we want for MOVEMENT points
         driveToPosition(40.7, 17.6, +49.0, DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_TO);
 

@@ -47,7 +47,7 @@ public class AutonomousRedFar extends AutonomousBase {
         autonomousTimer.reset();
 
         // Establish our starting position on the field (in field coordinate system)
-        resetGlobalCoordinatePositionAuto(-62.8, -14.3, 0.0 );
+        resetGlobalCoordinatePositionAuto(-62.8, -14.5, 0.0 );
 
         //---------------------------------------------------------------------------------
         // AUTONOMOUS ROUTINE:  The following method is our main autonomous.
@@ -119,6 +119,8 @@ public class AutonomousRedFar extends AutonomousBase {
     /*--------------------------------------------------------------------------------------------*/
     private void mainAutonomous(BallOrder obeliskID) {
         double shooterPowerFar = 0.55;
+        HardwareSwyftBot.SpindexerState firstBall;
+        BallOrder loadOrder;
 
         // Do we start with an initial delay?
         if( startDelaySec > 0 ) {
@@ -130,6 +132,10 @@ public class AutonomousRedFar extends AutonomousBase {
         robot.intakeMotor.setPower( robot.INTAKE_FWD_COLLECT );
         // Even if we delay, we want to immediately start up getting shooter up to speed
         robot.shooterMotorsSetPower( shooterPowerFar );
+        // Pre-index to the first spindexer position
+        loadOrder = PPG_23;
+        firstBall = getObeliskFirstBall(obeliskID,loadOrder);
+        robot.spinServoSetPosition( firstBall );
         // Enable automatic shooter power/angle as we drive the next segment
         autoAimEnabled = true;
         // Drive out away from wall, both to allow us to rotate the turret and not have the
@@ -137,29 +143,37 @@ public class AutonomousRedFar extends AutonomousBase {
         // Must not go so far we are no longer within the scoring zone!
         driveToPosition(-51.8, -14.3, 0.0, DRIVE_SPEED_30, TURN_SPEED_15, DRIVE_TO);
         autoAimEnabled = false;
-        scoreThreeBallsFromField(obeliskID, PPG_23);
+        scoreThreeBallsFromField(obeliskID,loadOrder);
 
         // Collect and Score corner balls
         if( doCorner3 ) {
-            collectCorner3FromFar(redAlliance);
-            scoreThreeBallsFromField(obeliskID, (redAlliance)? PPG_23:GPP_21 );
+            loadOrder = (redAlliance)? PPG_23:GPP_21;
+            firstBall = getObeliskFirstBall(obeliskID,loadOrder);
+            collectCorner3FromFar(redAlliance,firstBall);
+            scoreThreeBallsFromField(obeliskID,loadOrder);
         }
 
         // Collect and Score 1st spike mark
         if( doSpikeMark1 ) {
-            collectSpikemarkFromFar(1,redAlliance);
-            scoreThreeBallsFromField(obeliskID, (redAlliance)? PGP_22:PGP_22 );
+            loadOrder = (redAlliance)? PGP_22:PGP_22;
+            firstBall = getObeliskFirstBall(obeliskID,loadOrder);
+            collectSpikemarkFromFar(1,redAlliance,firstBall);
+            scoreThreeBallsFromField(obeliskID,loadOrder);
         }
 
         // Collect and Score 2nd spike mark
         if( doSpikeMark2 ) {
-            collectSpikemarkFromFar(2,redAlliance);
-            scoreThreeBallsFromField(obeliskID, (redAlliance)? PPG_23:PPG_23 );
+            loadOrder = (redAlliance)? PPG_23:PPG_23;
+            firstBall = getObeliskFirstBall(obeliskID,loadOrder);
+            collectSpikemarkFromFar(2,redAlliance,firstBall);
+            scoreThreeBallsFromField(obeliskID,loadOrder);
         }
         // Collect and Score 3rd spike mark
         if( doSpikeMark3 ) {
-            collectSpikemarkFromFar(3,redAlliance);
-            scoreThreeBallsFromField(obeliskID, (redAlliance)? GPP_21:GPP_21 );
+            loadOrder = (redAlliance)? GPP_21:GPP_21;
+            firstBall = getObeliskFirstBall(obeliskID,loadOrder);
+            collectSpikemarkFromFar(3,redAlliance,firstBall);
+            scoreThreeBallsFromField(obeliskID,loadOrder);
         }
 
         // Drive away from the score line for the MOVEMENT points
