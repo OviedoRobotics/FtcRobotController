@@ -973,20 +973,73 @@ public class HardwareSwyftBot
 
     /*--------------------------------------------------------------------------------------------*/
     public double getShootAngleDeg(Alliance alliance) {
-        double currentX = robotGlobalXCoordinatePosition;
-        double currentY = robotGlobalYCoordinatePosition;
-        // Rotated field positions for targets based on values from ftc2025DECODE.fmap
-        double targetX = (alliance == Alliance.BLUE)? +60.0 : +60.0;  // 6ft = 72"
-        double targetY = (alliance == Alliance.BLUE)? +57.0 : -58.0;  // 6ft = 72"
+        double targetX = calculateShootTargetX(alliance);
+        double targetY = calculateShootTargetY(alliance);
         // Compute distance to target point inside the goal
-        double deltaX = targetX - currentX;
-        double deltaY = targetY - currentY;
+        double deltaX = targetX - robotGlobalXCoordinatePosition;
+        double deltaY = targetY - robotGlobalYCoordinatePosition;
         // Compute the angle assuming the robot is facing forward at 0 degrees
         double targetFromStraight = Math.toDegrees( Math.atan2(deltaY,deltaX) );
         // Adjust for the current robot orientation
         double shootAngle = targetFromStraight - robotOrientationDegrees;
         return shootAngle;
     } // getShootAngleDeg
+
+    private double calculateShootTargetX(Alliance alliance) {
+        boolean nearSide = (alliance == Alliance.BLUE) ?
+                robotGlobalYCoordinatePosition >= 0 : robotGlobalYCoordinatePosition <= 0;
+
+        // Near Shooting Zone
+        if(robotGlobalXCoordinatePosition > 42) {
+            if(nearSide) {
+                return (alliance == Alliance.BLUE)? +60.0 : +60.0;
+            } else {
+                return (alliance == Alliance.BLUE) ? +60.0 : +60.0;
+            }
+        }
+        // Mid Shooting Zone
+        if(robotGlobalXCoordinatePosition > -10) {
+            if(nearSide) {
+                return (alliance == Alliance.BLUE)? +60.0 : +60.0;
+            } else {
+                return (alliance == Alliance.BLUE) ? +60.0 : +60.0;
+            }
+        }
+        // Far Shooting Zone
+        if(nearSide) {
+            return (alliance == Alliance.BLUE)? +60.0 : +60.0;
+        } else {
+            return (alliance == Alliance.BLUE) ? +60.0 : +60.0;
+        }
+    }
+
+    private double calculateShootTargetY(Alliance alliance) {
+        boolean nearSide = (alliance == Alliance.BLUE) ?
+                robotGlobalYCoordinatePosition >= 0 : robotGlobalYCoordinatePosition <= 0;
+
+        // Near Shooting Zone
+        if(robotGlobalXCoordinatePosition > 42) {
+            if(nearSide) {
+                return (alliance == Alliance.BLUE)? +57.0 : -58.0;
+            } else {
+                return (alliance == Alliance.BLUE)? +57.0 : -58.0;
+            }
+        }
+        // Mid Shooting Zone
+        if(robotGlobalXCoordinatePosition > -10) {
+            if(nearSide) {
+                return (alliance == Alliance.BLUE)? +57.0 : -58.0;
+            } else {
+                return (alliance == Alliance.BLUE)? +57.0 : -58.0;
+            }
+        }
+        // Far Shooting Zone
+        if(nearSide) {
+            return (alliance == Alliance.BLUE)? +57.0 : -58.0;
+        } else {
+            return (alliance == Alliance.BLUE)? +57.0 : -58.0;
+        }
+    }
 
     /*--------------------------------------------------------------------------------------------*/
     public double computeAxonPos( double measuredVoltage )
