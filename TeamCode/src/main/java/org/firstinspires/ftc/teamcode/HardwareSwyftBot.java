@@ -130,7 +130,8 @@ public class HardwareSwyftBot
     protected DcMotorEx intakeMotor     = null;
 
     public final static double INTAKE_FWD_COLLECT = +0.90;  // aggressively collect
-    public final static double INTAKE_REV_REJECT  = -0.40;  // gently reject overcollect so don't send flying
+    public final static double INTAKE_FWD_PRELOAD = +0.25;  // SLOWLY collect
+    public final static double INTAKE_REV_REJECT  = -0.50;  // gently reject overcollect so don't send flying
 
     protected DcMotorEx shooterMotor1   = null;  // upper 
     protected DcMotorEx shooterMotor2   = null;  // lower
@@ -538,6 +539,7 @@ public class HardwareSwyftBot
         // Ensure all servos are in the initialize position (YES for auto; NO for teleop)
         if( isAutonomous ) {
            resetEncoders();
+           performInitPreload();
         }
 
     } /* init */
@@ -565,6 +567,15 @@ public class HardwareSwyftBot
         // Also initialize/calibrate the pinpoint odometry computer
         odom.resetPosAndIMU();
         imu.resetYaw();
+    } // resetEncoders
+
+    /*--------------------------------------------------------------------------------------------*/
+    public void performInitPreload() throws InterruptedException {
+        intakeMotor.setPower(INTAKE_FWD_PRELOAD);
+        shooterMotorsSetPower(-.1);
+        sleep(2000);
+        intakeMotor.setPower(0);
+        shooterMotorsSetPower(0);
     } // resetEncoders
 
     /*--------------------------------------------------------------------------------------------*/
