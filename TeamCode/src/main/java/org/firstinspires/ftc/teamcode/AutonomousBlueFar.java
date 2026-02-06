@@ -84,11 +84,6 @@ public class AutonomousBlueFar extends AutonomousBase {
         HardwareSwyftBot.SpindexerState firstBall;
         BallOrder loadOrder;
 
-        // Do we start with an initial delay?
-        if( startDelaySec > 0 ) {
-            sleep( startDelaySec * 1000 );
-        }
-
         //===== Score Preload Balls (from the FAR zone) ==========
         // Enable collector/InKeeper so it's safe to spindex
         robot.intakeMotor.setPower( robot.INTAKE_FWD_COLLECT );
@@ -105,6 +100,10 @@ public class AutonomousBlueFar extends AutonomousBase {
         // Must not go so far we are no longer within the scoring zone!
         driveToPosition(-51.8, +14.3, 0.0, DRIVE_SPEED_30, TURN_SPEED_15, DRIVE_TO);
         autoAimEnabled = false;
+        // Do we pause before shooting?
+        if( waitBefore1st > 0 ) {
+            sleep( waitBefore1st * 500 );
+        }
         scoreThreeBallsFromField(obeliskID,loadOrder);
 
         // Collect and Score corner balls
@@ -112,6 +111,10 @@ public class AutonomousBlueFar extends AutonomousBase {
             loadOrder = (redAlliance)? PPG_23:GPP_21;
             firstBall = getObeliskFirstBall(obeliskID,loadOrder);
             collectCorner3FromFar(redAlliance,firstBall);
+            // Do we pause before shooting?
+            if( waitBefore2nd > 0 ) {
+                sleep( waitBefore2nd * 500 );
+                }
             scoreThreeBallsFromField(obeliskID,loadOrder);
         }
 
@@ -120,6 +123,12 @@ public class AutonomousBlueFar extends AutonomousBase {
             loadOrder = (redAlliance)? PGP_22:PGP_22;
             firstBall = getObeliskFirstBall(obeliskID,loadOrder);
             collectSpikemarkFromFar(1,redAlliance,firstBall);
+            // Do we pause before shooting?
+            if( doCorner3 == false ) {
+                if (waitBefore2nd > 0) { sleep(waitBefore2nd * 500); }
+            } else {
+                if (waitBefore3rd > 0) { sleep(waitBefore3rd * 500); }
+            }
             scoreThreeBallsFromField(obeliskID,loadOrder);
         }
 
@@ -128,6 +137,10 @@ public class AutonomousBlueFar extends AutonomousBase {
             loadOrder = (redAlliance)? PPG_23:GPP_21;
             firstBall = getObeliskFirstBall(obeliskID,loadOrder);
             collectSpikemarkFromFar(2,redAlliance,firstBall);
+            // Do we pause before shooting?
+            if( doCorner3 == false ) {
+                if (waitBefore3rd > 0) { sleep(waitBefore3rd * 500); }
+            }
             scoreThreeBallsFromField(obeliskID,loadOrder);
         }
         // Collect and Score 3rd spike mark

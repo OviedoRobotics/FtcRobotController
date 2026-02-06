@@ -343,18 +343,21 @@ public class HardwareSwyftBot
     // Index 0 = Right  - Rotate -1 to fire
     // Index 1 = Center - No rotation to fire
     // Index 2 = Left   - Rotate +1 to fire
+    public double ballHueDetected = 0.0;
     public List<Ball> spinventory = new ArrayList<>(Arrays.asList(Ball.None, Ball.None, Ball.None));
     protected DigitalChannel        leftBallPresenceSensor;
     protected NormalizedColorSensor leftBallColorSensor;
     public boolean leftBallWasPresent     = false;
     public boolean leftBallIsPresent      = false;
     public boolean leftBallDetectingColor = false;
+    public double  leftBallHueDetected     = 0.0;
 
     private DigitalChannel          rightBallPresenceSensor;
     protected NormalizedColorSensor rightBallColorSensor;
     public boolean rightBallWasPresent     = false;
     public boolean rightBallIsPresent      = false;
     public boolean rightBallDetectingColor = false;
+    public double  rightBallHueDetected     = 0.0;
 
     public int ballColorDetectingReads = 0;
     public static int MAX_BALL_COLOR_READS = 10;
@@ -539,7 +542,6 @@ public class HardwareSwyftBot
         // Ensure all servos are in the initialize position (YES for auto; NO for teleop)
         if( isAutonomous ) {
            resetEncoders();
-           performInitPreload();
         }
 
     } /* init */
@@ -570,13 +572,17 @@ public class HardwareSwyftBot
     } // resetEncoders
 
     /*--------------------------------------------------------------------------------------------*/
-    public void performInitPreload() throws InterruptedException {
+    public void performInitPreload() {
         intakeMotor.setPower(INTAKE_FWD_PRELOAD);
         shooterMotorsSetPower(-.1);
-        sleep(2000);
+        try {
+            sleep(2000);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
         intakeMotor.setPower(0);
         shooterMotorsSetPower(0);
-    } // resetEncoders
+    } // performInitPreload
 
     /*--------------------------------------------------------------------------------------------*/
     public void initIMU( boolean isAutonomous )
@@ -1022,7 +1028,7 @@ public class HardwareSwyftBot
         } else {
             return (alliance == Alliance.BLUE) ? +60.0 : +60.0;
         }
-    }
+    }// calculateShootTargetX
 
     private double calculateShootTargetY(Alliance alliance) {
         boolean nearSide = (alliance == Alliance.BLUE) ?
@@ -1031,26 +1037,26 @@ public class HardwareSwyftBot
         // Near Shooting Zone
         if(robotGlobalXCoordinatePosition > 42) {
             if(nearSide) {
-                return (alliance == Alliance.BLUE)? +57.0 : -58.0;
+                return (alliance == Alliance.BLUE)? +60.0 : -58.0;
             } else {
-                return (alliance == Alliance.BLUE)? +57.0 : -58.0;
+                return (alliance == Alliance.BLUE)? +60.0 : -58.0;
             }
         }
         // Mid Shooting Zone
         if(robotGlobalXCoordinatePosition > -10) {
             if(nearSide) {
-                return (alliance == Alliance.BLUE)? +57.0 : -58.0;
+                return (alliance == Alliance.BLUE)? +60.0 : -58.0;
             } else {
-                return (alliance == Alliance.BLUE)? +57.0 : -58.0;
+                return (alliance == Alliance.BLUE)? +60.0 : -58.0;
             }
         }
         // Far Shooting Zone
         if(nearSide) {
-            return (alliance == Alliance.BLUE)? +57.0 : -58.0;
+            return (alliance == Alliance.BLUE)? +60.0 : -58.0;
         } else {
-            return (alliance == Alliance.BLUE)? +57.0 : -58.0;
+            return (alliance == Alliance.BLUE)? +60.0 : -58.0;
         }
-    }
+    } // calculateShootTargetY
 
     /*--------------------------------------------------------------------------------------------*/
     public double computeAxonPos( double measuredVoltage )
@@ -1339,14 +1345,17 @@ public class HardwareSwyftBot
              // nothing to do, waiting for next sequence to begin
              break;
            case SHOOT3_SPIN_P1 :
+             setSpindexPosition(SPINDEXER_RIGHT);
              initSpindexerMovement( SPIN_SERVO_P1, SpindexerState.SPIN_P1 );
              currentShoot3state = Shoot3state.SHOOT3_SPIN_WAIT;
              break;
            case SHOOT3_SPIN_P2 :
+             setSpindexPosition(SPINDEXER_CENTER);
              initSpindexerMovement( SPIN_SERVO_P2, SpindexerState.SPIN_P2 );
              currentShoot3state = Shoot3state.SHOOT3_SPIN_WAIT;
              break;
            case SHOOT3_SPIN_P3 :
+             setSpindexPosition(SPINDEXER_LEFT);
              initSpindexerMovement( SPIN_SERVO_P3, SpindexerState.SPIN_P3 );
              currentShoot3state = Shoot3state.SHOOT3_SPIN_WAIT;
              break;
@@ -1434,7 +1443,7 @@ public class HardwareSwyftBot
     /*--------------------------------------------------------------------------------------------*/
     public void startInjectionStateMachine()
     {
-        // Command the lift/injection servo to the INJECT position
+        // Command the lift/injection servso to the INJECT position
         liftServo.setPosition( LIFT_SERVO_INJECT );
         // Start a timer (in case we need to timeout)
         liftServoTimer.reset();
@@ -1460,8 +1469,7 @@ public class HardwareSwyftBot
                 liftServoTimer.reset();
                 liftServoBusyD = true;
                 // Empty the spinventory
-                int centerIndex = Math.floorMod(1 + spindex, 3);
-                spinventory.set(centerIndex, Ball.None);
+                setCenterBall(Ball.None);
             }
         } // UP
         
@@ -1532,6 +1540,7 @@ public class HardwareSwyftBot
         final float[] hsvValues = new float[3];
         ballColors = colorSensor.getNormalizedColors();
         Color.colorToHSV(ballColors.toColor(), hsvValues);
+        ballHueDetected = hsvValues[0];
         if(hsvValues[0] > 180.0)
         {
             detectedBall = Ball.Purple;
@@ -1579,6 +1588,7 @@ public class HardwareSwyftBot
                 if(leftBallDetectingColor)
                 {
                     setLeftBall(getBallColor(leftBallColorSensor));
+                    leftBallHueDetected = ballHueDetected;
                     if(getLeftBall() != Ball.None)
                     {
                         leftBallDetectingColor = false;
@@ -1587,6 +1597,7 @@ public class HardwareSwyftBot
                 else // it is left's turn, but not in need.  If we're in here
                 {    // then right must have a need.  Use this cycle to scan it.
                     setRightBall(getBallColor(rightBallColorSensor));
+                    rightBallHueDetected = ballHueDetected;
                     if(getRightBall() != Ball.None)
                     {
                         rightBallDetectingColor = false;
@@ -1599,6 +1610,7 @@ public class HardwareSwyftBot
                 if(rightBallDetectingColor)
                 {
                     setRightBall(getBallColor(rightBallColorSensor));
+                    rightBallHueDetected = ballHueDetected;
                     if(getRightBall() != Ball.None)
                     {
                         rightBallDetectingColor = false;
@@ -1607,6 +1619,7 @@ public class HardwareSwyftBot
                 else // it is rights's turn, but not in need.  If we're in here
                 {    // then left must have a need.  Use this cycle to scan it.
                     setLeftBall(getBallColor(leftBallColorSensor));
+                    leftBallHueDetected = ballHueDetected;
                     if(getLeftBall() != Ball.None)
                     {
                         leftBallDetectingColor = false;

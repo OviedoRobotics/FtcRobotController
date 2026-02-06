@@ -133,7 +133,7 @@ public abstract class Teleop extends LinearOpMode {
                 // If currently in DRIVER-CENTRIC mode, switch to STANDARD (robot-centric) mode
                 if( driverMode != DRIVER_MODE_STANDARD ) {
                     driverMode = DRIVER_MODE_STANDARD;
-                    backwardDriveControl = true;  // start with phone-end as front of robot
+                    backwardDriveControl = false;  // start with phone-end as front of robot
                 }
                 // Already in STANDARD mode; Just toggle forward/backward mode
                 else {
@@ -214,6 +214,10 @@ public abstract class Teleop extends LinearOpMode {
 //          telemetry.addData("Driver Angle", "%.3f deg", driverAngle );
 //          telemetry.addData("IMU Angle", "%.3f deg", robot.headingIMU() );
 //          telemetry.addData("Driver Centric", "%.3f deg", (driverAngle - robot.headingIMU()) );
+            telemetry.addData("Spinventory", "Spindex: %d SpindexL: %d SpindexR: %d SpindexC:%d",
+                    robot.spindex, robot.spindexerLeft, robot.spindexerRight, robot.spindexerCenter );
+            telemetry.addData("Spinventory", "Hue: %.1f LeftHue: %.1f RightHue: %.1f",
+                    robot.ballHueDetected, robot.leftBallHueDetected, robot.rightBallHueDetected );
             telemetry.addData("Spinventory", "Left: %s Center: %s Right: %s",
                 robot.getLeftBall(), robot.getCenterBall(), robot.getRightBall() );
             telemetry.addLine( (robot.isRobot2)? "Robot2" : "Robot1");

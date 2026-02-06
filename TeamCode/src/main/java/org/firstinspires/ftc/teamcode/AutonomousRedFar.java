@@ -162,9 +162,11 @@ public class AutonomousRedFar extends AutonomousBase {
             firstBall = getObeliskFirstBall(obeliskID,loadOrder);
             collectSpikemarkFromFar(1,redAlliance,firstBall);
             // Do we pause before shooting?
-            if( waitBefore3rd > 0 ) {
-                sleep( waitBefore3rd * 500 );
-                }
+            if( doCorner3 == false ) {
+                if (waitBefore2nd > 0) { sleep(waitBefore2nd * 500); }
+            } else {
+                if (waitBefore3rd > 0) { sleep(waitBefore3rd * 500); }
+            }
             scoreThreeBallsFromField(obeliskID,loadOrder);
         }
 
@@ -174,9 +176,9 @@ public class AutonomousRedFar extends AutonomousBase {
             firstBall = getObeliskFirstBall(obeliskID,loadOrder);
             collectSpikemarkFromFar(2,redAlliance,firstBall);
             // Do we pause before shooting?
-            if( waitBefore3rd > 0 ) {
-                sleep( waitBefore3rd * 500 );
-                }
+            if( doCorner3 == false ) {
+                if (waitBefore3rd > 0) { sleep(waitBefore3rd * 500); }
+            }
             scoreThreeBallsFromField(obeliskID,loadOrder);
         }
         // Collect and Score 3rd spike mark

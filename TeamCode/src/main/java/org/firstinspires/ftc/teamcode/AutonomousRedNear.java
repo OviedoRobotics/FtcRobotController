@@ -98,11 +98,6 @@ public class AutonomousRedNear extends AutonomousBase {
         HardwareSwyftBot.SpindexerState firstBall;
         BallOrder loadOrder;
 
-        // Do we start with an initial delay?
-        if( startDelaySec > 0 ) {
-            sleep( startDelaySec * 1000 );
-        }
-
         //===== Score Preload Balls (from the NEAR zone) ==========
         // Enable collector/InKeeper so it's safe to spindex
         robot.intakeMotor.setPower( robot.INTAKE_FWD_COLLECT );
@@ -117,6 +112,10 @@ public class AutonomousRedNear extends AutonomousBase {
         // Drive to where we can both shoot and refresh our field position based on the AprilTag
         driveToPosition( 24.2, -17.6, -49.0, DRIVE_SPEED_30, TURN_SPEED_15, DRIVE_TO);
         autoAimEnabled = false;
+        // Do we wait before shooting?
+        if( waitBefore1st > 0 ) {
+            sleep( waitBefore1st * 500 );
+        }
         scoreThreeBallsFromField(obeliskID,loadOrder);
         // update our field position based on the AprilTag
         robot.setPinpointFieldPosition(robot.limelightFieldXpos, robot.limelightFieldYpos);

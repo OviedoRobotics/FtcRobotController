@@ -90,11 +90,16 @@ public abstract class AutonomousBase extends LinearOpMode {
     boolean     forceAlliance    = false; // Override vision pipeline? (toggled during init phase of autonomous)
     boolean     doSpikeMark1     = true;
     boolean     doSpikeMark2     = false;
-    boolean     doSpikeMark3     = true;
-    boolean     doCorner3        = false;  // the 3 balls in the corner
+    boolean     doSpikeMark3     = false;
+    boolean     doCorner3        = true;  // the 3 balls in the corner
     int         initMenuSelected = 1;      // start on the first entry
-    int         initMenuMax      = 6;      // we have 6 total entries
-    int         startDelaySec    = 0;      // 1: wait [seconds] at startup -- applies to both left/rigth starting positions
+    int         initMenuMax      = 8;      // we have 8 total entries
+    int         waitBefore1st    = 0;      // wait before shooting 1st round [seconds] -- applies to both far/near starting positions
+    int         waitBefore2nd    = 0;      // wait before shooting 2nd round [seconds]
+    int         waitBefore3rd    = 0;      // wait before shooting 3rd round [seconds]
+
+    //SUPER7 pattern #1: preload, corner3, wait 4.5sec, spike1 (open gate after 9)
+    //SUPER7 pattern #2: preload, corner3,              spike1 (open gate after 6)
 
     //---------------------------------------------------------------------------------------
     // When to open the gate and release classified balls during autonomous is a function
@@ -179,6 +184,11 @@ public abstract class AutonomousBase extends LinearOpMode {
         // Update mechanisms (including bulkread, spindexer & odometry)
         performEveryLoop();
 
+        // Do we want to auto-load the 3 balls for autonomous?
+        if( gamepad1.crossWasPressed() ) {
+            robot.performInitPreload();
+        }
+
         boolean nextEntry = (gamepad1_dpad_down_now  && !gamepad1_dpad_down_last);
         boolean prevEntry = (gamepad1_dpad_up_now    && !gamepad1_dpad_up_last);
         boolean nextValue = (gamepad1_dpad_right_now && !gamepad1_dpad_right_last);
@@ -201,28 +211,24 @@ public abstract class AutonomousBase extends LinearOpMode {
         } // prev
 
         switch( initMenuSelected ) {
-            //-------------- START DELAY [sec] --------------
+            //-------------- DELAY #1 [0.5 sec] --------------
             case 1 :
                 if( nextValue ) {
-                    if (startDelaySec < 9) {
-                        startDelaySec++;
+                    if (waitBefore1st < 9) {
+                        waitBefore1st++;
                     }
                 } // next
                 if( prevValue ) {
-                    if (startDelaySec > 0) {
-                        startDelaySec--;
+                    if (waitBefore1st > 0) {
+                        waitBefore1st--;
                     }
                 } // prev
                 break;
-            //-------------- GATE OPTIONS [never, etc]  --------------
+            //-------------- COLLECT/SCORE 3 BALLS IN CORNER --------------
             case 2 :
-                if( nextValue ) {
-                  gateOption = gateOption.next();
-                } // next
-
-                if( prevValue ) {
-                  gateOption = gateOption.prev();
-                } // prev
+                if( nextValue || prevValue ) {
+                    doCorner3 = !doCorner3;
+                } // next/prev
                 break;
             //-------------- COLLECT/SCORE SPIKEMARK 1 --------------
             case 3 :
@@ -230,23 +236,53 @@ public abstract class AutonomousBase extends LinearOpMode {
                     doSpikeMark1 = !doSpikeMark1;
                 } // next/prev
                 break;
-            //-------------- COLLECT/SCORE SPIKEMARK 2 --------------
+            //-------------- DELAY #2 [0.5 sec] --------------
             case 4 :
+                if( nextValue ) {
+                    if (waitBefore2nd < 9) {
+                        waitBefore2nd++;
+                    }
+                } // next
+                if( prevValue ) {
+                    if (waitBefore2nd > 0) {
+                        waitBefore2nd--;
+                    }
+                } // prev
+                break;
+            //-------------- COLLECT/SCORE SPIKEMARK 2 --------------
+            case 5 :
                 if( nextValue || prevValue ) {
                     doSpikeMark2 = !doSpikeMark2;
                 } // next/prev
                 break;
+            //-------------- DELAY #3 [0.5 sec] --------------
+            case 6 :
+                if( nextValue ) {
+                    if (waitBefore3rd < 9) {
+                        waitBefore3rd++;
+                    }
+                } // next
+                if( prevValue ) {
+                    if (waitBefore3rd > 0) {
+                        waitBefore3rd--;
+                    }
+                } // prev
+                break;
             //-------------- COLLECT/SCORE SPIKEMARK 3 --------------
-            case 5 :
+            case 7 :
                 if( nextValue || prevValue ) {
                     doSpikeMark3 = !doSpikeMark3;
                 } // next/prev
                 break;
-            //-------------- COLLECT/SCORE 3 BALLS IN CORNER --------------
-            case 6 :
-                if( nextValue || prevValue ) {
-                    doCorner3 = !doCorner3;
-                } // next/prev
+            //-------------- GATE OPTIONS [never, etc]  --------------
+            case 8 :
+                if( nextValue ) {
+                  gateOption = gateOption.next();
+                } // next
+
+                if( prevValue ) {
+                  gateOption = gateOption.prev();
+                } // prev
                 break;
             //-------------- SHOULDN'T GET HERE --------------
             default : // recover from bad state
@@ -256,15 +292,18 @@ public abstract class AutonomousBase extends LinearOpMode {
 
         // Update our telemetry
         telemetry.addData("ALLIANCE", "%s", ((redAlliance)? "RED":"BLUE"));
-        telemetry.addData("Start Delay",  "%d sec %s", startDelaySec, ((initMenuSelected==1)? "<-":"  ") );
-        telemetry.addData("Open Gate", "%s %s", gateOption.getDescription(), ((initMenuSelected==2)? "<-":"  ") );
+        telemetry.addData("Wait #1",  "%.1f sec %s",  waitBefore1st/2.0,         ((initMenuSelected==1)? "<-":"  ") );
+        telemetry.addData("Do Corner 3",   "%s %s", ((doCorner3)?   "yes":"no"), ((initMenuSelected==2)? "<-":"  ") );
         telemetry.addData("Do SpikeMark1", "%s %s", ((doSpikeMark1)?"yes":"no"), ((initMenuSelected==3)? "<-":"  ") );
-        telemetry.addData("Do SpikeMark2", "%s %s", ((doSpikeMark2)?"yes":"no"), ((initMenuSelected==4)? "<-":"  ") );
-        telemetry.addData("Do SpikeMark3", "%s %s", ((doSpikeMark3)?"yes":"no"), ((initMenuSelected==5)? "<-":"  ") );
-        telemetry.addData("Do Corner 3",   "%s %s", ((doCorner3)?   "yes":"no"), ((initMenuSelected==6)? "<-":"  ") );
+        telemetry.addData("Wait #2",  "%.1f sec %s",  waitBefore2nd/2.0,         ((initMenuSelected==4)? "<-":"  ") );
+        telemetry.addData("Do SpikeMark2", "%s %s", ((doSpikeMark2)?"yes":"no"), ((initMenuSelected==5)? "<-":"  ") );
+        telemetry.addData("Wait #3",  "%.1f sec %s",  waitBefore3rd/2.0,         ((initMenuSelected==6)? "<-":"  ") );
+        telemetry.addData("Do SpikeMark3", "%s %s", ((doSpikeMark3)?"yes":"no"), ((initMenuSelected==7)? "<-":"  ") );
+        telemetry.addData("Open Gate", "%s %s",     gateOption.getDescription(), ((initMenuSelected==8)? "<-":"  ") );
         telemetry.addData("Odometry","x=%.2f y=%.2f  %.2f deg",
                 robotGlobalXCoordinatePosition, robotGlobalYCoordinatePosition, Math.toDegrees(robotOrientationRadians) );
         telemetry.addLine("Preload=GPP (Green down thru shooter!)");
+        telemetry.addLine("Press X to intake the preload balls");
         telemetry.addData(">","version 100" );
         telemetry.update();
     } // processAutonomousInitMenu
@@ -1254,7 +1293,7 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
           // Drive forward some more to collect 2nd and align bumper to grab the 3rd ball
           timeDriveStraight(DRIVE_SPEED_10, 300);
           // By now we should have collected both balls (1 & 2) either with initial drive in, or during the strafe, so index
-          robot.spinServoSetPosition( SPIN_P2 );
+          robot.spinServoSetPosition( SPIN_P2 );  // TODO: use a half position?
           // strafe sideways (away from corner) to pull the 3rd ball out
           timeDriveStrafe( (isRed)? DRIVE_SPEED_30:-DRIVE_SPEED_30, 300);
           // where are we now?
@@ -1291,12 +1330,10 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
             switch( spikeMarkNumber ) {
                 case 1  :
                     driveToPosition( -52.8, ((isRed)? -15.3 : +15.3), ((isRed)? -22.5:22.5), DRIVE_SPEED_90, TURN_SPEED_20, DRIVE_THRU);
-                    driveToPosition( -44.8, ((isRed)? -17.3 : +17.3), ((isRed)? -45.0:45.0), DRIVE_SPEED_90, TURN_SPEED_20, DRIVE_THRU);
-                    driveToPosition( -41.8, ((isRed)? -21.3 : +21.3), ((isRed)? -70.0:70.0), DRIVE_SPEED_90, TURN_SPEED_20, DRIVE_THRU);
                     redStartx=-38.2; blueStartx=-38.2; endx=-42.8;
                     break;
                 case 2  :
-                    driveToPosition( -38.8, ((isRed)? -15.3 : +15.3), ((isRed)?   0.0:0.0),  DRIVE_SPEED_90, TURN_SPEED_20, DRIVE_THRU);
+                    driveToPosition( -38.8, ((isRed)? -15.3 : +15.3), ((isRed)? 0.0:0.0),  DRIVE_SPEED_90, TURN_SPEED_20, DRIVE_THRU);
                     redStartx=-15.0; blueStartx=-15.0; endx=-20.8;
                     break;
                 case 3  :
