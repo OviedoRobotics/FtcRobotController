@@ -139,8 +139,8 @@ public class AutonomousRedFar extends AutonomousBase {
         driveToPosition(-51.8, -14.3, 0.0, DRIVE_SPEED_30, TURN_SPEED_15, DRIVE_TO);
         autoAimEnabled = false;
         // Do we pause before shooting?
-        if( waitBefore1st > 0 ) {
-            sleep( waitBefore1st * 500 );
+        if( waitBeforePL > 0 ) {
+            sleep( waitBeforePL * 500 );
         }
         scoreThreeBallsFromField(obeliskID,loadOrder);
 
@@ -150,8 +150,8 @@ public class AutonomousRedFar extends AutonomousBase {
             firstBall = getObeliskFirstBall(obeliskID,loadOrder);
             collectCorner3FromFar(redAlliance,firstBall);
             // Do we pause before shooting?
-            if( waitBefore2nd > 0 ) {
-                sleep( waitBefore2nd * 500 );
+            if( waitBeforeC3 > 0 ) {
+                sleep( waitBeforeC3 * 500 );
                 }
             scoreThreeBallsFromField(obeliskID,loadOrder);
         }
@@ -162,10 +162,8 @@ public class AutonomousRedFar extends AutonomousBase {
             firstBall = getObeliskFirstBall(obeliskID,loadOrder);
             collectSpikemarkFromFar(1,redAlliance,firstBall);
             // Do we pause before shooting?
-            if( doCorner3 == false ) {
-                if (waitBefore2nd > 0) { sleep(waitBefore2nd * 500); }
-            } else {
-                if (waitBefore3rd > 0) { sleep(waitBefore3rd * 500); }
+            if( waitBeforeS1 > 0 ) {
+               sleep( waitBeforeS1 * 500 );
             }
             scoreThreeBallsFromField(obeliskID,loadOrder);
         }
@@ -176,16 +174,21 @@ public class AutonomousRedFar extends AutonomousBase {
             firstBall = getObeliskFirstBall(obeliskID,loadOrder);
             collectSpikemarkFromFar(2,redAlliance,firstBall);
             // Do we pause before shooting?
-            if( doCorner3 == false ) {
-                if (waitBefore3rd > 0) { sleep(waitBefore3rd * 500); }
+            if( waitBeforeS2 > 0 ) {
+               sleep( waitBeforeS2 * 500 );
             }
             scoreThreeBallsFromField(obeliskID,loadOrder);
         }
+
         // Collect and Score 3rd spike mark
         if( doSpikeMark3 ) {
             loadOrder = (redAlliance)? GPP_21:GPP_21;
             firstBall = getObeliskFirstBall(obeliskID,loadOrder);
             collectSpikemarkFromFar(3,redAlliance,firstBall);
+            // Do we pause before shooting?
+            if( waitBeforeS3 > 0 ) {
+               sleep( waitBeforeS3 * 500 );
+            }
             scoreThreeBallsFromField(obeliskID,loadOrder);
         }
 

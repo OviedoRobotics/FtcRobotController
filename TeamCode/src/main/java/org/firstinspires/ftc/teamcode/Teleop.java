@@ -243,15 +243,19 @@ public abstract class Teleop extends LinearOpMode {
             robot.updatePinpointFieldPosition();
             robot.updateLimelightFieldPosition();
         } // enableOdometry
-        // Do we manually update the field position based on apriltag?
+        // Did we start with a non-zero angle and need to reset?
         if( gamepad1.touchpadWasPressed() ){
-            updatePinpointFieldPosition();
+            // Ensure robot is aligned to 0deg before pressing!
+            // (x,y location less critical; can be updated via AprilTag)
+            robot.resetGlobalCoordinatePosition( 0.0, 0.0, 0.0 );
         }
     } // performEveryLoopTeleop
 
+    /*---------------------------------------------------------------------------------*/
+    // used to dynamically update the pinpoint odometry using AprilTag on the goal
     void updatePinpointFieldPosition() {
         // Ensure we don't get a spurious zero/clear reading
-        boolean canSeeAprilTag = (robot.limelightFieldXpos != 0.0) && (robot.limelightFieldYpos !=0.0) && (robot.limelightFieldAngleDeg != 0.0);
+        boolean canSeeAprilTag = (robot.limelightFieldXpos != 0.0) && (robot.limelightFieldYpos !=0.0);
         boolean qualityReading = (robot.limelightFieldXstd <= 0.0022) && (robot.limelightFieldYstd <= 0.0027);
         boolean robotXslow = (Math.abs(robot.robotGlobalXvelocity) < 0.1)? true:false;
         boolean robotYslow = (Math.abs(robot.robotGlobalYvelocity) < 0.1)? true:false;
@@ -588,18 +592,6 @@ public abstract class Teleop extends LinearOpMode {
 
     /*---------------------------------------------------------------------------------*/
     void processShooter() {
-        if( gamepad1.triangleWasPressed() ) {
-            shooterPower += 0.005;
-            if(shooterMotorsOn) {
-                robot.shooterMotorsSetPower( shooterPower );
-            }
-        } else if( gamepad1.crossWasPressed() ) {
-            shooterPower -= 0.005;
-            if(shooterMotorsOn) {
-                robot.shooterMotorsSetPower( shooterPower );
-            }
-        }
-
         // Check for an OFF-to-ON toggle of the gamepad2 CIRCLE button (toggles SHOOTER on/off)
         if( gamepad2.circleWasPressed() )
         {

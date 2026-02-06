@@ -34,6 +34,8 @@ public class AutonomousBlueNear extends AutonomousBase {
         while (!isStarted()) {
             // Do we need to change any of the other autonomous options?
             processAutonomousInitMenu(false);  // not auto5 start position
+            // No point processing limelight for obelisk detection
+            // since we can't see it...
             // Pause briefly before looping
             idle();
         } // !isStarted
@@ -44,17 +46,20 @@ public class AutonomousBlueNear extends AutonomousBase {
         // Establish our starting position on the field (in field coordinate system)
         resetGlobalCoordinatePositionAuto( 38.6, 54.3, -90.0 );
 
-        // Drive away from the wall to a point that can see the obelisk
+        // Drive away from the wall to a point that can see the obelisk AprilTag
         driveToPosition( 34.0, 45.0, -90.0, DRIVE_SPEED_30, TURN_SPEED_15, DRIVE_THRU);
         driveToPosition( 24.2, 17.6, -20.0, DRIVE_SPEED_50, TURN_SPEED_15, DRIVE_TO);
 
         // Process limelight for obelisk detection
-        for( int i=0; i<3; i++ ) {
+        obeliskDetected = false;
+        for( int i=0; i<4; i++ ) {
             telemetry.addData("ALLIANCE", "%s", ((redAlliance)? "RED":"BLUE"));
             telemetry.addData("Odometry","x=%.2f y=%.2f  %.2f deg",
                  robotGlobalXCoordinatePosition, robotGlobalYCoordinatePosition, Math.toDegrees(robotOrientationRadians) );
             processLimelightObelisk();
             telemetry.update();
+            // If we saw the obelisk then we're done
+            if( obeliskDetected ) break;
             // Pause briefly before looping
             idle();
         }
@@ -64,9 +69,7 @@ public class AutonomousBlueNear extends AutonomousBase {
 
         //---------------------------------------------------------------------------------
         // AUTONOMOUS ROUTINE:  The following method is our main autonomous.
-//      unitTestOdometryDrive();
         mainAutonomous( obeliskID );
-        //---------------------------------------------------------------------------------
 
         robot.limelightStop();
         telemetry.addData("Program", "Complete");
@@ -86,7 +89,7 @@ public class AutonomousBlueNear extends AutonomousBase {
     } // testGyroDrive
 
     /*--------------------------------------------------------------------------------------------*/
-    /* Autonomous Red/Blue Near:                                                                        */
+    /* Autonomous Red/Blue Near:                                                                  */
     /*   1 Starting point                                                                         */
     /*   2 Score preloads                                                                         */
     /*   3 Collect from tick marks (1, 2)                                                         */
@@ -101,9 +104,9 @@ public class AutonomousBlueNear extends AutonomousBase {
         //===== Score Preload Balls (from the NEAR zone) ==========
         // Enable collector/InKeeper so it's safe to spindex
         robot.intakeMotor.setPower( robot.INTAKE_FWD_COLLECT );
-        // Even if we delay, we want to immediately start up getting shooter up to speed
+        // Even if we delay, we want to immediately start getting shooter up to speed
         robot.shooterMotorsSetPower( shooterPowerNear );
-        // Pre-index to the first spindexer position
+        // Pre-index to the first spindexer position for the preload order we use
         loadOrder = PPG_23;
         firstBall = getObeliskFirstBall(obeliskID,loadOrder);
         robot.spinServoSetPosition( firstBall );
@@ -112,27 +115,35 @@ public class AutonomousBlueNear extends AutonomousBase {
         // Drive to where we can both shoot and refresh our field position based on the AprilTag
         driveToPosition( 24.2, 17.6, +49.0, DRIVE_SPEED_30, TURN_SPEED_15, DRIVE_TO);
         autoAimEnabled = false;
-        // Do we wait before shooting?
-        if( waitBefore1st > 0 ) {
-            sleep( waitBefore1st * 500 );
+        // Do we pause before shooting?
+        if( waitBeforePL > 0 ) {
+            sleep( waitBeforePL * 500 );
         }
         scoreThreeBallsFromField(obeliskID,loadOrder);
         // update our field position based on the AprilTag
         robot.setPinpointFieldPosition(robot.limelightFieldXpos, robot.limelightFieldYpos);
-/*
+
         // Collect and Score 3rd spike mark
         if( doSpikeMark3 ) {
-            loadOrder = (redAlliance)? GPP_21:GPP_21;
+            loadOrder = (redAlliance)? PPG_23:PPG_23;
             firstBall = getObeliskFirstBall(obeliskID,loadOrder);
             collectSpikemarkFromNear(3,redAlliance,firstBall);
+            // Do we pause before shooting?
+            if( waitBeforeC3 > 0 ) {
+                sleep( waitBeforeC3 * 500 );
+                }
             scoreThreeBallsFromField(obeliskID,loadOrder);
         }
 
         // Collect and Score 2nd spike mark
         if( doSpikeMark2 ) {
-            loadOrder = (redAlliance)? PPG_23:PPG_23;
+            loadOrder = (redAlliance)? GPP_21:GPP_21;
             firstBall = getObeliskFirstBall(obeliskID,loadOrder);
             collectSpikemarkFromNear(2,redAlliance,firstBall);
+            // Do we pause before shooting?
+            if( waitBeforeS2 > 0 ) {
+               sleep( waitBeforeS2 * 500 );
+            }
             scoreThreeBallsFromField(obeliskID,loadOrder);
         }
 
@@ -141,9 +152,13 @@ public class AutonomousBlueNear extends AutonomousBase {
             loadOrder = (redAlliance)? PGP_22:PGP_22;
             firstBall = getObeliskFirstBall(obeliskID,loadOrder);
             collectSpikemarkFromNear(1,redAlliance,firstBall);
+            // Do we pause before shooting?
+            if( waitBeforeS1 > 0 ) {
+               sleep( waitBeforeS1 * 500 );
+            }
             scoreThreeBallsFromField(obeliskID,loadOrder);
         }
-*/
+
         // Drive the final position we want for MOVEMENT points
         driveToPosition(40.7, 17.6, +49.0, DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_TO);
 

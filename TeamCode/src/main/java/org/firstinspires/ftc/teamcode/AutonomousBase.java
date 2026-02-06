@@ -48,6 +48,7 @@ public abstract class AutonomousBase extends LinearOpMode {
     static final double  DRIVE_SPEED_80       = 0.80;    //
     static final double  DRIVE_SPEED_90       = 0.90;    //
     static final double  DRIVE_SPEED_100      = 1.00;    //
+    static final double  TURN_SPEED_5         = 0.05;    //
     static final double  TURN_SPEED_10        = 0.10;    //
     static final double  TURN_SPEED_15        = 0.15;    //
     static final double  TURN_SPEED_20        = 0.15;    //
@@ -60,15 +61,16 @@ public abstract class AutonomousBase extends LinearOpMode {
     static final double  TURN_SPEED_80        = 0.80;    //
     static final double  TURN_SPEED_90        = 0.90;    //
     static final double  TURN_SPEED_100       = 1.00;    //
-    static final double STRAFE_MULTIPLIER = 1.5;
+    static final double STRAFE_MULTIPLIER  = 1.5;
     static final double MIN_SPIN_RATE      = 0.06;    // Minimum power to turn the robot
     static final double MIN_DRIVE_POW      = 0.06;    // Minimum speed to move the robot
     static final double MIN_DRIVE_MAGNITUDE = Math.sqrt(MIN_DRIVE_POW*MIN_DRIVE_POW+MIN_DRIVE_POW*MIN_DRIVE_POW);
 
     public BallOrder obeliskID = PPG_23; // if we can't see it, default to PPG (purple purple green)
+    public boolean   obeliskDetected = false;
 
     // NOTE: Initializing the odometry global X-Y and ANGLE to 0-0 and 0deg means the frame of reference for all movements is
-    // the starting positiong/orientation of the robot.  An alternative is to make the bottom-left corner of the field the 0-0
+    // the starting positioning/orientation of the robot.  An alternative is to make the bottom-left corner of the field the 0-0
     // point, with 0deg pointing forward.  That allows all absolute driveToPosition() commands to be an absolute x-y location
     // on the field.
     double robotGlobalXCoordinatePosition       = 0.0;   // inches
@@ -81,25 +83,25 @@ public abstract class AutonomousBase extends LinearOpMode {
     double  autoAimAngleDeg                     = 0.0;   // degrees (always calculated)
     boolean autoAimEnabled                      = false; // turret power/angle only adjusted when this flag is enabled
     
-    double autoXpos                             = 0.0;   // Keeps track of our Autonomous X-Y position and Angle commands.
-    double autoYpos                             = 0.0;   // (useful when a given value remains UNCHANGED from one
-    double autoAngle                            = 0.0;   // movement to the next, or INCREMENTAL change from current location).
-
     String      storageDir;
     boolean     redAlliance      = true;  // Is alliance BLUE (true) or RED (false)?  Replaced in the individual autonomous programs!
     boolean     forceAlliance    = false; // Override vision pipeline? (toggled during init phase of autonomous)
-    boolean     doSpikeMark1     = true;
-    boolean     doSpikeMark2     = false;
-    boolean     doSpikeMark3     = false;
-    boolean     doCorner3        = true;  // the 3 balls in the corner
+    boolean     doSpikeMark1     = false;
+    boolean     doSpikeMark2     = true;
+    boolean     doSpikeMark3     = true;
+    boolean     doCorner3        = false;  // the 3 balls in the corner
     int         initMenuSelected = 1;      // start on the first entry
-    int         initMenuMax      = 8;      // we have 8 total entries
-    int         waitBefore1st    = 0;      // wait before shooting 1st round [seconds] -- applies to both far/near starting positions
-    int         waitBefore2nd    = 0;      // wait before shooting 2nd round [seconds]
-    int         waitBefore3rd    = 0;      // wait before shooting 3rd round [seconds]
+    int         initMenuMax      = 10;     // we have 10 total entries
+    int         waitBeforePL     = 0;      // wait before shooting preload [seconds]
+    int         waitBeforeC3     = 0;      // wait before shooting corner3 [seconds]
+    int         waitBeforeS1     = 0;      // wait before shooting spike1  [seconds]
+    int         waitBeforeS2     = 0;      // wait before shooting spike2  [seconds]
+    int         waitBeforeS3     = 0;      // wait before shooting spike3  [seconds]
 
     //SUPER7 pattern #1: preload, corner3, wait 4.5sec, spike1 (open gate after 9)
     //SUPER7 pattern #2: preload, corner3,              spike1 (open gate after 6)
+    
+	//ZIPTIES pattern #2: preload, corner3, ???
 
     //---------------------------------------------------------------------------------------
     // When to open the gate and release classified balls during autonomous is a function
@@ -211,16 +213,16 @@ public abstract class AutonomousBase extends LinearOpMode {
         } // prev
 
         switch( initMenuSelected ) {
-            //-------------- DELAY #1 [0.5 sec] --------------
+            //-------------- DELAY PRE-LOAD SHOOTING [0.5 sec resolution] --------------
             case 1 :
                 if( nextValue ) {
-                    if (waitBefore1st < 9) {
-                        waitBefore1st++;
+                    if (waitBeforePL < 9) {
+                        waitBeforePL++;
                     }
                 } // next
                 if( prevValue ) {
-                    if (waitBefore1st > 0) {
-                        waitBefore1st--;
+                    if (waitBeforePL > 0) {
+                        waitBeforePL--;
                     }
                 } // prev
                 break;
@@ -230,52 +232,78 @@ public abstract class AutonomousBase extends LinearOpMode {
                     doCorner3 = !doCorner3;
                 } // next/prev
                 break;
-            //-------------- COLLECT/SCORE SPIKEMARK 1 --------------
+            //-------------- DELAY CORNER3 SHOOTING [0.5 sec resolution] --------------
             case 3 :
+                if( nextValue ) {
+                    if (waitBeforeC3 < 9) {
+                        waitBeforeC3++;
+                    }
+                } // next
+                if( prevValue ) {
+                    if (waitBeforeC3 > 0) {
+                        waitBeforeC3--;
+                    }
+                } // prev
+                break;
+            //-------------- COLLECT/SCORE SPIKEMARK 1 --------------
+            case 4 :
                 if( nextValue || prevValue ) {
                     doSpikeMark1 = !doSpikeMark1;
                 } // next/prev
                 break;
-            //-------------- DELAY #2 [0.5 sec] --------------
-            case 4 :
+            //-------------- DELAY SPIKEMARK1 SHOOTING [0.5 sec resolution] --------------
+            case 5 :
                 if( nextValue ) {
-                    if (waitBefore2nd < 9) {
-                        waitBefore2nd++;
+                    if (waitBeforeS1 < 9) {
+                        waitBeforeS1++;
                     }
                 } // next
                 if( prevValue ) {
-                    if (waitBefore2nd > 0) {
-                        waitBefore2nd--;
+                    if (waitBeforeS1 > 0) {
+                        waitBeforeS1--;
                     }
                 } // prev
                 break;
             //-------------- COLLECT/SCORE SPIKEMARK 2 --------------
-            case 5 :
+            case 6 :
                 if( nextValue || prevValue ) {
                     doSpikeMark2 = !doSpikeMark2;
                 } // next/prev
                 break;
-            //-------------- DELAY #3 [0.5 sec] --------------
-            case 6 :
+            //-------------- DELAY SPIKEMARK2 SHOOTING [0.5 sec resolution] --------------
+            case 7 :
                 if( nextValue ) {
-                    if (waitBefore3rd < 9) {
-                        waitBefore3rd++;
+                    if (waitBeforeS2 < 9) {
+                        waitBeforeS2++;
                     }
                 } // next
                 if( prevValue ) {
-                    if (waitBefore3rd > 0) {
-                        waitBefore3rd--;
+                    if (waitBeforeS2 > 0) {
+                        waitBeforeS2--;
                     }
                 } // prev
                 break;
             //-------------- COLLECT/SCORE SPIKEMARK 3 --------------
-            case 7 :
+            case 8 :
                 if( nextValue || prevValue ) {
                     doSpikeMark3 = !doSpikeMark3;
                 } // next/prev
                 break;
+            //-------------- DELAY SPIKEMARK3 SHOOTING [0.5 sec resolution] --------------
+            case 9 :
+                if( nextValue ) {
+                    if (waitBeforeS3 < 9) {
+                        waitBeforeS3++;
+                    }
+                } // next
+                if( prevValue ) {
+                    if (waitBeforeS3 > 0) {
+                        waitBeforeS3--;
+                    }
+                } // prev
+                break;
             //-------------- GATE OPTIONS [never, etc]  --------------
-            case 8 :
+            case 10 :
                 if( nextValue ) {
                   gateOption = gateOption.next();
                 } // next
@@ -292,14 +320,16 @@ public abstract class AutonomousBase extends LinearOpMode {
 
         // Update our telemetry
         telemetry.addData("ALLIANCE", "%s", ((redAlliance)? "RED":"BLUE"));
-        telemetry.addData("Wait #1",  "%.1f sec %s",  waitBefore1st/2.0,         ((initMenuSelected==1)? "<-":"  ") );
+        telemetry.addData("Preload delay", "%.1f sec %s",  waitBeforePL /2.0,    ((initMenuSelected==1)? "<-":"  ") );
         telemetry.addData("Do Corner 3",   "%s %s", ((doCorner3)?   "yes":"no"), ((initMenuSelected==2)? "<-":"  ") );
-        telemetry.addData("Do SpikeMark1", "%s %s", ((doSpikeMark1)?"yes":"no"), ((initMenuSelected==3)? "<-":"  ") );
-        telemetry.addData("Wait #2",  "%.1f sec %s",  waitBefore2nd/2.0,         ((initMenuSelected==4)? "<-":"  ") );
-        telemetry.addData("Do SpikeMark2", "%s %s", ((doSpikeMark2)?"yes":"no"), ((initMenuSelected==5)? "<-":"  ") );
-        telemetry.addData("Wait #3",  "%.1f sec %s",  waitBefore3rd/2.0,         ((initMenuSelected==6)? "<-":"  ") );
-        telemetry.addData("Do SpikeMark3", "%s %s", ((doSpikeMark3)?"yes":"no"), ((initMenuSelected==7)? "<-":"  ") );
-        telemetry.addData("Open Gate", "%s %s",     gateOption.getDescription(), ((initMenuSelected==8)? "<-":"  ") );
+        telemetry.addData("Corner3 delay", "%.1f sec %s",  waitBeforeC3 /2.0,    ((initMenuSelected==3)? "<-":"  ") );
+        telemetry.addData("Do SpikeMark1", "%s %s", ((doSpikeMark1)?"yes":"no"), ((initMenuSelected==4)? "<-":"  ") );
+        telemetry.addData("Spike1 delay",  "%.1f sec %s",  waitBeforeS1 /2.0,    ((initMenuSelected==5)? "<-":"  ") );
+        telemetry.addData("Do SpikeMark2", "%s %s", ((doSpikeMark2)?"yes":"no"), ((initMenuSelected==6)? "<-":"  ") );
+        telemetry.addData("Spike2 delay",  "%.1f sec %s",  waitBeforeS2 /2.0,    ((initMenuSelected==7)? "<-":"  ") );
+        telemetry.addData("Do SpikeMark3", "%s %s", ((doSpikeMark3)?"yes":"no"), ((initMenuSelected==8)? "<-":"  ") );
+        telemetry.addData("Spike3 delay",  "%.1f sec %s",  waitBeforeS3 /2.0,    ((initMenuSelected==9)? "<-":"  ") );
+        telemetry.addData("Open Gate", "%s %s",     gateOption.getDescription(), ((initMenuSelected==10)? "<-":"  ") );
         telemetry.addData("Odometry","x=%.2f y=%.2f  %.2f deg",
                 robotGlobalXCoordinatePosition, robotGlobalYCoordinatePosition, Math.toDegrees(robotOrientationRadians) );
         telemetry.addLine("Preload=GPP (Green down thru shooter!)");
@@ -355,8 +385,8 @@ public abstract class AutonomousBase extends LinearOpMode {
             targetY = redAlliance ? -63.3 : +63.3;
         }
         else {
-            targetX = redAlliance ? +60.0 : +60.0;  // 6ft = 72"
-            targetY = redAlliance ? -60.0 : +60.0;  // 6ft = 72"
+            targetX = redAlliance ? +58.0 : +58.0;  // 6ft = 72"
+            targetY = redAlliance ? -56.0 : +56.0;  // 6ft = 72"
         }
         // Compute distance to target point inside the goal
         double deltaX = targetX - currentX;
@@ -376,8 +406,8 @@ public abstract class AutonomousBase extends LinearOpMode {
             targetY = redAlliance ? -55.3 : +67.3;
         }
         else {
-            targetX = redAlliance ? +60.0 : +60.0;  // 6ft = 72"
-            targetY = redAlliance ? -58.0 : +57.0;  // 6ft = 72"
+            targetX = redAlliance ? +64.0 : +64.0;  // 6ft = 72"
+            targetY = redAlliance ? -55.0 : +55.0;  // 6ft = 72"
         }
        // Compute distance to target point inside the goal
         double deltaX = targetX - currentX;
@@ -404,6 +434,7 @@ public abstract class AutonomousBase extends LinearOpMode {
                 if( (limelightID >= 21) && (limelightID <= 23) ) {
                     telemetry.addData("Obelisk", "ID: %d", limelightID);
                     obeliskID = BallOrder.forObeliskID(limelightID);
+                    obeliskDetected = true;
                 }
             } // fiducialResults
         } // isValid
@@ -1382,28 +1413,27 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
 
     /*--------------------------------------------------------------------------------------------*/
     public void collectSpikemarkFromNear( int spikeMarkNumber, boolean isRed, SpindexerState firstBall ) {
-        // TODO: Currently just a copy of the FAR code!
         double redStartx=0, blueStartx=0, endx=0, xPos, yPos, angDeg;
         // Reset the spindexer for collecting
-        robot.spinServoSetPosition( (isRed)? SPIN_P1 : SPIN_P3 );   // red=P1/P2/P3 on left, blue=P3/P2/P1 on right
-        // Transition from shooting zone to spike-mark zone (spikemark #1)
+        robot.spinServoSetPosition( (isRed)? SPIN_P3 : SPIN_P1 );   // red=P3/P2/P1 on right, blue=P1/P2/P3 on left
+        // Transition from shooting zone to spike-mark zone
         if( opModeIsActive() ) {
-            // drive away from the far shooting zone in a curved path toward the 1st spike mark
+            // drive out of the NEAR shooting zone in a curved path toward the given spike mark
             switch( spikeMarkNumber ) {
                 case 1  :
-                    driveToPosition( -52.8, ((isRed)? -15.3 : +15.3), ((isRed)? -22.5:22.5), DRIVE_SPEED_90, TURN_SPEED_20, DRIVE_THRU);
-                    driveToPosition( -44.8, ((isRed)? -17.3 : +17.3), ((isRed)? -45.0:45.0), DRIVE_SPEED_90, TURN_SPEED_20, DRIVE_THRU);
-                    driveToPosition( -41.8, ((isRed)? -21.3 : +21.3), ((isRed)? -70.0:70.0), DRIVE_SPEED_90, TURN_SPEED_20, DRIVE_THRU);
-                    redStartx=-38.2; blueStartx=-38.2; endx=-42.8;
+                    sleep(5000);
+                    driveToPosition( 0.0, ((isRed)? -15.3 : +15.3), ((isRed)? 0.0:0.0), DRIVE_SPEED_90, TURN_SPEED_20, DRIVE_TO);
+                    sleep(5000);
+                    redStartx=-32.2; blueStartx=-32.2; endx=-42.8;
                     break;
                 case 2  :
-                    driveToPosition( -38.8, ((isRed)? -15.3 : +15.3), ((isRed)?   0.0:0.0),  DRIVE_SPEED_90, TURN_SPEED_20, DRIVE_THRU);
-                    redStartx=-15.0; blueStartx=-15.0; endx=-20.8;
+                    driveToPosition( 1.5, ((isRed)? -22.0 : +22.0), ((isRed)? -107.0:107.0),  DRIVE_SPEED_90, TURN_SPEED_20, DRIVE_THRU);
+                    redStartx=-8.7; blueStartx=-8.7; endx=-7.7;
                     break;
                 case 3  :
                 default :
-                    driveToPosition( -10.8, ((isRed)? -15.3 : +15.3), ((isRed)? 0.0:0.0), DRIVE_SPEED_90, TURN_SPEED_20, DRIVE_THRU);
-                    redStartx=10.1;  blueStartx=10.1;   endx=-12.8;
+                    driveToPosition( 24.9, ((isRed)? -20.0 : +20.0), ((isRed)? -111.8:111.8), DRIVE_SPEED_90, TURN_SPEED_20, DRIVE_THRU);
+                    redStartx=15.8;  blueStartx=15.8;   endx=14.3;
                     break;
             } // switch
         }
@@ -1417,29 +1447,31 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
             angDeg = (isRed)? -90.0 : +90.0;
             driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_40, TURN_SPEED_10, DRIVE_THRU);
             // Drive into the 1st ball to collect it
-            yPos   = ((isRed)? -35.8 : +35.8);
+            yPos   = ((isRed)? -36.9 : +36.9);
             driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_15, TURN_SPEED_15, DRIVE_THRU);
             robot.spinServoSetPosition( SPIN_P2 );
             // Drive into the 2nd ball to collect it
-            yPos   = ((isRed)? -42.3 : +42.3);
+            yPos   = ((isRed)? -41.7 : +41.7);
             driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_15, TURN_SPEED_15, DRIVE_THRU);
-            robot.spinServoSetPosition( (isRed)? SPIN_P3 : SPIN_P1 );
+            robot.spinServoSetPosition( (isRed)? SPIN_P1 : SPIN_P3 );
             // Drive into the 3rd ball to collect it
-            yPos   = ((isRed)? -47.3 : +47.3);
+            yPos   = ((isRed)? -48.5 : +48.5);
             driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_15, TURN_SPEED_15, DRIVE_TO);
         } // opModeIsActive
         // Drive back to the shooting zone (back the way we came!)
         if( opModeIsActive() ) {
             // reverse collector in case we over collected
             robot.intakeMotor.setPower( robot.INTAKE_REV_REJECT );
-            driveToPosition( endx, ((isRed)? -39.3 : +39.3), ((isRed)? -80.0:80.0), DRIVE_SPEED_90, TURN_SPEED_30, DRIVE_THRU);
+            driveToPosition( endx, ((isRed)? -43.2 : +43.2), ((isRed)? -96.5:96.5), DRIVE_SPEED_90, TURN_SPEED_30, DRIVE_THRU);
             // Turn collector back on forward
             robot.intakeMotor.setPower( robot.INTAKE_FWD_COLLECT );
             // Pre-spindex to the first position we need to be in when we shoot all 3
             robot.spinServoSetPosition( firstBall );
             // Return to the far shooting zone, preparing the auto-aim as we go
             autoAimEnabled = true;
-            driveToPosition(-50.8, ((isRed)? -16.3 : +16.3), ((isRed)?  0.0:0.0), DRIVE_SPEED_80, TURN_SPEED_30, DRIVE_TO);
+            driveToPosition(25.0, ((isRed)? -20.4 : +20.4), ((isRed)? -50.4:50.4), DRIVE_SPEED_80, TURN_SPEED_30, DRIVE_TO);
+            performEveryLoop();    // ensure one last auto-aim loop
+            sleep(100); // let turret settle at final angle
             autoAimEnabled = false;
         } // opModeIsActive
     } // collectSpikemarkFromNear
