@@ -381,12 +381,12 @@ public abstract class AutonomousBase extends LinearOpMode {
         double currentY = robotGlobalYCoordinatePosition;
         double targetX, targetY;
         if( runningAutonomousFar ) {
-            targetX = redAlliance ? +62.2 : +67.2;
-            targetY = redAlliance ? -63.3 : +63.3;
+            targetX = (redAlliance)? +62.2 : +67.2;
+            targetY = (redAlliance)? -63.3 : +63.3;
         }
         else {
-            targetX = redAlliance ? +58.0 : +58.0;  // 6ft = 72"
-            targetY = redAlliance ? -56.0 : +56.0;  // 6ft = 72"
+            targetX = (redAlliance)? +58.0 : +56.0;  // 6ft = 72"
+            targetY = (redAlliance)? -56.0 : +55.0;  // 6ft = 72"
         }
         // Compute distance to target point inside the goal
         double deltaX = targetX - currentX;
@@ -407,7 +407,7 @@ public abstract class AutonomousBase extends LinearOpMode {
         }
         else {
             targetX = redAlliance ? +64.0 : +64.0;  // 6ft = 72"
-            targetY = redAlliance ? -55.0 : +55.0;  // 6ft = 72"
+            targetY = redAlliance ? -58.0 : +64.0;  // 6ft = 72"
         }
        // Compute distance to target point inside the goal
         double deltaX = targetX - currentX;
@@ -1421,10 +1421,8 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
             // drive out of the NEAR shooting zone in a curved path toward the given spike mark
             switch( spikeMarkNumber ) {
                 case 1  :
-                    sleep(5000);
-                    driveToPosition( 0.0, ((isRed)? -15.3 : +15.3), ((isRed)? 0.0:0.0), DRIVE_SPEED_90, TURN_SPEED_20, DRIVE_TO);
-                    sleep(5000);
-                    redStartx=-32.2; blueStartx=-32.2; endx=-42.8;
+                    driveToPosition( -6.9, ((isRed)? -22.3 : +22.3), ((isRed)? -91.0:91.0), DRIVE_SPEED_90, TURN_SPEED_20, DRIVE_THRU);
+                    redStartx=-32.2; blueStartx=-32.2; endx=-31.2;
                     break;
                 case 2  :
                     driveToPosition( 1.5, ((isRed)? -22.0 : +22.0), ((isRed)? -107.0:107.0),  DRIVE_SPEED_90, TURN_SPEED_20, DRIVE_THRU);
@@ -1469,7 +1467,7 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
             robot.spinServoSetPosition( firstBall );
             // Return to the far shooting zone, preparing the auto-aim as we go
             autoAimEnabled = true;
-            driveToPosition(25.0, ((isRed)? -20.4 : +20.4), ((isRed)? -50.4:50.4), DRIVE_SPEED_80, TURN_SPEED_30, DRIVE_TO);
+            driveToPosition(18.0, ((isRed)? -20.4 : +20.4), ((isRed)? -52.4:52.4), DRIVE_SPEED_80, TURN_SPEED_30, DRIVE_TO);
             performEveryLoop();    // ensure one last auto-aim loop
             sleep(100); // let turret settle at final angle
             autoAimEnabled = false;
@@ -1501,7 +1499,7 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
                 // move forward from the launch line so we can still score the move bonus.
                 // This logic assumes we have enough time to at least shoot one ball.
                 // There could be scenarios where we even run out of time before we start shooting, but not currently handled.
-                boolean outOfAutoTime = autonomousTimer.seconds() >= 29; // TODO: verify 1 second is enough.
+                boolean outOfAutoTime = autonomousTimer.milliseconds() >= 28000;
                 if( !opModeIsActive() || outOfAutoTime) break;
             }
         } // opModeIsActive
@@ -1509,7 +1507,7 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
         robot.shooterMotorsSetPower( 0.0 );
         // Turn off collector
         robot.intakeMotor.setPower(0.0);
-    } // scoreThreeBallsFromFar
+    } // scoreThreeBallsFromField
 
     //--------------------------------------------------------------------------------------------
     public void launchBall(){

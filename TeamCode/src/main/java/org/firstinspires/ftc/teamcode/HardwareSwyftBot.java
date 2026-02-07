@@ -574,7 +574,7 @@ public class HardwareSwyftBot
     /*--------------------------------------------------------------------------------------------*/
     public void performInitPreload() {
         intakeMotor.setPower(INTAKE_FWD_PRELOAD);
-        shooterMotorsSetPower(-.1);
+        shooterMotorsSetPower(-0.50);
         try {
             sleep(2000);
         } catch (InterruptedException e) {

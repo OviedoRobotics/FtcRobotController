@@ -125,7 +125,7 @@ public class AutonomousRedNear extends AutonomousBase {
 
         // Collect and Score 3rd spike mark
         if( doSpikeMark3 ) {
-            loadOrder = (redAlliance)? PPG_23:PPG_23;
+            loadOrder = (redAlliance)? PPG_23:GPP_21;
             firstBall = getObeliskFirstBall(obeliskID,loadOrder);
             collectSpikemarkFromNear(3,redAlliance,firstBall);
             // Do we pause before shooting?
@@ -137,7 +137,7 @@ public class AutonomousRedNear extends AutonomousBase {
 
         // Collect and Score 2nd spike mark
         if( doSpikeMark2 ) {
-            loadOrder = (redAlliance)? GPP_21:GPP_21;
+            loadOrder = (redAlliance)? GPP_21:PPG_23;
             firstBall = getObeliskFirstBall(obeliskID,loadOrder);
             collectSpikemarkFromNear(2,redAlliance,firstBall);
             // Do we pause before shooting?
@@ -160,7 +160,7 @@ public class AutonomousRedNear extends AutonomousBase {
         }
 
         // Drive the final position we want for MOVEMENT points
-//      driveToPosition(40.7, -17.6, -49.0, DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_TO);
+        driveToPosition(4.0, -22.4, -52.4, DRIVE_SPEED_90, TURN_SPEED_30, DRIVE_TO);
 
         // ensure motors are turned off even if we run out of time
         robot.driveTrainMotorsZero();
