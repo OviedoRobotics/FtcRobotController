@@ -85,10 +85,9 @@ public abstract class AutonomousBase extends LinearOpMode {
     
     String      storageDir;
     boolean     redAlliance      = true;  // Is alliance BLUE (true) or RED (false)?  Replaced in the individual autonomous programs!
-    boolean     forceAlliance    = false; // Override vision pipeline? (toggled during init phase of autonomous)
-    boolean     doSpikeMark1     = false;
+    boolean     doSpikeMark1     = true;
     boolean     doSpikeMark2     = true;
-    boolean     doSpikeMark3     = true;
+    boolean     doSpikeMark3     = false;
     boolean     doCorner3        = false;  // the 3 balls in the corner
     int         initMenuSelected = 1;      // start on the first entry
     int         initMenuMax      = 10;     // we have 10 total entries
@@ -1338,7 +1337,7 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
         // Drive back to the shooting zone (back the way we came!)
         if( opModeIsActive() ) {
             // reverse collector in case we over collected
-            robot.intakeMotor.setPower( robot.INTAKE_REV_REJECT );
+            robot.intakeMotor.setPower( robot.INTAKE_AUTO_REJECT );
             driveToPosition(-56.4, ((isRed)? -36.8 : +36.8), ((isRed)? -90.0:+90), DRIVE_SPEED_90, TURN_SPEED_10, DRIVE_THRU);
             // Turn collector back on forward
             robot.intakeMotor.setPower( robot.INTAKE_FWD_COLLECT );
@@ -1398,7 +1397,7 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
         // Drive back to the shooting zone (back the way we came!)
         if( opModeIsActive() ) {
             // reverse collector in case we over collected
-            robot.intakeMotor.setPower( robot.INTAKE_REV_REJECT );
+            robot.intakeMotor.setPower( robot.INTAKE_AUTO_REJECT );
             driveToPosition( endx, ((isRed)? -39.3 : +39.3), ((isRed)? -80.0:80.0), DRIVE_SPEED_90, TURN_SPEED_30, DRIVE_THRU);
             // Turn collector back on forward
             robot.intakeMotor.setPower( robot.INTAKE_FWD_COLLECT );

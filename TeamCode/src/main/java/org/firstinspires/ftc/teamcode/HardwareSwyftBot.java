@@ -131,9 +131,9 @@ public class HardwareSwyftBot
 
     public final static double INTAKE_FWD_COLLECT = +0.90;  // aggressively collect
     public final static double INTAKE_FWD_PRELOAD = +0.25;  // SLOWLY collect
-    public final static double INTAKE_REV_REJECT  = -0.50;  // gently reject overcollect so don't send flying
-
-    protected DcMotorEx shooterMotor1   = null;  // upper 
+    public final static double INTAKE_REV_REJECT  = -0.60;  // gently reject overcollect so don't send flying
+    public final static double INTAKE_AUTO_REJECT = -0.95;  // make extra sure we reject overcollect in auto
+    protected DcMotorEx shooterMotor1   = null;  // upper
     protected DcMotorEx shooterMotor2   = null;  // lower
     public    double    shooterMotor1Vel = 0.0;  // encoder counts per second
     public    double    shooterMotor2Vel = 0.0;  // encoder counts per second

@@ -27,6 +27,12 @@ public class AutonomousBlueNear extends AutonomousBase {
         redAlliance  = false;
         runningAutonomousFar = false;
 
+        // set our defaults for near to assume 12-ball with no delays
+        doCorner3        = false;  // the 3 balls in the corner
+        doSpikeMark1     = true;
+        doSpikeMark2     = true;
+        doSpikeMark3     = true;
+
         robot.limelightPipelineSwitch( 1 );
         robot.limelightStart();  // Start polling for data (skipping this has getLatestResult() return null results)
 
