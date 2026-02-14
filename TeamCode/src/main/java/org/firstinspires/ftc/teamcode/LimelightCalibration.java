@@ -5,6 +5,14 @@ import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import org.apache.commons.math3.optim.InitialGuess;
+import org.apache.commons.math3.optim.MaxEval;
+import org.apache.commons.math3.optim.PointValuePair;
+import org.apache.commons.math3.optim.SimpleBounds;
+import org.apache.commons.math3.optim.nonlinear.scalar.GoalType;
+import org.apache.commons.math3.optim.nonlinear.scalar.ObjectiveFunction;
+import org.apache.commons.math3.optim.nonlinear.scalar.noderiv.NelderMeadSimplex;
+import org.apache.commons.math3.optim.nonlinear.scalar.noderiv.SimplexOptimizer;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 import org.json.JSONObject;
 
@@ -18,22 +26,24 @@ import java.util.Map;
  * Limelight Quick Optimizer - Optimizes AprilTag detection stability
  * <p>
  * This OpMode automatically calibrates Limelight camera settings for optimal
- * AprilTag detection. It tests various exposure, gain, and image processing
- * parameters to find the configuration with the best stability.
+ * AprilTag detection using Apache Commons Math optimization algorithms.
+ * It uses the Nelder-Mead simplex method to efficiently search the parameter
+ * space for optimal exposure, gain, and image processing settings.
  * <p>
  * Usage:
  * 1. Position robot so a target AprilTag (ID 20 or 24) is visible
  * 2. Run this OpMode
- * 3. Wait for optimization to complete (~2-3 minutes)
- * 4. Optimal settings are automatically applied to the camera
+ * 3. Wait for optimization to complete (~1-2 minutes)
+ * 4. Press [triangle] to save settings permanently or [cross] to exit
  * <p>
  * The optimization happens in phases:
  * Phase 1: Detect tag and establish baseline
- * Phase 2: Coarse search for exposure + gain
- * Phase 3: Fine-tune secondary parameters
- * Phase 4: Cycling refinement
+ * Phase 2: Optimize exposure & gain (Nelder-Mead)
+ * Phase 3: Optimize image parameters (Nelder-Mead)
+ * Phase 4: Test discrete parameters (refine method, black level)
  * Phase 5: Verification
- * Note, an AI translation of https://github.com/6603GuildofGears/Limelight-AprilTag-Calibration/blob/main/final_optimize.py
+ * <p>
+ * Inspired by: https://github.com/6603GuildofGears/Limelight-AprilTag-Calibration
  */
 @TeleOp(name = "Limelight: Calibration", group = "Test")
 public class LimelightCalibration extends LinearOpMode {
@@ -131,82 +141,53 @@ public class LimelightCalibration extends LinearOpMode {
         telemetry.update();
         sleep(1500);
 
-        // Phase 2: Coarse grid search
-        telemetry.addLine("\nPhase 2: Coarse parameter search...");
+        // Phase 2: Optimize exposure and gain using Nelder-Mead
+        telemetry.addLine("\nPhase 2: Optimizing exposure & gain...");
         telemetry.update();
 
-        int[] exposures = {2400, 2600, 2800, 3000, 3200};
-        double[] gains = {6.0, 7.0, 8.0, 9.0, 10.0};
+        double[] optimizedExpGain = optimizeExposureAndGain();
+        bestSettings.put("exposure", (int) Math.round(optimizedExpGain[0]));
+        bestSettings.put("sensor_gain", optimizedExpGain[1]);
 
-        for (int exp : exposures) {
-            for (double gain : gains) {
-                if (!opModeIsActive()) return;
+        MeasurementResult phase2Result = measure(30, detectedTagId);
+        bestStability = phase2Result.stability;
 
-                Map<String, Object> test = new HashMap<>(bestSettings);
-                test.put("exposure", exp);
-                test.put("sensor_gain", gain);
-                applySettings(test);
-
-                MeasurementResult result = measure(25, detectedTagId);
-
-                if (result.detectionRate > 80 && result.stability < bestStability) {
-                    bestStability = result.stability;
-                    bestSettings.put("exposure", exp);
-                    bestSettings.put("sensor_gain", gain);
-
-                    telemetry.addLine(String.format("  BEST: exp=%d gain=%.1f: %.1fmm (%.0f%%)",
-                            exp, gain, result.stability, result.detectionRate));
-                    telemetry.update();
-                }
-            }
-        }
-
-        telemetry.addLine(String.format("  Best: exp=%d gain=%.1f (%.2fmm)",
+        telemetry.addLine(String.format("  Optimized: exp=%d gain=%.1f (%.2fmm)",
                 bestSettings.get("exposure"), bestSettings.get("sensor_gain"), bestStability));
         telemetry.update();
         sleep(1500);
 
-        // Phase 3: Fine-tune secondary parameters
-        telemetry.addLine("\nPhase 3: Fine-tuning...");
+        // Phase 3: Optimize secondary continuous parameters
+        telemetry.addLine("\nPhase 3: Optimizing image parameters...");
+        telemetry.update();
+
+        double[] optimizedImageParams = optimizeImageParameters();
+        bestSettings.put("sharpening", optimizedImageParams[0]);
+        bestSettings.put("red_balance", (int) Math.round(optimizedImageParams[1]));
+        bestSettings.put("blue_balance", (int) Math.round(optimizedImageParams[2]));
+
+        MeasurementResult phase3Result = measure(30, detectedTagId);
+        if (phase3Result.stability < bestStability) {
+            bestStability = phase3Result.stability;
+        }
+
+        telemetry.addLine(String.format("  Optimized image params (%.2fmm)", bestStability));
+        telemetry.update();
+        sleep(1500);
+
+        // Phase 4: Test discrete parameters
+        telemetry.addLine("\nPhase 4: Testing discrete parameters...");
         telemetry.update();
 
         // Refine method
         int[] refineMethods = {0, 1, 2, 3};
-        optimizeParameter("fiducial_refine_method", refineMethods);
+        optimizeDiscreteParameter("fiducial_refine_method", refineMethods);
 
         // Black level
         int[] blackLevels = {15, 18, 20, 22, 25};
-        optimizeParameter("black_level", blackLevels);
+        optimizeDiscreteParameter("black_level", blackLevels);
 
-        // Sharpening
-        double[] sharpenings = {0.0, 0.05, 0.1, 0.15};
-        optimizeParameter("sharpening", sharpenings);
-
-        // Red balance
-        int[] redBalances = {1180, 1230, 1280, 1330, 1380};
-        optimizeParameter("red_balance", redBalances);
-
-        // Blue balance
-        int[] blueBalances = {1400, 1450, 1500, 1550, 1600};
-        optimizeParameter("blue_balance", blueBalances);
-
-        telemetry.addLine("  Fine-tuning complete");
-        telemetry.update();
-        sleep(1500);
-
-        // Phase 4: Cycling refinement
-        telemetry.addLine("\nPhase 4: Cycling refinement...");
-        telemetry.update();
-
-        int expVal = (Integer) bestSettings.get("exposure");
-        int[] expRange = {expVal - 200, expVal - 100, expVal, expVal + 100, expVal + 200};
-        optimizeParameter("exposure", expRange);
-
-        double gainVal = ((Number) bestSettings.get("sensor_gain")).doubleValue();
-        double[] gainRange = {gainVal - 1, gainVal - 0.5, gainVal, gainVal + 0.5, gainVal + 1};
-        optimizeParameter("sensor_gain", gainRange);
-
-        telemetry.addLine("  Refinement complete");
+        telemetry.addLine(String.format("  Discrete params optimized (%.2fmm)", bestStability));
         telemetry.update();
         sleep(1500);
 
@@ -301,7 +282,127 @@ public class LimelightCalibration extends LinearOpMode {
         bestSettings.put("blue_balance", DEFAULT_BLUE_BALANCE);
     }
 
-    private void optimizeParameter(String paramName, int[] values) {
+    /**
+     * Optimize exposure and gain using Nelder-Mead simplex algorithm
+     * Returns: [exposure, gain]
+     */
+    private double[] optimizeExposureAndGain() {
+        // Parameter vector: [exposure, gain]
+        double[] initialGuess = {
+                ((Number) bestSettings.get("exposure")).doubleValue(),
+                ((Number) bestSettings.get("sensor_gain")).doubleValue()
+        };
+
+        // Bounds: exposure [800, 3300], gain [4, 30]
+        double[] lowerBounds = {800.0, 4.0};
+        double[] upperBounds = {3300.0, 30.0};
+
+        // Objective function
+        ObjectiveFunction objectiveFunction = new ObjectiveFunction(point -> {
+            if (!opModeIsActive()) return 999.0; // Early exit
+
+            int exposure = (int) Math.round(point[0]);
+            double gain = point[1];
+
+            Map<String, Object> test = new HashMap<>(bestSettings);
+            test.put("exposure", exposure);
+            test.put("sensor_gain", gain);
+            applySettings(test);
+
+            MeasurementResult result = measure(20, detectedTagId);
+
+            // Penalize low detection rate
+            if (result.detectionRate < 60) {
+                return 999.0;
+            }
+
+            telemetry.addLine(String.format("  Testing exp=%d gain=%.1f: %.1fmm",
+                    exposure, gain, result.stability));
+            telemetry.update();
+
+            return result.stability;
+        });
+
+        try {
+            SimplexOptimizer optimizer = new SimplexOptimizer(1e-3, 1e-6);
+            PointValuePair result = optimizer.optimize(
+                    new MaxEval(30),
+                    objectiveFunction,
+                    GoalType.MINIMIZE,
+                    new InitialGuess(initialGuess),
+                    new SimpleBounds(lowerBounds, upperBounds),
+                    new NelderMeadSimplex(2)
+            );
+
+            return result.getPoint();
+        } catch (Exception e) {
+            telemetry.addLine("Optimization failed, using defaults");
+            telemetry.update();
+            return initialGuess;
+        }
+    }
+
+    /**
+     * Optimize image processing parameters: sharpening, red_balance, blue_balance
+     * Returns: [sharpening, red_balance, blue_balance]
+     */
+    private double[] optimizeImageParameters() {
+        // Parameter vector: [sharpening, red_balance, blue_balance]
+        double[] initialGuess = {
+                ((Number) bestSettings.get("sharpening")).doubleValue(),
+                ((Number) bestSettings.get("red_balance")).doubleValue(),
+                ((Number) bestSettings.get("blue_balance")).doubleValue()
+        };
+
+        // Bounds
+        double[] lowerBounds = {0.0, 1000.0, 1200.0};
+        double[] upperBounds = {0.2, 1500.0, 1800.0};
+
+        ObjectiveFunction objectiveFunction = new ObjectiveFunction(point -> {
+            if (!opModeIsActive()) return 999.0;
+
+            double sharpening = point[0];
+            int redBalance = (int) Math.round(point[1]);
+            int blueBalance = (int) Math.round(point[2]);
+
+            Map<String, Object> test = new HashMap<>(bestSettings);
+            test.put("sharpening", sharpening);
+            test.put("red_balance", redBalance);
+            test.put("blue_balance", blueBalance);
+            applySettings(test);
+
+            MeasurementResult result = measure(20, detectedTagId);
+
+            if (result.detectionRate < 60) {
+                return 999.0;
+            }
+
+            return result.stability;
+        });
+
+        try {
+            SimplexOptimizer optimizer = new SimplexOptimizer(1e-3, 1e-6);
+            PointValuePair result = optimizer.optimize(
+                    new MaxEval(25),
+                    objectiveFunction,
+                    GoalType.MINIMIZE,
+                    new InitialGuess(initialGuess),
+                    new SimpleBounds(lowerBounds, upperBounds),
+                    new NelderMeadSimplex(3)
+            );
+
+            return result.getPoint();
+        } catch (Exception e) {
+            telemetry.addLine("Image param optimization failed, using defaults");
+            telemetry.update();
+            return initialGuess;
+        }
+    }
+
+    /**
+     * Test discrete parameter values and select the best
+     */
+    private void optimizeDiscreteParameter(String paramName, int[] values) {
         for (int val : values) {
             if (!opModeIsActive()) return;
 
@@ -309,28 +410,14 @@ public class LimelightCalibration extends LinearOpMode {
             test.put(paramName, val);
             applySettings(test);
 
-            MeasurementResult result = measure(30, detectedTagId);
+            MeasurementResult result = measure(25, detectedTagId);
 
-            if (result.detectionRate > 70 && result.stability < bestStability) {
+            if (result.detectionRate > 60 && result.stability < bestStability) {
                 bestStability = result.stability;
                 bestSettings.put(paramName, val);
-            }
-        }
-    }
-
-    private void optimizeParameter(String paramName, double[] values) {
-        for (double val : values) {
-            if (!opModeIsActive()) return;
-
-            Map<String, Object> test = new HashMap<>(bestSettings);
-            test.put(paramName, val);
-            applySettings(test);
-
-            MeasurementResult result = measure(30, detectedTagId);
-
-            if (result.detectionRate > 70 && result.stability < bestStability) {
-                bestStability = result.stability;
-                bestSettings.put(paramName, val);
+                telemetry.addLine(String.format("  %s=%d improved to %.1fmm",
+                        paramName, val, result.stability));
+                telemetry.update();
             }
         }
     }
