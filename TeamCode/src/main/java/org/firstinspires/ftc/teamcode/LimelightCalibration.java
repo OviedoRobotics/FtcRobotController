@@ -257,11 +257,37 @@ public class LimelightCalibration extends LinearOpMode {
         telemetry.addLine(String.format("  blue_balance: %d", bestSettings.get("blue_balance")));
         telemetry.addLine("\nSettings applied to camera!");
         telemetry.addLine("========================================");
+        telemetry.addLine("\nPress [triangle] to SAVE settings permanently");
+        telemetry.addLine("Press [cross] to exit without saving");
+        telemetry.addLine("(Settings are currently temporary)");
         telemetry.update();
 
-        // Keep display visible
-        while (opModeIsActive()) {
+        // Wait for user to save or exit
+        boolean settingsSaved = false;
+        while (opModeIsActive() && !settingsSaved) {
+            if (gamepad1.triangleWasPressed()) {
+                telemetry.addLine("\nSaving settings permanently...");
+                telemetry.update();
+                flushSettings(bestSettings);
+                settingsSaved = true;
+                telemetry.addLine("Settings SAVED to camera!");
+                telemetry.addLine("Press [cross] to exit");
+                telemetry.update();
+            } else if (gamepad1.crossWasPressed()) {
+                telemetry.addLine("\nExiting without saving.");
+                telemetry.addLine("Settings were temporary only.");
+                telemetry.update();
+                sleep(2000);
+                break;
+            }
             sleep(100);
+        }
+
+        // Wait for final exit
+        if (settingsSaved) {
+            while (opModeIsActive() && !gamepad1.crossWasPressed()) {
+                sleep(100);
+            }
         }
     }
 
@@ -320,6 +346,21 @@ public class LimelightCalibration extends LinearOpMode {
             sleep(150); // Allow settings to apply
         } catch (Exception e) {
             telemetry.addLine("Warning: Failed to apply settings - " + e.getMessage());
+            telemetry.update();
+        }
+    }
+
+    private void flushSettings(Map<String, Object> settings) {
+        try {
+            JSONObject json = new JSONObject(settings);
+
+            // Call private updatePipeline method with flush=true to save permanently
+            // Method signature: private boolean updatePipeline(JSONObject profileJson, boolean flush)
+            updatePipelineMethod.invoke(limelight, json, true);
+
+            sleep(150); // Allow settings to flush
+        } catch (Exception e) {
+            telemetry.addLine("ERROR: Failed to flush settings - " + e.getMessage());
             telemetry.update();
         }
     }
