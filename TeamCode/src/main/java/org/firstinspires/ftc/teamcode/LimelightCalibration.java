@@ -52,6 +52,7 @@ public class LimelightCalibration extends LinearOpMode {
     private static final int[] TARGET_TAGS = {20, 24};
 
     // Safe baseline settings
+    private static final int DEFAULT_PIPELINE_RESOLUTION = 3;
     private static final int DEFAULT_EXPOSURE = 3200;
     private static final double DEFAULT_GAIN = 8.2;
     private static final int DEFAULT_REFINE = 1;
@@ -184,6 +185,10 @@ public class LimelightCalibration extends LinearOpMode {
         telemetry.addLine("\nPhase 4: Testing discrete parameters...");
         telemetry.update();
 
+        // Pipeline resolution
+        int[] pipelineResolutions = {0, 1, 2, 3, 4, 5, 6};
+        optimizeDiscreteParameter("pipeline_res", pipelineResolutions);
+
         // Refine method
         int[] refineMethods = {0, 1, 2, 3};
         optimizeDiscreteParameter("fiducial_refine_method", refineMethods);
@@ -249,6 +254,7 @@ public class LimelightCalibration extends LinearOpMode {
         telemetry.addLine(String.format("Camera Latency: %.1f/%.1f/%.1fms (min/avg/max)",
                 finalMinLatency, finalAvgLatency, finalMaxLatency));
         telemetry.addLine("\nOptimal Settings:");
+        telemetry.addLine(String.format("  pipeline_res: %d", bestSettings.get("pipeline_res")));
         telemetry.addLine(String.format("  exposure: %d", bestSettings.get("exposure")));
         telemetry.addLine(String.format("  sensor_gain: %.1f", bestSettings.get("sensor_gain")));
         telemetry.addLine(String.format("  refine: %d", bestSettings.get("fiducial_refine_method")));
@@ -293,6 +299,7 @@ public class LimelightCalibration extends LinearOpMode {
     }
 
     private void initializeSafeSettings() {
+        bestSettings.put("pipeline_res", DEFAULT_PIPELINE_RESOLUTION);
         bestSettings.put("exposure", DEFAULT_EXPOSURE);
         bestSettings.put("sensor_gain", DEFAULT_GAIN);
         bestSettings.put("fiducial_refine_method", DEFAULT_REFINE);
