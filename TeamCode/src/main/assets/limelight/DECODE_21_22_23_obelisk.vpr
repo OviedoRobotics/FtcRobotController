@@ -34,7 +34,7 @@
   "debugpipe": 0,
   "depthrange_max": 100.0,
   "depthrange_min": 0.0,
-  "desc": "apriltags_20_24",
+  "desc": "DECODE_21_22_23_obelisk",
   "desired_contour_region": 0,
   "detector_conf": 0.8,
   "detector_idfilters": "",
