@@ -51,6 +51,9 @@ public abstract class Teleop extends LinearOpMode {
     long      nanoTimeCurr=0, nanoTimePrev=0;
     double    cycleTimeElapsed, cycleTimeHz;
 
+    double    limelightTimestampCurr=0, limelightTimestampPrev=0;
+    double    limelightUpdateElapsed=0, limelightUpdateHz=0;
+
     /* Declare OpMode members. */
     HardwareSwyftBot robot = new HardwareSwyftBot();
     // sets unique behavior based on alliance
@@ -185,6 +188,14 @@ public abstract class Teleop extends LinearOpMode {
             cycleTimeElapsed = (nanoTimeCurr - nanoTimePrev)/ 1000000.0;   // msec
             cycleTimeHz =  1000.0 / cycleTimeElapsed;
 
+            // Compute limelight update rate
+            limelightTimestampPrev = limelightTimestampCurr;
+            limelightTimestampCurr = robot.limelightTimestamp;
+            if( limelightTimestampCurr > 0 && limelightTimestampPrev > 0 ) {
+                limelightUpdateElapsed = (limelightTimestampCurr - limelightTimestampPrev) * 1000.0;  // convert to msec
+                limelightUpdateHz = 1000.0 / limelightUpdateElapsed;
+            }
+
             // Update telemetry data
             telemetry.addData("Limelight","x=%.2f y=%.2f  %.2f deg (Apriltag)",
                     robot.limelightFieldXpos, robot.limelightFieldYpos, robot.limelightFieldAngleDeg );
@@ -222,6 +233,9 @@ public abstract class Teleop extends LinearOpMode {
                 robot.getLeftBall(), robot.getCenterBall(), robot.getRightBall() );
             telemetry.addLine( (robot.isRobot2)? "Robot2" : "Robot1");
             telemetry.addData("CycleTime", "%.1f msec (%.1f Hz)", cycleTimeElapsed, cycleTimeHz);
+            if( limelightUpdateHz > 0 ) {
+                telemetry.addData("Limelight Rate", "%.1f msec (%.1f Hz)", limelightUpdateElapsed, limelightUpdateHz);
+            }
             telemetry.update();
 
             // Pause for metronome tick.  40 mS each cycle = update 25 times a second.
