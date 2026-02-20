@@ -349,15 +349,17 @@ public class HardwareSwyftBot
     public List<Ball> spinventory = new ArrayList<>(Arrays.asList(Ball.None, Ball.None, Ball.None));
     protected DigitalChannel        leftBallPresenceSensor;
     protected NormalizedColorSensor leftBallColorSensor;
-    public boolean leftBallWasPresent     = false;
+//  public boolean leftBallWasPresent     = false;
     public boolean leftBallIsPresent      = false;
+    public int     leftBallIsPresentCount = 0;
     public boolean leftBallDetectingColor = false;
     public double  leftBallHueDetected     = 0.0;
 
     private DigitalChannel          rightBallPresenceSensor;
     protected NormalizedColorSensor rightBallColorSensor;
-    public boolean rightBallWasPresent     = false;
+//  public boolean rightBallWasPresent     = false;
     public boolean rightBallIsPresent      = false;
+    public int     rightBallIsPresentCount = 0;
     public boolean rightBallDetectingColor = false;
     public double  rightBallHueDetected     = 0.0;
 
@@ -655,10 +657,20 @@ public class HardwareSwyftBot
 
         // Read presence sensors
         if(isRobot2) {
-            leftBallWasPresent  = leftBallIsPresent;
+//          leftBallWasPresent  = leftBallIsPresent;
             leftBallIsPresent   = leftBallPresenceSensor.getState();
-            rightBallWasPresent = rightBallIsPresent;
+            if( leftBallIsPresent ) {
+                leftBallIsPresentCount++;
+            } else {
+                leftBallIsPresentCount = 0;
+            }
+//          rightBallWasPresent = rightBallIsPresent;
             rightBallIsPresent  = rightBallPresenceSensor.getState();
+            if( rightBallIsPresent ) {
+                rightBallIsPresentCount++;
+            } else {
+                rightBallIsPresentCount = 0;
+            }
         }
     } // readBulkData
 
@@ -1538,6 +1550,17 @@ public class HardwareSwyftBot
     {
         spinventory.set(spindexerLeft, leftBall);
     }
+
+    /*--------------------------------------------------------------------------------------------*/
+    public float readColorSensor(NormalizedColorSensor colorSensor)
+    {
+        NormalizedRGBA ballColors = colorSensor.getNormalizedColors();
+        final float[] hsvValues = new float[3];
+        Color.colorToHSV(ballColors.toColor(), hsvValues);
+        return hsvValues[0];
+    } // readColorSensor
+
+    /*--------------------------------------------------------------------------------------------*/
     public Ball getBallColor(NormalizedColorSensor colorSensor)
     {
         Ball detectedBall = Ball.None;
@@ -1566,19 +1589,28 @@ public class HardwareSwyftBot
             }
         }
         return detectedBall;
-    }
+    } // getBallColor
 
+    /*--------------------------------------------------------------------------------------------*/
     public void processColorDetection ()
     {
-        if(isRobot1) return;
+        if(isRobot1) return;  // not implemented on robot1 yet (only robot2)
+
+        boolean spindexerMoving = (spinServoInPos == false);
+        boolean spindexerHalfPos = (spinServoCurPos == SpindexerState.SPIN_H1) || (spinServoCurPos == SpindexerState.SPIN_H2)
+                                || (spinServoCurPos == SpindexerState.SPIN_H3) || (spinServoCurPos == SpindexerState.SPIN_H4);
+        boolean skipPresenceSensor = (spindexerMoving || spindexerHalfPos);
+
+        // Don't get false readings on the presence sensor
+        if( skipPresenceSensor ) return;
 
         // First check if there are undetected balls present
-        if((leftBallIsPresent) && (!leftBallWasPresent) && (getLeftBall() == Ball.None))
+        if((leftBallIsPresentCount == 5) && (getLeftBall() == Ball.None))
         {
             leftBallDetectingColor = true;
             ballColorDetectingReads = 0;
         }
-        if((rightBallIsPresent) && (!rightBallWasPresent) && (getRightBall() == Ball.None))
+        if((rightBallIsPresentCount == 5) && (getRightBall() == Ball.None))
         {
             rightBallDetectingColor = true;
             ballColorDetectingReads = 0;

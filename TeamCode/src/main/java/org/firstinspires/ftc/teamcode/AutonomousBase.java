@@ -364,6 +364,7 @@ public abstract class AutonomousBase extends LinearOpMode {
         robot.processSpindexerMovement();
 //      robot.processSpindexerControl();  // only for continuous rotation
         robot.processInjectionStateMachine();
+        robot.processColorDetection();
         // Compute the power/angle needed for auto-aiming
         autoAimDistance = getShootDistanceAutoFar();
         autoAimPower    = robot.computeShooterPower(autoAimDistance);

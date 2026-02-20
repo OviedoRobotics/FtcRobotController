@@ -199,8 +199,8 @@ public abstract class Teleop extends LinearOpMode {
                    robot.robotGlobalXCoordinatePosition, robot.robotGlobalYCoordinatePosition, robot.robotOrientationDegrees );
             telemetry.addData(" "," %.2f in/sec %.2f in/sec %.2f deg/sec",
                    robot.robotGlobalXvelocity, robot.robotGlobalYvelocity, robot.robotAngleVelocity );
-//          telemetry.addData("Goal", "%s dist: %.2f in, angle: %.2f deg", ((blueAlliance)? "BLUE":"RED"), odoShootDistance, odoShootAngleDeg);
-//          telemetry.addData("Shooter POWER", "%.3f (P1 tri/cross to adjust)", shooterPower);
+            telemetry.addData("Goal", "%s dist: %.2f in, angle: %.2f deg", ((blueAlliance)? "BLUE":"RED"), odoShootDistance, odoShootAngleDeg);
+            telemetry.addData("Shooter POWER", "%.3f (P1 tri/cross to adjust)", shooterPower);
 //          if(robot.shooterMotorsReady) {
 //              telemetry.addData("Shooter ms to ready ", "%.1f", robot.shooterMotorsTime);
 //          } else {
@@ -217,10 +217,14 @@ public abstract class Teleop extends LinearOpMode {
 //          telemetry.addData(" ", "delta=%.3f InPos=%s timeout=%.0f msec",
 //                  robot.spinServoDelta, ((robot.spinServoInPos)? "YES":"no"), robot.spinServoTimeout );
             telemetry.addData("Spindexer",robot.spinServoCurPos  );
-            telemetry.addData("Triple-shoot time","%.0f msec", robot.shoot3Time  );
+//          telemetry.addData("Triple-shoot time","%.0f msec", robot.shoot3Time  );
 //          telemetry.addData("Driver Angle", "%.3f deg", driverAngle );
 //          telemetry.addData("IMU Angle", "%.3f deg", robot.headingIMU() );
 //          telemetry.addData("Driver Centric", "%.3f deg", (driverAngle - robot.headingIMU()) );
+            telemetry.addData( "Presense", "Left: %d Right: %d",
+                    (robot.leftBallIsPresent)? 1:0 ,(robot.rightBallIsPresent)? 1 : 0);
+            telemetry.addData( "Color Hue", "Left: %.1f Right: %.1f",
+                    robot.readColorSensor(robot.leftBallColorSensor) ,robot.readColorSensor(robot.rightBallColorSensor));
             telemetry.addData("Spinventory", "Spindex: %d SpindexL: %d SpindexR: %d SpindexC:%d",
                     robot.spindex, robot.spindexerLeft, robot.spindexerRight, robot.spindexerCenter );
             telemetry.addData("Spinventory", "Hue: %.1f LeftHue: %.1f RightHue: %.1f",

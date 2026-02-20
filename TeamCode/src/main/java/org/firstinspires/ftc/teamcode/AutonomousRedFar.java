@@ -43,16 +43,12 @@ public class AutonomousRedFar extends AutonomousBase {
 
         robot.limelightStop();
 
-        // Start the autonomous timer so we know how much time is remaining when cycling samples
-        autonomousTimer.reset();
-
-        // Establish our starting position on the field (in field coordinate system)
-        resetGlobalCoordinatePositionAuto(-62.8, -14.5, 0.0 );
-
         //---------------------------------------------------------------------------------
-        // AUTONOMOUS ROUTINE:  The following method is our main autonomous.
-//      unitTestOdometryDrive();
-        mainAutonomous( obeliskID );
+        if( opModeIsActive() ) {  // don't call this if they hit STOP instead of RUN
+//          unitTestOdometryDrive();
+            // AUTONOMOUS ROUTINE:  The following method is our main autonomous.
+            mainAutonomous( obeliskID );
+        }
         //---------------------------------------------------------------------------------
 
         telemetry.addData("Program", "Complete");
@@ -121,6 +117,12 @@ public class AutonomousRedFar extends AutonomousBase {
         double shooterPowerFar = 0.55;
         HardwareSwyftBot.SpindexerState firstBall;
         BallOrder loadOrder;
+
+        // Start the autonomous timer so we know how much time is remaining when cycling samples
+        autonomousTimer.reset();
+
+        // Establish our starting position on the field (in field coordinate system)
+        resetGlobalCoordinatePositionAuto(-62.8, -14.5, 0.0 );
 
         //===== Score Preload Balls (from the FAR zone) ==========
         // Enable collector/InKeeper so it's safe to spindex
