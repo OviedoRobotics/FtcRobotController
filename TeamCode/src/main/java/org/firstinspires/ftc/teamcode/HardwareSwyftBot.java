@@ -160,6 +160,8 @@ public class HardwareSwyftBot
     public double     turretServoPos    = 0.0;  // 5-turn servo position (analog feedback)
     public boolean    turretServoIsBusy = false; // are we still moving toward position?
 
+    public double     turretManualOffset = 0.0; // for when auto-aim gets off (before we recalibrate)
+
     // NOTE: Although the turret can spin to +180deg, the cable blocks the shooter hood exit
     // once you reach +55deg, so that's our effect MAX turret angle on the right side.
     public final static double TURRET_SERVO_MAX2 = 0.93; // +180 deg (turret max)
@@ -817,6 +819,9 @@ public class HardwareSwyftBot
      */
     public boolean setTurretAngle( double targetAngleDegrees )
     {
+        // do we need to apply a manual offset to the auto-aim angle?
+        targetAngleDegrees += turretManualOffset;
+
         // convert degrees into servo position setting centered around the init position.
         final double targetAngleCounts = -(targetAngleDegrees * TURRET_CTS_PER_DEG) + TURRET_SERVO_INIT;
         double setAngleCounts = targetAngleCounts;

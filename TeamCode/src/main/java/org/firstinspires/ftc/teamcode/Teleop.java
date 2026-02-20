@@ -25,7 +25,12 @@ public abstract class Teleop extends LinearOpMode {
     double  odoShootAngleDeg = 0.0;
     boolean isAutoShooterAngleGood = false; // false if the robot facing too far away from the target
     boolean isAutoShooterSpeedGood = false; // is shooter motor up to target speed
-    boolean autoAimEnabled   = true; // turret power/angle only adjusted when this flag is enabled
+    boolean autoAimEnabled         = false; // wait until we move to avoid early PLAY button movement penalty
+
+    boolean leftTriggerPressNow   = false;
+    boolean leftTriggerPressLast  = false;
+    boolean rightTriggerPressNow  = false;
+    boolean rightTriggerPressLast = false;
 
     boolean blueAlliance;   // set in the Blue/Red
     boolean farAlliance;    //
@@ -204,7 +209,9 @@ public abstract class Teleop extends LinearOpMode {
 //          telemetry.addData("Shooter Velocity", "%.1f %.1f", robot.shooterMotor1Vel, robot.shooterMotor2Vel );
 //          telemetry.addData("Shooter mA", "%.1f %.1f", robot.shooterMotor1Amps, robot.shooterMotor2Amps );
             telemetry.addData("Turret", "set %.3f get %.3f analog %.3f", robot.turretServoSet, robot.turretServoGet, robot.turretServoPos );
-            telemetry.addData(" ", "in position: %s", (robot.turretServoIsBusy)? "no":"YES");
+            telemetry.addData(" ", "in position: %s autoAim: %s",
+                    ((robot.turretServoIsBusy)? "no":"YES"), ((autoAimEnabled)?"ON":"off") );
+            telemetry.addData(" manual offset", "%.1f deg", robot.turretManualOffset);
 //          telemetry.addData("Spindexer", "set=%.2f get=%.2f time=%.0f msec",
 //                  robot.spinServoSetPos, robot.getSpindexerPos(), robot.spinServoTime );
 //          telemetry.addData(" ", "delta=%.3f InPos=%s timeout=%.0f msec",
@@ -265,6 +272,7 @@ public abstract class Teleop extends LinearOpMode {
             // We meet the conditions, but only want to update this once (not over and over and over)
             if( !newPinpointFieldPositionUpdate ) {
                 robot.setPinpointFieldPosition(robot.limelightFieldXpos, robot.limelightFieldYpos);
+                robot.turretManualOffset = 0.0; // we've updated; reset manual offset to zero
                 gamepad1.runRumbleEffect(spindexerRumbleL);  // notify driver it's happening
                 newPinpointFieldPositionUpdate = true;
             }
@@ -637,6 +645,19 @@ public abstract class Teleop extends LinearOpMode {
             if(shooterMotorsOn) {
                 robot.shooterMotorsSetPower(shooterPower);
             }
+        }
+        // Does the driver want a manual adjustment of the auto-aim angle?
+        leftTriggerPressLast  = leftTriggerPressNow;
+        leftTriggerPressNow   = (gamepad1.left_trigger > 0.25);
+        rightTriggerPressLast = rightTriggerPressNow;
+        rightTriggerPressNow  = (gamepad1.right_trigger > 0.25);
+
+        if( leftTriggerPressNow && !leftTriggerPressLast  ) {
+            robot.turretManualOffset += 3.0; // degrees
+            if( robot.turretManualOffset > 15.0 ) robot.turretManualOffset = 15.0;
+        } else if( rightTriggerPressNow && !rightTriggerPressLast ) {
+            robot.turretManualOffset -= 3.0; // degrees
+            if( robot.turretManualOffset < -15.0 ) robot.turretManualOffset = -15.0;
         }
     } // processTurretAutoAim
 
