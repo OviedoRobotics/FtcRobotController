@@ -343,8 +343,8 @@ public abstract class AutonomousBase extends LinearOpMode {
 //      robot.odom.resetPosAndIMU();   // don't need full recalibration; just reset our position in case of any movement
         robot.setPinpointFieldPosition( posX, posY );
         robot.odom.setHeading(posAngleDegree, AngleUnit.DEGREES);
-		// TODO: currently autonomous has a separate set of robotGlobal coordinates.  Need to
-		// merge those used in AutonomousBase with those in the hardware class used during Teleop.
+        // TODO: currently autonomous has a separate set of robotGlobal coordinates.  Need to
+        // merge those used in AutonomousBase with those in the hardware class used during Teleop.
         robotGlobalXCoordinatePosition = posX;  // This will get overwritten the first time
         robotGlobalYCoordinatePosition = posY;  // we call robot.odom.update()!
         robotOrientationRadians        = Math.toRadians( posAngleDegree );
@@ -1351,7 +1351,8 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
     } // collectCorner3FromFar
 
     /*--------------------------------------------------------------------------------------------*/
-    public void collectSpikemarkFromFar( int spikeMarkNumber, boolean isRed, SpindexerState firstBall ) {
+    // This version uses 3 driveToPostion() with "blind" spindexing for the 2nd and 3rd balls
+    public void collectSpikemarkFromFar0( int spikeMarkNumber, boolean isRed, SpindexerState firstBall ) {
         double redStartx=0, blueStartx=0, endx=0, xPos, yPos, angDeg;
         // Reset the spindexer for collecting
         robot.spinServoSetPosition( (isRed)? SPIN_P1 : SPIN_P3 );   // red=P1/P2/P3 on left, blue=P3/P2/P1 on right
@@ -1409,7 +1410,7 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
             driveToPosition(-50.8, ((isRed)? -16.3 : +16.3), ((isRed)?  0.0:0.0), DRIVE_SPEED_80, TURN_SPEED_30, DRIVE_TO);
             autoAimEnabled = false;
         } // opModeIsActive
-    } // collectSpikemarkFromFar
+    } // collectSpikemarkFromFar0
 
     /*--------------------------------------------------------------------------------------------*/
     public void collectSpikemarkFromNear( int spikeMarkNumber, boolean isRed, SpindexerState firstBall ) {
@@ -1473,6 +1474,74 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
             autoAimEnabled = false;
         } // opModeIsActive
     } // collectSpikemarkFromNear
+
+    /*---------------------------------------------------------------------------------*/
+    public void spindexToPosition(double xTarget, double yTarget, double angleTarget,
+                                double speedMax, double turnMax, int driveType) {
+        // Loop until we get to destination.
+        performEveryLoop();
+        while(!driveToXY( xTarget, yTarget, angleTarget, speedMax, driveType)
+                && opModeIsActive()) {
+            // Update all our values
+            performEveryLoop();
+            // Do we need to spindex here?
+            robot.autoSpindexIfAppropriate();
+        }
+    } // spindexToPosition
+
+    /*--------------------------------------------------------------------------------------------*/
+    // This version uses spindexToPosition() to dynamically rotate the spindexer while driving
+    public void collectSpikemarkFromFar( int spikeMarkNumber, boolean isRed, SpindexerState firstBall ) {
+        double redStartx=0, blueStartx=0, endx=0, xPos, yPos, angDeg;
+        // Reset the spindexer for collecting
+        robot.spinServoSetPosition( (isRed)? SPIN_P1 : SPIN_P3 );   // red=P1/P2/P3 on left, blue=P3/P2/P1 on right
+        // Transition from shooting zone to spike-mark zone (spikemark #1)
+        if( opModeIsActive() ) {
+            // drive away from the far shooting zone in a curved path toward the 1st spike mark
+            switch( spikeMarkNumber ) {
+                case 1  :
+                    driveToPosition( -52.8, ((isRed)? -15.3 : +15.3), ((isRed)? -22.5:22.5), DRIVE_SPEED_90, TURN_SPEED_20, DRIVE_THRU);
+                    redStartx=-40.0; blueStartx=-40.0; endx=-42.8;
+                    break;
+                case 2  :
+                    driveToPosition( -38.8, ((isRed)? -15.3 : +15.3), ((isRed)? 0.0:0.0),  DRIVE_SPEED_90, TURN_SPEED_20, DRIVE_THRU);
+                    redStartx=-15.0; blueStartx=-15.0; endx=-20.8;
+                    break;
+                case 3  :
+                default :
+                    driveToPosition( -10.8, ((isRed)? -15.3 : +15.3), ((isRed)? 0.0:0.0), DRIVE_SPEED_90, TURN_SPEED_20, DRIVE_THRU);
+                    redStartx=10.1;  blueStartx=10.1;   endx=-12.8;
+                    break;
+            } // switch
+        }
+        // Collect the 3 balls at that spike mark
+        if( opModeIsActive() ) {
+            // Turn on collector
+            robot.intakeMotor.setPower( robot.INTAKE_FWD_COLLECT );
+            // Drive to the final location prior to actual ball collection
+            xPos   = (isRed)? redStartx : blueStartx;
+            yPos   = ((isRed)? -26.9 : +26.9);
+            angDeg = (isRed)? -90.0 : +90.0;
+            spindexToPosition( xPos, yPos, angDeg, DRIVE_SPEED_40, TURN_SPEED_10, DRIVE_THRU);
+            // Drive into the line of all 3 balls, spindexing when the presence sensor detects a ball
+            yPos   = ((isRed)? -47.3 : +47.3);
+            spindexToPosition( xPos, yPos, angDeg, DRIVE_SPEED_15, TURN_SPEED_15, DRIVE_TO);
+        } // opModeIsActive
+        // Drive back to the shooting zone (back the way we came!)
+        if( opModeIsActive() ) {
+            // reverse collector in case we over collected
+            robot.intakeMotor.setPower( robot.INTAKE_AUTO_REJECT );
+            driveToPosition( endx, ((isRed)? -39.3 : +39.3), ((isRed)? -80.0:80.0), DRIVE_SPEED_90, TURN_SPEED_30, DRIVE_THRU);
+            // Turn collector back on forward
+            robot.intakeMotor.setPower( robot.INTAKE_FWD_COLLECT );
+            // Pre-spindex to the first position we need to be in when we shoot all 3
+            robot.spinServoSetPosition( firstBall );
+            // Return to the far shooting zone, preparing the auto-aim as we go
+            autoAimEnabled = true;
+            driveToPosition(-50.8, ((isRed)? -16.3 : +16.3), ((isRed)?  0.0:0.0), DRIVE_SPEED_80, TURN_SPEED_30, DRIVE_TO);
+            autoAimEnabled = false;
+        } // opModeIsActive
+    } // collectSpikemarkFromFar
 
     /*--------------------------------------------------------------------------------------------*/
     /* Handles the shooting of 3 balls already collected.  Assumptions:                           */

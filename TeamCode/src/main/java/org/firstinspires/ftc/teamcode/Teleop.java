@@ -199,8 +199,8 @@ public abstract class Teleop extends LinearOpMode {
                    robot.robotGlobalXCoordinatePosition, robot.robotGlobalYCoordinatePosition, robot.robotOrientationDegrees );
             telemetry.addData(" "," %.2f in/sec %.2f in/sec %.2f deg/sec",
                    robot.robotGlobalXvelocity, robot.robotGlobalYvelocity, robot.robotAngleVelocity );
-            telemetry.addData("Goal", "%s dist: %.2f in, angle: %.2f deg", ((blueAlliance)? "BLUE":"RED"), odoShootDistance, odoShootAngleDeg);
-            telemetry.addData("Shooter POWER", "%.3f (P1 tri/cross to adjust)", shooterPower);
+//          telemetry.addData("Goal", "%s dist: %.2f in, angle: %.2f deg", ((blueAlliance)? "BLUE":"RED"), odoShootDistance, odoShootAngleDeg);
+//          telemetry.addData("Shooter POWER", "%.3f (P1 tri/cross to adjust)", shooterPower);
 //          if(robot.shooterMotorsReady) {
 //              telemetry.addData("Shooter ms to ready ", "%.1f", robot.shooterMotorsTime);
 //          } else {
@@ -208,20 +208,20 @@ public abstract class Teleop extends LinearOpMode {
 //          }
 //          telemetry.addData("Shooter Velocity", "%.1f %.1f", robot.shooterMotor1Vel, robot.shooterMotor2Vel );
 //          telemetry.addData("Shooter mA", "%.1f %.1f", robot.shooterMotor1Amps, robot.shooterMotor2Amps );
-            telemetry.addData("Turret", "set %.3f get %.3f analog %.3f", robot.turretServoSet, robot.turretServoGet, robot.turretServoPos );
-            telemetry.addData(" ", "in position: %s autoAim: %s",
-                    ((robot.turretServoIsBusy)? "no":"YES"), ((autoAimEnabled)?"ON":"off") );
-            telemetry.addData(" manual offset", "%.1f deg", robot.turretManualOffset);
+//          telemetry.addData("Turret", "set %.3f get %.3f analog %.3f", robot.turretServoSet, robot.turretServoGet, robot.turretServoPos );
+//          telemetry.addData(" ", "in position: %s autoAim: %s",
+//                  ((robot.turretServoIsBusy)? "no":"YES"), ((autoAimEnabled)?"ON":"off") );
+//          telemetry.addData(" manual offset", "%.1f deg", robot.turretManualOffset);
 //          telemetry.addData("Spindexer", "set=%.2f get=%.2f time=%.0f msec",
 //                  robot.spinServoSetPos, robot.getSpindexerPos(), robot.spinServoTime );
 //          telemetry.addData(" ", "delta=%.3f InPos=%s timeout=%.0f msec",
 //                  robot.spinServoDelta, ((robot.spinServoInPos)? "YES":"no"), robot.spinServoTimeout );
-            telemetry.addData("Spindexer",robot.spinServoCurPos  );
+            telemetry.addData("Spindexer ",robot.spinServoCurPos  );
 //          telemetry.addData("Triple-shoot time","%.0f msec", robot.shoot3Time  );
 //          telemetry.addData("Driver Angle", "%.3f deg", driverAngle );
 //          telemetry.addData("IMU Angle", "%.3f deg", robot.headingIMU() );
 //          telemetry.addData("Driver Centric", "%.3f deg", (driverAngle - robot.headingIMU()) );
-            telemetry.addData( "Presense", "Left: %d Right: %d",
+            telemetry.addData( "Presence ", "Left: %d Right: %d",
                     (robot.leftBallIsPresent)? 1:0 ,(robot.rightBallIsPresent)? 1 : 0);
             telemetry.addData( "Color Hue", "Left: %.1f Right: %.1f",
                     robot.readColorSensor(robot.leftBallColorSensor) ,robot.readColorSensor(robot.rightBallColorSensor));
@@ -250,6 +250,7 @@ public abstract class Teleop extends LinearOpMode {
         robot.processInjectionStateMachine();
         robot.processTripleShotStateMachine();
         robot.processColorDetection();
+//      robot.autoSpindexIfAppropriate(); // TEMPORARY DEBUG
         if( enableOdometry ) {
             robot.updatePinpointFieldPosition();
             robot.updateLimelightFieldPosition();

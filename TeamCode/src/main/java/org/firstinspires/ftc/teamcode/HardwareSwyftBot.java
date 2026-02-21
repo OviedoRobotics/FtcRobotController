@@ -173,7 +173,7 @@ public class HardwareSwyftBot
     public final static double TURRET_CTS_PER_DEG = (TURRET_SERVO_P90 - TURRET_SERVO_N90)/180.0;
 
     public final static double TURRET_R1_OFFSET = -0.005; // ROBOT1 offset to align with reference
-    public final static double TURRET_R2_OFFSET =  0.000; // ROBOT2 offset to align with reference
+    public final static double TURRET_R2_OFFSET = +0.009; // ROBOT2 offset to align with reference
 
     //====== SPINDEXER SERVO =====
     public Servo       spinServo    = null;
@@ -349,19 +349,21 @@ public class HardwareSwyftBot
     public List<Ball> spinventory = new ArrayList<>(Arrays.asList(Ball.None, Ball.None, Ball.None));
     protected DigitalChannel        leftBallPresenceSensor;
     protected NormalizedColorSensor leftBallColorSensor;
-//  public boolean leftBallWasPresent     = false;
     public boolean leftBallIsPresent      = false;
     public int     leftBallIsPresentCount = 0;
     public boolean leftBallDetectingColor = false;
     public double  leftBallHueDetected     = 0.0;
+    public Ball    leftSpinventoryWas      = Ball.None;
+    public Ball    leftSpinventoryNow      = Ball.None;
 
     private DigitalChannel          rightBallPresenceSensor;
     protected NormalizedColorSensor rightBallColorSensor;
-//  public boolean rightBallWasPresent     = false;
     public boolean rightBallIsPresent      = false;
     public int     rightBallIsPresentCount = 0;
     public boolean rightBallDetectingColor = false;
     public double  rightBallHueDetected     = 0.0;
+    public Ball    rightSpinventoryWas      = Ball.None;
+    public Ball    rightSpinventoryNow      = Ball.None;
 
     public int ballColorDetectingReads = 0;
     public static int MAX_BALL_COLOR_READS = 10;
@@ -519,29 +521,26 @@ public class HardwareSwyftBot
 
         //--------------------------------------------------------------------------------------------
         // Ball detector sensors
-        if(isRobot2)
-        {
-            leftBallColorSensor = hwMap.get(NormalizedColorSensor.class, "LeftColorSensor");
-            rightBallColorSensor = hwMap.get(NormalizedColorSensor.class, "RightColorSensor");
+        leftBallColorSensor = hwMap.get(NormalizedColorSensor.class, "LeftColorSensor");
+        rightBallColorSensor = hwMap.get(NormalizedColorSensor.class, "RightColorSensor");
 
-            // If possible, turn the light on in the beginning
-            // (it might already be on anyway, we just make sure it is if we can).
-            if (leftBallColorSensor instanceof SwitchableLight) {
-                ((SwitchableLight) leftBallColorSensor).enableLight(true);
-            }
-            leftBallColorSensor.setGain(10.0F);
-
-            if (rightBallColorSensor instanceof SwitchableLight) {
-                ((SwitchableLight) rightBallColorSensor).enableLight(true);
-            }
-            rightBallColorSensor.setGain(10.0F);
-
-            leftBallPresenceSensor  = hwMap.get(DigitalChannel.class, "LeftPresence");  // digital 0 (0-1)
-            rightBallPresenceSensor = hwMap.get(DigitalChannel.class, "RightPresence"); // digital 0 (0-1)
-
-            leftBallPresenceSensor.setMode(DigitalChannel.Mode.INPUT);
-            rightBallPresenceSensor.setMode(DigitalChannel.Mode.INPUT);
+        // If possible, turn the light on in the beginning
+        // (it might already be on anyway, we just make sure it is if we can).
+        if (leftBallColorSensor instanceof SwitchableLight) {
+            ((SwitchableLight) leftBallColorSensor).enableLight(true);
         }
+        leftBallColorSensor.setGain(10.0F);
+
+        if (rightBallColorSensor instanceof SwitchableLight) {
+            ((SwitchableLight) rightBallColorSensor).enableLight(true);
+        }
+        rightBallColorSensor.setGain(10.0F);
+
+        leftBallPresenceSensor  = hwMap.get(DigitalChannel.class, "LeftPresence");  // digital 0 (0-1)
+        rightBallPresenceSensor = hwMap.get(DigitalChannel.class, "RightPresence"); // digital 0 (0-1)
+
+        leftBallPresenceSensor.setMode(DigitalChannel.Mode.INPUT);
+        rightBallPresenceSensor.setMode(DigitalChannel.Mode.INPUT);
 
         // Ensure all servos are in the initialize position (YES for auto; NO for teleop)
         if( isAutonomous ) {
@@ -656,21 +655,17 @@ public class HardwareSwyftBot
         spinServoGetPos = getSpindexerPos();
 
         // Read presence sensors
-        if(isRobot2) {
-//          leftBallWasPresent  = leftBallIsPresent;
-            leftBallIsPresent   = leftBallPresenceSensor.getState();
-            if( leftBallIsPresent ) {
-                leftBallIsPresentCount++;
-            } else {
-                leftBallIsPresentCount = 0;
-            }
-//          rightBallWasPresent = rightBallIsPresent;
-            rightBallIsPresent  = rightBallPresenceSensor.getState();
-            if( rightBallIsPresent ) {
-                rightBallIsPresentCount++;
-            } else {
-                rightBallIsPresentCount = 0;
-            }
+        leftBallIsPresent   = leftBallPresenceSensor.getState();
+        if( leftBallIsPresent ) {
+            leftBallIsPresentCount++;
+        } else {
+            leftBallIsPresentCount = 0;
+        }
+        rightBallIsPresent  = rightBallPresenceSensor.getState();
+        if( rightBallIsPresent ) {
+            rightBallIsPresentCount++;
+        } else {
+            rightBallIsPresentCount = 0;
         }
     } // readBulkData
 
@@ -1519,6 +1514,12 @@ public class HardwareSwyftBot
         spindexerRight  = Math.floorMod(spindex, 3);
         spindexerCenter = Math.floorMod(1 + spindex, 3);
         spindexerLeft   = Math.floorMod(2 + spindex, 3);
+
+        // Reset the autospindexer variables now that we've shifted things around
+        leftSpinventoryNow  = getLeftBall();
+        leftSpinventoryWas  = leftSpinventoryNow;
+        rightSpinventoryNow = getRightBall();
+        rightSpinventoryWas = rightSpinventoryNow;
     }
     public void setStartingSpinventory(Ball left, Ball center, Ball right)
     {
@@ -1532,7 +1533,9 @@ public class HardwareSwyftBot
     }
     public void setRightBall(Ball rightBall)
     {
+        rightSpinventoryWas = rightSpinventoryNow;
         spinventory.set(spindexerRight, rightBall);
+        rightSpinventoryNow = rightBall;
     }
     public Ball getCenterBall()
     {
@@ -1542,13 +1545,12 @@ public class HardwareSwyftBot
     {
         spinventory.set(spindexerCenter, centerBall);
     }
-    public Ball getLeftBall()
-    {
-        return spinventory.get(spindexerLeft);
-    }
+    public Ball getLeftBall()   { return spinventory.get(spindexerLeft); }
     public void setLeftBall(Ball leftBall)
     {
+        leftSpinventoryWas = leftSpinventoryNow;
         spinventory.set(spindexerLeft, leftBall);
+        leftSpinventoryNow = leftBall;
     }
 
     /*--------------------------------------------------------------------------------------------*/
@@ -1574,7 +1576,7 @@ public class HardwareSwyftBot
             detectedBall = Ball.Purple;
             ballColorDetectingReads = 0;
         }
-        else if (hsvValues[0] > 110.0)
+        else if (hsvValues[0] > 90.0)
         {
             detectedBall = Ball.Green;
             ballColorDetectingReads = 0;
@@ -1594,8 +1596,6 @@ public class HardwareSwyftBot
     /*--------------------------------------------------------------------------------------------*/
     public void processColorDetection ()
     {
-        if(isRobot1) return;  // not implemented on robot1 yet (only robot2)
-
         boolean spindexerMoving = (spinServoInPos == false);
         boolean spindexerHalfPos = (spinServoCurPos == SpindexerState.SPIN_H1) || (spinServoCurPos == SpindexerState.SPIN_H2)
                                 || (spinServoCurPos == SpindexerState.SPIN_H3) || (spinServoCurPos == SpindexerState.SPIN_H4);
@@ -1665,6 +1665,37 @@ public class HardwareSwyftBot
             }
         }
     } // processColorDetection
+
+    /*---------------------------------------------------------------------------------*/
+    public void autoSpindexIfAppropriate()
+    {
+        // Are we still processing a prior spindexing?
+        if( spinServoInPos == false ) return;
+        // Any change to our spinventory?
+        boolean newLeftBall  = (leftSpinventoryNow  != Ball.None) && (leftSpinventoryWas  == Ball.None);
+        boolean newRightBall = (rightSpinventoryNow != Ball.None) && (rightSpinventoryWas == Ball.None);
+        // Handle the simple cases first
+        // 1) Is there nothing to detect?
+        if( !newLeftBall && !newRightBall ) return;
+        // Have we collected a new ball on the LEFT side?
+        if( newLeftBall ) {
+            switch(spinServoCurPos) {
+                case SPIN_P1: spinServoSetPosition(SpindexerState.SPIN_P2); break;
+                case SPIN_P2: spinServoSetPosition(SpindexerState.SPIN_P3); break;
+                case SPIN_P3: spinServoSetPosition(SpindexerState.SPIN_P1); break;
+                default:      spinServoSetPosition(SpindexerState.SPIN_P1); break; // error case
+            } // switch()
+        }
+        // Have we collected a new ball on the RIGHT side?
+        if( newRightBall ) {
+            switch(spinServoCurPos) {
+                case SPIN_P1: spinServoSetPosition(SpindexerState.SPIN_P2); break;
+                case SPIN_P2: spinServoSetPosition(SpindexerState.SPIN_P1); break;
+                case SPIN_P3: spinServoSetPosition(SpindexerState.SPIN_P2); break;
+                default:      spinServoSetPosition(SpindexerState.SPIN_P1); break; // error case
+            } // switch()
+        }
+    } // autoSpindexIfAppropriate
 
     /*--------------------------------------------------------------------------------------------*/
 
