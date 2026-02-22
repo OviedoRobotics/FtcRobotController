@@ -1589,76 +1589,146 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
     } // launchBall
 
     //--------------------------------------------------------------------------------------------
-    static SpindexerState[] getObeliskShootOrder(BallOrder obeliskID, BallOrder loadOrder) {
+    SpindexerState[] getObeliskShootOrder(BallOrder obeliskID, BallOrder loadOrder) {
+        SpindexerState spinServoCurPos = robot.spinServoCurPos;
+        HardwareSwyftBot.Ball p1Ball = robot.spinventory.get(0);
+        HardwareSwyftBot.Ball p2Ball = robot.spinventory.get(1);
+        HardwareSwyftBot.Ball p3Ball = robot.spinventory.get(2);
 
-        // Based on our preload pattern PPG_23:
-        // SPIN_P1 = purple
-        // SPIN_P2 = purple
-        // SPIN_P3 = green
-
-        switch (loadOrder) {
-            case GPP_21:
-                switch (obeliskID) {
-                    case GPP_21:
-                        return new SpindexerState[] {SPIN_P1, SPIN_P2, SPIN_P3};
-                    case PGP_22:
-                        return new SpindexerState[] {SPIN_P2, SPIN_P1, SPIN_P3};
-                    case PPG_23:
-                        return new SpindexerState[] {SPIN_P3, SPIN_P2, SPIN_P1};
-                }
-            case PGP_22:
-                switch (obeliskID) {
-                    case GPP_21:
-                        return new SpindexerState[] {SPIN_P2, SPIN_P3, SPIN_P1};
-                    case PGP_22:
-                        return new SpindexerState[] {SPIN_P3, SPIN_P2, SPIN_P1};
-                    case PPG_23:
-                        return new SpindexerState[] {SPIN_P3, SPIN_P1, SPIN_P2};
-                }
-            case PPG_23:
-                switch (obeliskID) {
-                    case GPP_21:
-                        return new SpindexerState[] {SPIN_P3, SPIN_P2, SPIN_P1};
-                    case PGP_22:
-                        return new SpindexerState[] {SPIN_P2, SPIN_P3, SPIN_P1};
-                    case PPG_23:
-                        return new SpindexerState[] {SPIN_P2, SPIN_P1, SPIN_P3};
-                }
-        }
-        return new SpindexerState[] {SPIN_P3, SPIN_P2, SPIN_P1}; // default
+        return getObeliskShootOrder(obeliskID, spinServoCurPos, p1Ball, p2Ball, p3Ball);
     } // getObeliskShootOrder
+
+    private static final SpindexerState[][] SHOOT_ORDERS = new SpindexerState[][] {
+            {SPIN_P1, SPIN_P2, SPIN_P3}, {SPIN_P1, SPIN_P3, SPIN_P2},
+            {SPIN_P1, SPIN_P2}, {SPIN_P1, SPIN_P3},
+            {SPIN_P1},
+            {SPIN_P2, SPIN_P1, SPIN_P3}, {SPIN_P2, SPIN_P3, SPIN_P1},
+            {SPIN_P2, SPIN_P1}, {SPIN_P2, SPIN_P3},
+            {SPIN_P2},
+            {SPIN_P3, SPIN_P1, SPIN_P2}, {SPIN_P3, SPIN_P2, SPIN_P1},
+            {SPIN_P3, SPIN_P1}, {SPIN_P3, SPIN_P2},
+            {SPIN_P3}
+    };
+    static SpindexerState[] getObeliskShootOrder(BallOrder obeliskID, SpindexerState spinServoCurPos,
+                 HardwareSwyftBot.Ball p1Ball, HardwareSwyftBot.Ball p2Ball, HardwareSwyftBot.Ball p3Ball) {
+        // +20 points for each correct color, + 10 for wrong color, -20 for shooting empty, -1 for each move.
+        int maxScore = 0;
+        SpindexerState[] bestOrder = new SpindexerState[] {};
+        for(int i = 0; i < SHOOT_ORDERS.length; i++) {
+            SpindexerState[] shootOrder = SHOOT_ORDERS[i];
+            int score = calcOrderScore(obeliskID, shootOrder, p1Ball, p2Ball, p3Ball);
+            score = score * 10 - calcMoveScore(spinServoCurPos, shootOrder);
+            if(score > maxScore) {
+                maxScore = score;
+                bestOrder = shootOrder;
+            }
+        }
+        return bestOrder;
+    }
+
+    static int calcOrderScore(BallOrder obeliskID, SpindexerState[] shootOrder, HardwareSwyftBot.Ball p1, HardwareSwyftBot.Ball p2, HardwareSwyftBot.Ball p3) {
+        HardwareSwyftBot.Ball shot1 = null;
+        if(shootOrder.length > 0) {
+            switch (shootOrder[0]) {
+                case SPIN_P1:
+                    shot1 = p1;
+                    break;
+                case SPIN_P2:
+                    shot1 = p2;
+                    break;
+                case SPIN_P3:
+                    shot1 = p3;
+                    break;
+                default:
+                    break;
+            }
+        }
+        HardwareSwyftBot.Ball shot2 = null;
+        if(shootOrder.length > 1) {
+            switch (shootOrder[1]) {
+                case SPIN_P1:
+                    shot2 = p1;
+                    break;
+                case SPIN_P2:
+                    shot2 = p2;
+                    break;
+                case SPIN_P3:
+                    shot2 = p3;
+                    break;
+                default:
+                    break;
+            }
+        }
+        HardwareSwyftBot.Ball shot3 = null;
+        if(shootOrder.length > 2) {
+            switch (shootOrder[2]) {
+                case SPIN_P1:
+                    shot3 = p1;
+                    break;
+                case SPIN_P2:
+                    shot3 = p2;
+                    break;
+                case SPIN_P3:
+                    shot3 = p3;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        int score = 0;
+
+        // -2 penalty for attempting to shoot an empty slot.
+        if(shot1 == HardwareSwyftBot.Ball.None) score-=2;
+        if(shot2 == HardwareSwyftBot.Ball.None) score-=2;
+        if(shot3 == HardwareSwyftBot.Ball.None) score-=2;
+
+        // +1 for any shot.
+        if(shot1 == HardwareSwyftBot.Ball.Green || shot1 == HardwareSwyftBot.Ball.Purple) score++;
+        if(shot2 == HardwareSwyftBot.Ball.Green || shot2 == HardwareSwyftBot.Ball.Purple) score++;
+        if(shot3 == HardwareSwyftBot.Ball.Green || shot3 == HardwareSwyftBot.Ball.Purple) score++;
+
+        // +1 for correct color shot.
+        switch (obeliskID) {
+            case GPP_21:
+                if(shot1 == HardwareSwyftBot.Ball.Green) score++;
+                if(shot2 == HardwareSwyftBot.Ball.Purple) score++;
+                if(shot3 == HardwareSwyftBot.Ball.Purple) score++;
+                break;
+            case PGP_22:
+                if(shot1 == HardwareSwyftBot.Ball.Purple) score++;
+                if(shot2 == HardwareSwyftBot.Ball.Green) score++;
+                if(shot3 == HardwareSwyftBot.Ball.Purple) score++;
+                break;
+            case PPG_23:
+                if(shot1 == HardwareSwyftBot.Ball.Purple) score++;
+                if(shot2 == HardwareSwyftBot.Ball.Purple) score++;
+                if(shot3 == HardwareSwyftBot.Ball.Green) score++;
+                break;
+        }
+        return score;
+    }
+
+    static int calcMoveScore(SpindexerState currPos, SpindexerState[] shots) {
+        int score = 0;
+        for (SpindexerState shot : shots) {
+            score += currPos.distanceTo(shot);
+            currPos = shot;
+        }
+        return score;
+    }
 
     //--------------------------------------------------------------------------------------------
     // We don't want to wait until scoreThreeBallsFromField() to figure out we need to rotate
     // before we can shoot the first ball.  This function gives us advance insight into the
     // position of the first ball we need to shoot based on which spike mark we've collected
     // (ie, the loadOrder)
-    static SpindexerState getObeliskFirstBall(BallOrder obeliskID, BallOrder loadOrder) {
-        SpindexerState firstBall = SPIN_P3;
-        switch(loadOrder) {
-            case GPP_21:
-                switch(obeliskID) {
-                    case GPP_21: firstBall=SPIN_P1; break;
-                    case PGP_22: firstBall=SPIN_P2; break;
-                    case PPG_23: firstBall=SPIN_P3; break;
-                }
-                break;
-            case PGP_22:
-                switch(obeliskID) {
-                    case GPP_21: firstBall=SPIN_P2; break;
-                    case PGP_22: firstBall=SPIN_P3; break;
-                    case PPG_23: firstBall=SPIN_P3; break;
-                }
-                break;
-            case PPG_23:
-                switch(obeliskID) {
-                    case GPP_21: firstBall=SPIN_P3; break;
-                    case PGP_22: firstBall=SPIN_P2; break;
-                    case PPG_23: firstBall=SPIN_P2; break;
-                }
-                break;
+    SpindexerState getObeliskFirstBall(BallOrder obeliskID, BallOrder loadOrder) {
+        SpindexerState[] obeliskShootOrder = getObeliskShootOrder(obeliskID, loadOrder);
+        if(obeliskShootOrder.length > 0) {
+            return obeliskShootOrder[0];
         }
-        return firstBall;
+        return robot.spinServoCurPos;
     } // getObeliskFirstBall
 
 } // AutonomousBase
