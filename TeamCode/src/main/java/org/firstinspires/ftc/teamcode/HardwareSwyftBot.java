@@ -14,10 +14,8 @@ import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
 import com.qualcomm.robotcore.hardware.NormalizedRGBA;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Servo;
-import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.SwitchableLight;
 import com.qualcomm.robotcore.util.ElapsedTime;
-import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
@@ -108,6 +106,9 @@ public class HardwareSwyftBot
     protected double COUNTS_PER_INCH       = (COUNTS_PER_MOTOR_REV * DRIVE_GEAR_REDUCTION * MECANUM_SLIPPAGE) / (WHEEL_DIAMETER_INCHES * 3.1415);
     // The math above assumes motor encoders.  For REV odometry pods, the counts per inch is different
     protected double COUNTS_PER_INCH2      = 1738.4;  // 8192 counts-per-rev / (1.5" omni wheel * PI)
+
+    // How long does it take to shoot a ball? (Used for adjusting shoot target based on velocity.)
+    private static final double SHOOT_LATENCY_SEC = 0.25; // TODO: figure out the correct value
 
     // Absolute Position of Robot on the field.
     double robotGlobalXCoordinatePosition       = 0;   // inches
@@ -967,14 +968,16 @@ public class HardwareSwyftBot
 
     /*--------------------------------------------------------------------------------------------*/
     public double getShootDistance(Alliance alliance) {
-        double currentX = robotGlobalXCoordinatePosition;
-        double currentY = robotGlobalYCoordinatePosition;
         // Positions for targets based on values from ftc2025DECODE.fmap
         double targetX = (alliance == Alliance.BLUE)? +60.0 : +60.0;  // 6ft = 72"
         double targetY = (alliance == Alliance.BLUE)? +60.0 : -60.0;  // 6ft = 72"
+        // Project robot position and orientation forward by the shoot delay
+        double projectedX = robotGlobalXCoordinatePosition + robotGlobalXvelocity * SHOOT_LATENCY_SEC;
+        double projectedY = robotGlobalYCoordinatePosition + robotGlobalYvelocity * SHOOT_LATENCY_SEC;
         // Compute distance to target point inside the goal
-        double deltaX = targetX - currentX;
-        double deltaY = targetY - currentY;
+        double deltaX = targetX - projectedX;
+        double deltaY = targetY - projectedY;
+
         double distance = Math.sqrt( Math.pow(deltaX,2) + Math.pow(deltaY,2) );
         return distance;
     } // getShootDistance
@@ -1004,13 +1007,18 @@ public class HardwareSwyftBot
     public double getShootAngleDeg(Alliance alliance) {
         double targetX = calculateShootTargetX(alliance);
         double targetY = calculateShootTargetY(alliance);
-        // Compute distance to target point inside the goal
-        double deltaX = targetX - robotGlobalXCoordinatePosition;
-        double deltaY = targetY - robotGlobalYCoordinatePosition;
+        // Project robot position and orientation forward by the shoot delay
+        double projectedX = robotGlobalXCoordinatePosition + robotGlobalXvelocity * SHOOT_LATENCY_SEC;
+        double projectedY = robotGlobalYCoordinatePosition + robotGlobalYvelocity * SHOOT_LATENCY_SEC;
+        double projectedAngle = robotOrientationDegrees + robotAngleVelocity * SHOOT_LATENCY_SEC;
+        // Compute angle to target from projected position
+        double deltaX = targetX - projectedX;
+        double deltaY = targetY - projectedY;
+
         // Compute the angle assuming the robot is facing forward at 0 degrees
         double targetFromStraight = Math.toDegrees( Math.atan2(deltaY,deltaX) );
-        // Adjust for the current robot orientation
-        double shootAngle = targetFromStraight - robotOrientationDegrees;
+        // Adjust for the projected robot orientation
+        double shootAngle = targetFromStraight - projectedAngle;
         return shootAngle;
     } // getShootAngleDeg
 
