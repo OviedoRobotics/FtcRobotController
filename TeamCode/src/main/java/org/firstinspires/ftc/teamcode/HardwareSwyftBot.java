@@ -147,6 +147,10 @@ public class HardwareSwyftBot
     public    ElapsedTime shooterMotorsTimer = new ElapsedTime();
     public    double      shooterMotorsTime  = 0.0;   // how long it took to reach "ready" (msec)
 
+    // Approximate horizontal ball speed (in/sec). Tune this to match real-world behavior.
+    // Used to compensate for robot translational velocity when computing shoot distance/angle.
+    public final static double BALL_SPEED_INCHES_PER_SEC = 200.0;
+
     public final static double SHOOTER_MOTOR_FAR  = 0.55;
     public final static double SHOOTER_MOTOR_MID  = 0.45;
     public final static double SHOOTER_MOTOR_AUTO = 0.45;
@@ -971,15 +975,20 @@ public class HardwareSwyftBot
         // Positions for targets based on values from ftc2025DECODE.fmap
         double targetX = (alliance == Alliance.BLUE)? +60.0 : +60.0;  // 6ft = 72"
         double targetY = (alliance == Alliance.BLUE)? +60.0 : -60.0;  // 6ft = 72"
-        // Project robot position and orientation forward by the shoot delay
+        // Project robot position forward to where we'll be when we shoot
         double projectedX = robotGlobalXCoordinatePosition + robotGlobalXvelocity * SHOOT_LATENCY_SEC;
         double projectedY = robotGlobalYCoordinatePosition + robotGlobalYvelocity * SHOOT_LATENCY_SEC;
         // Compute distance to target point inside the goal
         double deltaX = targetX - projectedX;
         double deltaY = targetY - projectedY;
-
         double distance = Math.sqrt( Math.pow(deltaX,2) + Math.pow(deltaY,2) );
-        return distance;
+        // Decompose robot velocity into radial (toward goal) component.
+        // Positive v_radial = moving toward goal = ball gets extra boost = need less power.
+        double ux = deltaX / distance;
+        double uy = deltaY / distance;
+        double vRadial = robotGlobalXvelocity * ux + robotGlobalYvelocity * uy;
+        // Scale distance so computeShooterPower() yields the correct power for a moving shot.
+        return distance * BALL_SPEED_INCHES_PER_SEC / (BALL_SPEED_INCHES_PER_SEC + vRadial);
     } // getShootDistance
 
     /*--------------------------------------------------------------------------------------------*/
@@ -1007,19 +1016,29 @@ public class HardwareSwyftBot
     public double getShootAngleDeg(Alliance alliance) {
         double targetX = calculateShootTargetX(alliance);
         double targetY = calculateShootTargetY(alliance);
-        // Project robot position and orientation forward by the shoot delay
+        // Project robot position and orientation forward to when we actually shoot
         double projectedX = robotGlobalXCoordinatePosition + robotGlobalXvelocity * SHOOT_LATENCY_SEC;
         double projectedY = robotGlobalYCoordinatePosition + robotGlobalYvelocity * SHOOT_LATENCY_SEC;
         double projectedAngle = robotOrientationDegrees + robotAngleVelocity * SHOOT_LATENCY_SEC;
-        // Compute angle to target from projected position
+        // Unit vector from projected position toward target
         double deltaX = targetX - projectedX;
         double deltaY = targetY - projectedY;
-
-        // Compute the angle assuming the robot is facing forward at 0 degrees
-        double targetFromStraight = Math.toDegrees( Math.atan2(deltaY,deltaX) );
-        // Adjust for the projected robot orientation
-        double shootAngle = targetFromStraight - projectedAngle;
-        return shootAngle;
+        double distance = Math.sqrt( Math.pow(deltaX,2) + Math.pow(deltaY,2) );
+        double ux = deltaX / distance;
+        double uy = deltaY / distance;
+        // Decompose robot velocity into radial (toward goal) and lateral components.
+        // The ball exits the shooter at BALL_SPEED but also carries the robot's velocity,
+        // so the turret must be angled to cancel the lateral drift.
+        double vRadial  = robotGlobalXvelocity * ux  + robotGlobalYvelocity * uy;  // + = toward goal
+        double vLateral = robotGlobalXvelocity * (-uy) + robotGlobalYvelocity * ux; // + = left of goal
+        // K is the total ball speed component along the goal direction.
+        // atan2(-vLateral, K) gives the field-frame offset needed to cancel lateral drift.
+        double K = vRadial + Math.sqrt( Math.pow(BALL_SPEED_INCHES_PER_SEC,2) - Math.pow(vLateral,2) );
+        // Shooter field angle: aim so that shooter_vec + robot_vel points at target
+        double shooterFieldAngle = Math.toDegrees( Math.atan2(K * uy - robotGlobalYvelocity,
+                                                              K * ux - robotGlobalXvelocity) );
+        // Adjust for projected robot orientation to get turret-relative angle
+        return shooterFieldAngle - projectedAngle;
     } // getShootAngleDeg
 
     private double calculateShootTargetX(Alliance alliance) {
