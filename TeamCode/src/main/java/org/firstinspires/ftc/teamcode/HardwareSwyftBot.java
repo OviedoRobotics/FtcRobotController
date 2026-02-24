@@ -244,7 +244,13 @@ public class HardwareSwyftBot
         SPIN_P3,
         SPIN_H4,
         SPIN_INCREMENT,
-        SPIN_DECREMENT
+        SPIN_DECREMENT;
+
+        int distanceTo(SpindexerState target) {
+            if(this == target) return 0;
+            if ((this == SPIN_P1 && target == SPIN_P3) || (this == SPIN_P3 && target == SPIN_P1)) return 2;
+            else return 1; //ignoring half positions.
+        }
     }
     
     public SpindexerState spinServoCurPos = SpindexerState.SPIN_P3;  // commanded spindexer enum
