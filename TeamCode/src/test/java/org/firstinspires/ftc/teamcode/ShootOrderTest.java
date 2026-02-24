@@ -169,4 +169,113 @@ public class ShootOrderTest {
         assertArrayEquals(new HardwareSwyftBot.SpindexerState[]{SPIN_P3, SPIN_P2, SPIN_P1},
                 getObeliskShootOrder(BallOrder.GPP_21, SPIN_P3, Purple, Purple, Green));
     }
+
+    // -------------------------------------------------------------------------
+    // Three occupied slots — PGP_22 preload (P1=Purple, P2=Green, P3=Purple)
+    //
+    // Manual cost verification (starting from P1):
+    //   GPP_21 expects [G, P, P]:
+    //     [P2,P1,P3]: 3/3 matches, cost = 1+1+2 = 4  ← winner (ties [P2,P3,P1] but comes first)
+    //     [P2,P3,P1]: 3/3 matches, cost = 1+1+2 = 4
+    //   PGP_22 expects [P, G, P]:
+    //     [P1,P2,P3]: 3/3 matches, cost = 0+1+1 = 2  ← winner
+    //     [P3,P2,P1]: 3/3 matches, cost = 2+1+1 = 4
+    //   PPG_23 expects [P, P, G]:
+    //     [P1,P3,P2]: 3/3 matches, cost = 0+2+1 = 3  ← winner
+    //     [P3,P1,P2]: 3/3 matches, cost = 2+2+1 = 5
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void testPGP22preload_obeliskGPP21_fromP1() {
+        assertArrayEquals(new HardwareSwyftBot.SpindexerState[]{SPIN_P2, SPIN_P1, SPIN_P3},
+                getObeliskShootOrder(BallOrder.GPP_21, SPIN_P1, Purple, Green, Purple));
+    }
+
+    @Test
+    public void testPGP22preload_obeliskPGP22_fromP1() {
+        assertArrayEquals(new HardwareSwyftBot.SpindexerState[]{SPIN_P1, SPIN_P2, SPIN_P3},
+                getObeliskShootOrder(BallOrder.PGP_22, SPIN_P1, Purple, Green, Purple));
+    }
+
+    @Test
+    public void testPGP22preload_obeliskPPG23_fromP1() {
+        assertArrayEquals(new HardwareSwyftBot.SpindexerState[]{SPIN_P1, SPIN_P3, SPIN_P2},
+                getObeliskShootOrder(BallOrder.PPG_23, SPIN_P1, Purple, Green, Purple));
+    }
+
+    // -------------------------------------------------------------------------
+    // Three occupied slots — GPP_21 preload, remaining obelisk patterns from P1
+    // (P1=Green, P2=Purple, P3=Purple)
+    //
+    //   PGP_22 expects [P, G, P]:
+    //     [P2,P1,P3]: 3/3 matches, cost = 1+1+2 = 4  ← winner
+    //     [P3,P1,P2]: 3/3 matches, cost = 2+2+1 = 5
+    //   PPG_23 expects [P, P, G]:
+    //     [P2,P3,P1]: 3/3 matches, cost = 1+1+2 = 4  ← winner (ties [P3,P2,P1] but comes first)
+    //     [P3,P2,P1]: 3/3 matches, cost = 2+1+1 = 4
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void testGPP21preload_obeliskPGP22_fromP1() {
+        assertArrayEquals(new HardwareSwyftBot.SpindexerState[]{SPIN_P2, SPIN_P1, SPIN_P3},
+                getObeliskShootOrder(BallOrder.PGP_22, SPIN_P1, Green, Purple, Purple));
+    }
+
+    @Test
+    public void testGPP21preload_obeliskPPG23_fromP1() {
+        assertArrayEquals(new HardwareSwyftBot.SpindexerState[]{SPIN_P2, SPIN_P3, SPIN_P1},
+                getObeliskShootOrder(BallOrder.PPG_23, SPIN_P1, Green, Purple, Purple));
+    }
+
+    // -------------------------------------------------------------------------
+    // Starting from P2 changes the optimal order
+    //
+    // PPG_23 preload (P1=Purple, P2=Purple, P3=Green), obelisk PGP_22 [P,G,P]:
+    //   From P1: [P1,P3,P2] — cost 0+2+1 = 3, score 6  ← wins from P1
+    //   From P2: [P2,P3,P1] — cost 0+1+2 = 3, score 6  ← wins from P2
+    //   The starting slot is different because beginning at P2 makes P2→P3→P1 cheapest.
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void testStartingP2_PPG23preload_obeliskPGP22() {
+        assertArrayEquals(new HardwareSwyftBot.SpindexerState[]{SPIN_P2, SPIN_P3, SPIN_P1},
+                getObeliskShootOrder(BallOrder.PGP_22, SPIN_P2, Purple, Purple, Green));
+    }
+
+    // -------------------------------------------------------------------------
+    // Starting from P3 changes the optimal order
+    //
+    // PGP_22 preload (P1=Purple, P2=Green, P3=Purple), obelisk PGP_22 [P,G,P]:
+    //   From P1: [P1,P2,P3] — cost 0+1+1 = 2, score 6  ← wins from P1
+    //   From P3: [P3,P2,P1] — cost 0+1+1 = 2, score 6  ← wins from P3
+    //   From P3 starting at the purple end makes P3→P2→P1 the lowest-cost path.
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void testStartingP3_PGP22preload_obeliskPGP22() {
+        assertArrayEquals(new HardwareSwyftBot.SpindexerState[]{SPIN_P3, SPIN_P2, SPIN_P1},
+                getObeliskShootOrder(BallOrder.PGP_22, SPIN_P3, Purple, Green, Purple));
+    }
+
+    // -------------------------------------------------------------------------
+    // Two occupied slots — PGP_22 obelisk (previously untested with 2 balls)
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void testTwoSlots_PGP22obelisk_correctOrderFirst() {
+        // P1=None, P2=Purple, P3=Green; obelisk PGP_22 expects [P, G, P]
+        // [P2, P3] → P, G → 2/2 color matches, cost from P1: 1+1 = 2  ← winner
+        // [P3, P2] → G, P → 0/2 matches
+        assertArrayEquals(new HardwareSwyftBot.SpindexerState[]{SPIN_P2, SPIN_P3},
+                getObeliskShootOrder(BallOrder.PGP_22, SPIN_P1, None, Purple, Green));
+    }
+
+    @Test
+    public void testTwoSlots_GPP21obelisk_skipMiddleEmpty() {
+        // P1=Green, P2=None, P3=Purple; obelisk GPP_21 expects [G, P, P]
+        // [P1, P3] → G, P → 2/2 color matches, cost from P1: 0+2 = 2  ← winner
+        // [P3, P1] → P, G → 0/2 matches
+        assertArrayEquals(new HardwareSwyftBot.SpindexerState[]{SPIN_P1, SPIN_P3},
+                getObeliskShootOrder(BallOrder.GPP_21, SPIN_P1, Green, None, Purple));
+    }
 }
