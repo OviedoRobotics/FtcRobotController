@@ -14,10 +14,8 @@ import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
 import com.qualcomm.robotcore.hardware.NormalizedRGBA;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Servo;
-import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.SwitchableLight;
 import com.qualcomm.robotcore.util.ElapsedTime;
-import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
@@ -291,6 +289,7 @@ public class HardwareSwyftBot
     public enum Shoot3order {   // other orders may be needed for motif shooting (132, 231, 312)
         SHOOT3_123,
         SHOOT3_213,
+        SHOOT2_23,
         SHOOT3_321
     }
     public Shoot3order desiredShoot3order = Shoot3order.SHOOT3_123;
@@ -1429,7 +1428,10 @@ public class HardwareSwyftBot
         // Determine SHOOTING ORDER based on initial spindexer orientation
         switch( spinServoCurPos ) {
             case SPIN_P1 : desiredShoot3order = Shoot3order.SHOOT3_123;  break;
-            case SPIN_P2 : desiredShoot3order = Shoot3order.SHOOT3_213;  break;
+            case SPIN_P2 :
+                desiredShoot3order = (spinventory.get(0) == Ball.None) ?
+                        Shoot3order.SHOOT2_23 : Shoot3order.SHOOT3_213;
+                break;
             case SPIN_P3 : desiredShoot3order = Shoot3order.SHOOT3_321;  break;
             default      : desiredShoot3order = Shoot3order.SHOOT3_123;  break; // error case
         } // switch()
@@ -1476,6 +1478,11 @@ public class HardwareSwyftBot
              }
              break;
            case SHOOT3_INJECT :
+               if(getCenterBall() == Ball.None) {
+                   // don't bother shooting, just continue to the next spot.
+                   currentShoot3state = Shoot3state.SHOOT3_INJECT_WAIT;
+                   break;
+               }
              // We're in position but is shooter up to speed?
                if( shooterMotorsReady ){
                    startInjectionStateMachine(); // start the injection cycle
@@ -1515,6 +1522,15 @@ public class HardwareSwyftBot
                  default      : currentShoot3state = Shoot3state.SHOOT3_IDLE;     break; // error case
                  } // switch()
               break;
+           case SHOOT2_23:
+               // What have we completed so far?
+               switch( spinServoCurPos ) {
+                   case SPIN_P1 :
+                   case SPIN_P2 : currentShoot3state = Shoot3state.SHOOT3_SPIN_P3;  break;
+                   case SPIN_P3 : currentShoot3state = Shoot3state.SHOOT3_DONE;     break;
+                   default      : currentShoot3state = Shoot3state.SHOOT3_IDLE;     break; // error case
+               } // switch()
+               break;
            case SHOOT3_213 :
               // What have we completed so far?
               switch( spinServoCurPos ) {
