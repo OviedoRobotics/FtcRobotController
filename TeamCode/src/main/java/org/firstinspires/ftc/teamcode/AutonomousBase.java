@@ -1487,7 +1487,7 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
             // Update all our values
             performEveryLoop();
             // Do we need to spindex here?
-            robot.autoSpindexIfAppropriate();
+            robot.autoSpindexAutonIfAppropriate();
         }
     } // spindexToPosition
 

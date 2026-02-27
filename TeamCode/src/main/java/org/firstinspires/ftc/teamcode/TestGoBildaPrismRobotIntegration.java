@@ -55,10 +55,10 @@ public class TestGoBildaPrismRobotIntegration extends LinearOpMode {
 
     // One Solid animation per spinventory LED (initial state: dim white = empty slot)
     // Plus one Solid spanning LEDs 3–5 for shoot status (initial state: orange = not ready)
-    PrismAnimations.Solid ledLeft   = new PrismAnimations.Solid(Color.WHITE,  10,  0, 0);
-    PrismAnimations.Solid ledCenter = new PrismAnimations.Solid(Color.WHITE,  10,  1, 1);
-    PrismAnimations.Solid ledRight  = new PrismAnimations.Solid(Color.WHITE,  10,  2, 2);
-    PrismAnimations.Solid ledShoot  = new PrismAnimations.Solid(Color.ORANGE, 70,  3, 5);
+    PrismAnimations.Solid ledLeft   = new PrismAnimations.Solid(Color.WHITE, 10,  0, 0);
+    PrismAnimations.Solid ledCenter = new PrismAnimations.Solid(Color.WHITE, 10,  1, 1);
+    PrismAnimations.Solid ledRight  = new PrismAnimations.Solid(Color.WHITE, 10,  2, 2);
+    PrismAnimations.Solid ledShoot  = new PrismAnimations.Solid(Color.YELLOW,30,  3, 5);
 
     GoBildaPrismDriver prism;
 
@@ -149,11 +149,11 @@ public class TestGoBildaPrismRobotIntegration extends LinearOpMode {
                 break;
             case Purple:
                 led.setPrimaryColor(Color.PURPLE);
-                led.setBrightness(70);
+                led.setBrightness(60);
                 break;
             case Green:
                 led.setPrimaryColor(Color.GREEN);
-                led.setBrightness(70);
+                led.setBrightness(35);
                 break;
         }
     }
@@ -162,10 +162,10 @@ public class TestGoBildaPrismRobotIntegration extends LinearOpMode {
     private void applyShootColor() {
         if (speedReady && angleReady) {
             ledShoot.setPrimaryColor(Color.BLUE);
-            ledShoot.setBrightness(100);
+            ledShoot.setBrightness(50);
         } else {
-            ledShoot.setPrimaryColor(Color.ORANGE);
-            ledShoot.setBrightness(70);
+            ledShoot.setPrimaryColor(Color.YELLOW);
+            ledShoot.setBrightness(30);
         }
         prism.updateAnimationFromIndex(LayerHeight.LAYER_3);
     }

@@ -26,8 +26,7 @@ public abstract class Teleop extends LinearOpMode {
     boolean isAutoShooterAngleGood = false; // false if the robot facing too far away from the target
     boolean isAutoShooterSpeedGood = false; // is shooter motor up to target speed
     boolean autoAimEnabled         = false; // wait until we move to avoid early PLAY button movement penalty
-    // FIXME: enter correct min distance value.
-    double MIN_SHOOT_DISTANCE_INCHES = 30; // minimum distance required to shoot
+    double MIN_SHOOT_DISTANCE_INCHES = 40; // minimum distance [inches]required to shoot
 
     boolean leftTriggerPressNow   = false;
     boolean leftTriggerPressLast  = false;
@@ -293,7 +292,7 @@ public abstract class Teleop extends LinearOpMode {
         robot.processInjectionStateMachine();
         robot.processTripleShotStateMachine();
         robot.processColorDetection();
-//      robot.autoSpindexIfAppropriate(); // TEMPORARY DEBUG
+        robot.autoSpindexTeleopIfAppropriate(); // TEMPORARY DEBUG
         if( enableOdometry ) {
             robot.updatePinpointFieldPosition();
             robot.updateLimelightFieldPosition();

@@ -1797,7 +1797,79 @@ public class HardwareSwyftBot
         }
     } // autoSpindexIfAppropriate0
 
-    public void autoSpindexIfAppropriate()
+    public void autoSpindexTeleopIfAppropriate()
+    {
+        // Are we still processing a prior spindexing?
+        if( spinServoInPos == false ) return;
+        // Is the spinventory already full?
+        boolean isLeftFull   = (leftSpinventoryWas   != Ball.None);
+        boolean isRightFull  = (rightSpinventoryWas  != Ball.None);
+        boolean isCenterFull = (centerSpinventoryWas != Ball.None);
+        if( isLeftFull && isRightFull && isCenterFull ) return;
+        // Spinventory NOT full; let's identify the remaining open spots
+        boolean wasLeftEmpty   = (leftSpinventoryWas   == Ball.None);
+        boolean wasRightEmpty  = (rightSpinventoryWas  == Ball.None);
+        boolean wasCenterEmpty = (centerSpinventoryWas == Ball.None);
+        // Has anything new been collected into the Left or Right this cycle?
+        boolean newLeftBall  = (leftSpinventoryNow  != Ball.None) && wasLeftEmpty;
+        boolean newRightBall = (rightSpinventoryNow != Ball.None) && wasRightEmpty;
+        // ----------------------------
+        // Start with LEFT-ONLY collect
+        if( newLeftBall && !newRightBall ) {
+            // Was LEFT the only remaining open spot? (meaning nowhere to go)
+            if( wasLeftEmpty && !wasRightEmpty && !wasCenterEmpty ) return;
+            // No, so are RIGHT and CENTER empty? (index LEFT backward)
+            if( wasRightEmpty && wasCenterEmpty ) {
+               switch(spinServoCurPos) { // spin LEFT back (current RIGHT becomes LEFT
+                   case SPIN_P1: spinServoSetPosition(SpindexerState.SPIN_P2); break;
+                   case SPIN_P2: spinServoSetPosition(SpindexerState.SPIN_P3); break;
+                   case SPIN_P3: spinServoSetPosition(SpindexerState.SPIN_P1); break;
+                   default: break;  // unexpected; do nothing
+               } // switch()
+            }
+        } // LEFT
+        // ----------------------------
+        // Move on to the RIGHT-ONLY collect cases
+        else if( newRightBall && !newLeftBall ) {
+            // Was RIGHT the only remaining open spot? (meaning nowhere to go)
+            if( wasRightEmpty && !wasLeftEmpty && !wasCenterEmpty ) return;
+            // No, so are LEFT and CENTER empty? (index RIGHT backward)
+            if( wasLeftEmpty && wasCenterEmpty ) {
+               switch(spinServoCurPos) { // spin the current LEFT over to the RIGHT
+                   case SPIN_P1: spinServoSetPosition(SpindexerState.SPIN_P3); break;
+                   case SPIN_P2: spinServoSetPosition(SpindexerState.SPIN_P1); break;
+                   case SPIN_P3: spinServoSetPosition(SpindexerState.SPIN_P2); break;
+                   default: break;  // unexpected; do nothing
+               } // switch()
+            }
+        } // RIGHT
+        // ----------------------------
+        // Move on to the both LEFT and RIGHT dual collect cases
+        else if( newRightBall && newLeftBall ) {
+            // Was CENTER already populated?  If so, we're now full (nothing to do)
+            if( !wasCenterEmpty ) return;
+            // No, CENTER is still empty; what's shortest distance to the front?
+            switch(spinServoCurPos) {
+                case SPIN_P1: spinServoSetPosition(SpindexerState.SPIN_P2); break;  // spin CENTER up to RIGHT
+//              case SPIN_P2: spinServoSetPosition(SpindexerState.SPIN_P3); break;  // spin CENTER up to RIGHT
+                case SPIN_P2: spinServoSetPosition(SpindexerState.SPIN_P1); break;  // spin CENTER up to LEFT
+                case SPIN_P3: spinServoSetPosition(SpindexerState.SPIN_P2); break;  // spin CENTER up to LEFT
+                default: break;  // unexpected; do nothing
+            } // switch()
+        }  // BOTH               
+        // finally, handle the edge case where bang-bang collect left us with LEFT+RIGHT full, but CENTER empty
+        else if( !newRightBall && !newLeftBall && wasCenterEmpty && isLeftFull && isRightFull ) {
+            switch(spinServoCurPos) {
+                case SPIN_P1: spinServoSetPosition(SpindexerState.SPIN_P2); break;  // spin CENTER up to RIGHT
+//              case SPIN_P2: spinServoSetPosition(SpindexerState.SPIN_P3); break;  // spin CENTER up to RIGHT
+                case SPIN_P2: spinServoSetPosition(SpindexerState.SPIN_P1); break;  // spin CENTER up to LEFT
+                case SPIN_P3: spinServoSetPosition(SpindexerState.SPIN_P2); break;  // spin CENTER up to LEFT
+                default: break;  // unexpected; do nothing
+                }
+        } // CENTER empty
+    } // autoSpindexTeleopIfAppropriate
+
+    public void autoSpindexAutonIfAppropriate()
     {
         // Are we still processing a prior spindexing?
         if( spinServoInPos == false ) return;
@@ -1822,20 +1894,20 @@ public class HardwareSwyftBot
             if( wasLeftEmpty && !wasRightEmpty && !wasCenterEmpty ) return;
             // No, so is RIGHT empty? (let's index it over to collect more from the LEFT)
             if( wasRightEmpty ) {
-               switch(spinServoCurPos) { // spin the current RIGHT over to the LEFT
-                   case SPIN_P1: spinServoSetPosition(SpindexerState.SPIN_P2); break;
-                   case SPIN_P2: spinServoSetPosition(SpindexerState.SPIN_P3); break;
-                   case SPIN_P3: spinServoSetPosition(SpindexerState.SPIN_P1); break;
-                   default: break;  // unexpected; do nothing
-               } // switch()
+                switch(spinServoCurPos) { // spin the current RIGHT over to the LEFT
+                    case SPIN_P1: spinServoSetPosition(SpindexerState.SPIN_P2); break;
+                    case SPIN_P2: spinServoSetPosition(SpindexerState.SPIN_P3); break;
+                    case SPIN_P3: spinServoSetPosition(SpindexerState.SPIN_P1); break;
+                    default: break;  // unexpected; do nothing
+                } // switch()
             }
             else { // RIGHT was already full, so CENTER must be the remaining empty slot
-               switch(spinServoCurPos) { // spin the current CENTER up to the LEFT
-                   case SPIN_P1: spinServoSetPosition(SpindexerState.SPIN_P3); break;
-                   case SPIN_P2: spinServoSetPosition(SpindexerState.SPIN_P1); break;
-                   case SPIN_P3: spinServoSetPosition(SpindexerState.SPIN_P2); break;
-                   default: break;  // unexpected; do nothing
-               } // switch()
+                switch(spinServoCurPos) { // spin the current CENTER up to the LEFT
+                    case SPIN_P1: spinServoSetPosition(SpindexerState.SPIN_P3); break;
+                    case SPIN_P2: spinServoSetPosition(SpindexerState.SPIN_P1); break;
+                    case SPIN_P3: spinServoSetPosition(SpindexerState.SPIN_P2); break;
+                    default: break;  // unexpected; do nothing
+                } // switch()
             }
         } // LEFT
         // ----------------------------
@@ -1845,20 +1917,20 @@ public class HardwareSwyftBot
             if( wasRightEmpty && !wasLeftEmpty && !wasCenterEmpty ) return;
             // No, so is LEFT empty? (let's index it over to collect more from the RIGHT)
             if( wasLeftEmpty ) {
-               switch(spinServoCurPos) { // spin the current LEFT over to the RIGHT
-                   case SPIN_P1: spinServoSetPosition(SpindexerState.SPIN_P3); break;
-                   case SPIN_P2: spinServoSetPosition(SpindexerState.SPIN_P1); break;
-                   case SPIN_P3: spinServoSetPosition(SpindexerState.SPIN_P2); break;
-                   default: break;  // unexpected; do nothing
-               } // switch()
+                switch(spinServoCurPos) { // spin the current LEFT over to the RIGHT
+                    case SPIN_P1: spinServoSetPosition(SpindexerState.SPIN_P3); break;
+                    case SPIN_P2: spinServoSetPosition(SpindexerState.SPIN_P1); break;
+                    case SPIN_P3: spinServoSetPosition(SpindexerState.SPIN_P2); break;
+                    default: break;  // unexpected; do nothing
+                } // switch()
             }
             else { // LEFT was already full, so CENTER must be the remaining empty slot
-               switch(spinServoCurPos) { // spin the current CENTER up to the RIGHT
-                   case SPIN_P1: spinServoSetPosition(SpindexerState.SPIN_P2); break;
-                   case SPIN_P2: spinServoSetPosition(SpindexerState.SPIN_P3); break;
-                   case SPIN_P3: spinServoSetPosition(SpindexerState.SPIN_P1); break;
-                   default: break;  // unexpected; do nothing
-               } // switch()
+                switch(spinServoCurPos) { // spin the current CENTER up to the RIGHT
+                    case SPIN_P1: spinServoSetPosition(SpindexerState.SPIN_P2); break;
+                    case SPIN_P2: spinServoSetPosition(SpindexerState.SPIN_P3); break;
+                    case SPIN_P3: spinServoSetPosition(SpindexerState.SPIN_P1); break;
+                    default: break;  // unexpected; do nothing
+                } // switch()
             }
         } // RIGHT
         // ----------------------------
@@ -1874,8 +1946,8 @@ public class HardwareSwyftBot
                 case SPIN_P3: spinServoSetPosition(SpindexerState.SPIN_P2); break;  // spin CENTER up to LEFT
                 default: break;  // unexpected; do nothing
             } // switch()
-        }  // BOTH               
-    } // autoSpindexIfAppropriate
+        }  // BOTH
+    } // autoSpindexAutonIfAppropriate
 
     /*--------------------------------------------------------------------------------------------*/
 
