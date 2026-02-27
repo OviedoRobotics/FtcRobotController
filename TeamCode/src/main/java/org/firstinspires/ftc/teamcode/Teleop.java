@@ -713,8 +713,10 @@ public abstract class Teleop extends LinearOpMode {
 
     /*---------------------------------------------------------------------------------*/
     void processInjector() {
+        boolean trianglePressed = gamepad2.triangleWasPressed();
+        boolean dpadUpPressed   = gamepad2.dpadUpWasPressed();
         boolean tooCloseToShoot = odoShootDistance < MIN_SHOOT_DISTANCE_INCHES;
-        if(tooCloseToShoot && (gamepad2.triangleWasPressed() || gamepad2.dpadUpWasPressed())) {
+        if(tooCloseToShoot && (trianglePressed || dpadUpPressed)) {
             // notify both players robot is too close to shoot.
             gamepad1.runRumbleEffect(tooCloseRumbleLR);
             gamepad2.runRumbleEffect(tooCloseRumbleLR);
@@ -722,14 +724,14 @@ public abstract class Teleop extends LinearOpMode {
         // Has the spindexer achieved one of the 3 valid shooting positions?
         boolean safeToInject = (robot.spinServoInPos && !robot.spinServoMidPos)? true:false;
         // TRIANGLE button is a single-shot command
-        if( safeToInject && tooCloseToShoot == false && gamepad2.triangleWasPressed() ) {
+        if( safeToInject && tooCloseToShoot == false && trianglePressed ) {
             // Ensure an earlier injection request isn't already underway
             if ((robot.liftServoBusyU == false) && (robot.liftServoBusyD == false)) {
                 robot.startInjectionStateMachine();
             }
         }
         // DPAD UP is the triple-shot command
-        if( safeToInject && tooCloseToShoot == false && gamepad2.dpadUpWasPressed() ) {
+        if( safeToInject && tooCloseToShoot == false && dpadUpPressed ) {
             // Ensure shooter is ON
             if (shooterMotorsOn == false){
                 robot.shooterMotorsSetPower( shooterPower );
