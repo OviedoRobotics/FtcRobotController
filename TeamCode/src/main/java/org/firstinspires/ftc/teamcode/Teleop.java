@@ -26,6 +26,8 @@ public abstract class Teleop extends LinearOpMode {
     boolean isAutoShooterAngleGood = false; // false if the robot facing too far away from the target
     boolean isAutoShooterSpeedGood = false; // is shooter motor up to target speed
     boolean autoAimEnabled         = false; // wait until we move to avoid early PLAY button movement penalty
+    // FIXME: enter correct min distance value.
+    double MIN_SHOOT_DISTANCE_INCHES = 45; // minimum distance required to shoot
 
     boolean leftTriggerPressNow   = false;
     boolean leftTriggerPressLast  = false;
@@ -50,6 +52,7 @@ public abstract class Teleop extends LinearOpMode {
 
     boolean newPinpointFieldPositionUpdate = false;  // ensure we only update once per cycle
 
+    Gamepad.RumbleEffect tooCloseRumbleLR;    // Too close to shoot!
     Gamepad.RumbleEffect spindexerRumbleL;    // Can't spin further LEFT!
     Gamepad.RumbleEffect spindexerRumbleR;    // Can't spin further RIGHT!
 
@@ -66,6 +69,10 @@ public abstract class Teleop extends LinearOpMode {
 
         telemetry.addData("State", "Initializing (please wait)");
         telemetry.update();
+
+        tooCloseRumbleLR = new Gamepad.RumbleEffect.Builder()
+                .addStep(1.0, 1.0, 250)  //  Rumble BOTH motors 100% for 250 mSec
+                .build();
 
         spindexerRumbleL = new Gamepad.RumbleEffect.Builder()
                 .addStep(1.0, 0.0, 250)  //  Rumble LEFT motor 100% for 250 mSec
@@ -668,17 +675,23 @@ public abstract class Teleop extends LinearOpMode {
 
     /*---------------------------------------------------------------------------------*/
     void processInjector() {
+        boolean tooCloseToShoot = odoShootDistance < MIN_SHOOT_DISTANCE_INCHES;
+        if(tooCloseToShoot && (gamepad2.triangleWasPressed() || gamepad2.dpadUpWasPressed())) {
+            // notify both players robot is too close to shoot.
+            gamepad1.runRumbleEffect(tooCloseRumbleLR);
+            gamepad2.runRumbleEffect(tooCloseRumbleLR);
+        }
         // Has the spindexer achieved one of the 3 valid shooting positions?
         boolean safeToInject = (robot.spinServoInPos && !robot.spinServoMidPos)? true:false;
         // TRIANGLE button is a single-shot command
-        if( safeToInject && gamepad2.triangleWasPressed() ) {
+        if( safeToInject && tooCloseToShoot == false && gamepad2.triangleWasPressed() ) {
             // Ensure an earlier injection request isn't already underway
             if ((robot.liftServoBusyU == false) && (robot.liftServoBusyD == false)) {
                 robot.startInjectionStateMachine();
             }
         }
         // DPAD UP is the triple-shot command
-        if( safeToInject && gamepad2.dpadUpWasPressed() ) {
+        if( safeToInject && tooCloseToShoot == false && gamepad2.dpadUpWasPressed() ) {
             // Ensure shooter is ON
             if (shooterMotorsOn == false){
                 robot.shooterMotorsSetPower( shooterPower );
