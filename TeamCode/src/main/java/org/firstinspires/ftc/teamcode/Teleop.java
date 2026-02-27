@@ -25,7 +25,14 @@ public abstract class Teleop extends LinearOpMode {
     double  odoShootAngleDeg = 0.0;
     boolean isAutoShooterAngleGood = false; // false if the robot facing too far away from the target
     boolean isAutoShooterSpeedGood = false; // is shooter motor up to target speed
-    boolean autoAimEnabled   = true; // turret power/angle only adjusted when this flag is enabled
+    boolean autoAimEnabled         = false; // wait until we move to avoid early PLAY button movement penalty
+    // FIXME: enter correct min distance value.
+    double MIN_SHOOT_DISTANCE_INCHES = 45; // minimum distance required to shoot
+
+    boolean leftTriggerPressNow   = false;
+    boolean leftTriggerPressLast  = false;
+    boolean rightTriggerPressNow  = false;
+    boolean rightTriggerPressLast = false;
 
     boolean blueAlliance;   // set in the Blue/Red
     boolean farAlliance;    //
@@ -45,11 +52,16 @@ public abstract class Teleop extends LinearOpMode {
 
     boolean newPinpointFieldPositionUpdate = false;  // ensure we only update once per cycle
 
+    Gamepad.RumbleEffect tooCloseRumbleLR;    // Too close to shoot!
     Gamepad.RumbleEffect spindexerRumbleL;    // Can't spin further LEFT!
     Gamepad.RumbleEffect spindexerRumbleR;    // Can't spin further RIGHT!
+    Gamepad.RumbleEffect odoUpdateRumble;
 
     long      nanoTimeCurr=0, nanoTimePrev=0;
     double    cycleTimeElapsed, cycleTimeHz;
+
+    double    limelightTimestampCurr=0, limelightTimestampPrev=0;
+    double    limelightUpdateElapsed=0, limelightUpdateHz=0;
 
     /* Declare OpMode members. */
     HardwareSwyftBot robot = new HardwareSwyftBot();
@@ -62,11 +74,20 @@ public abstract class Teleop extends LinearOpMode {
         telemetry.addData("State", "Initializing (please wait)");
         telemetry.update();
 
+        tooCloseRumbleLR = new Gamepad.RumbleEffect.Builder()
+                .addStep(1.0, 1.0, 250)  //  Rumble BOTH motors 100% for 250 mSec
+                .build();
+
         spindexerRumbleL = new Gamepad.RumbleEffect.Builder()
                 .addStep(1.0, 0.0, 250)  //  Rumble LEFT motor 100% for 250 mSec
                 .build();
 
         spindexerRumbleR = new Gamepad.RumbleEffect.Builder()
+                .addStep(0.0, 1.0, 250)  //  Rumble RIGHT motor 100% for 250 mSec
+                .build();
+
+        odoUpdateRumble = new Gamepad.RumbleEffect.Builder()
+                .addStep(1.0, 0.0, 250)  //  Rumble LEFT motor 100% for 250 mSec
                 .addStep(0.0, 1.0, 250)  //  Rumble RIGHT motor 100% for 250 mSec
                 .build();
                 
@@ -173,6 +194,8 @@ public abstract class Teleop extends LinearOpMode {
                 } // switch()
             } // processDpadDriveMode
 
+            updateLimelightPinpointOffset();
+
             processCollector();
             processTurretAutoAim();
             processSpindexer();
@@ -185,6 +208,14 @@ public abstract class Teleop extends LinearOpMode {
             cycleTimeElapsed = (nanoTimeCurr - nanoTimePrev)/ 1000000.0;   // msec
             cycleTimeHz =  1000.0 / cycleTimeElapsed;
 
+            // Compute limelight update rate
+            limelightTimestampPrev = limelightTimestampCurr;
+            limelightTimestampCurr = robot.limelightTimestamp;
+            if( limelightTimestampCurr > 0 && limelightTimestampPrev > 0 ) {
+                limelightUpdateElapsed = (limelightTimestampCurr - limelightTimestampPrev) * 1000.0;  // convert to msec
+                limelightUpdateHz = 1000.0 / limelightUpdateElapsed;
+            }
+
             // Update telemetry data
             telemetry.addData("Limelight","x=%.2f y=%.2f  %.2f deg (Apriltag)",
                     robot.limelightFieldXpos, robot.limelightFieldYpos, robot.limelightFieldAngleDeg );
@@ -194,6 +225,18 @@ public abstract class Teleop extends LinearOpMode {
                    robot.robotGlobalXCoordinatePosition, robot.robotGlobalYCoordinatePosition, robot.robotOrientationDegrees );
             telemetry.addData(" "," %.2f in/sec %.2f in/sec %.2f deg/sec",
                    robot.robotGlobalXvelocity, robot.robotGlobalYvelocity, robot.robotAngleVelocity );
+            // Show limelight-to-pinpoint offset (press triangle to apply)
+            // Display X and Y offsets with their individual confidence values
+            if( robot.limelightPinpointOffsetXvalid || robot.limelightPinpointOffsetYvalid ) {
+                String xInfo = robot.limelightPinpointOffsetXvalid ?
+                    String.format("X=%.2f(%.5f)", robot.limelightPinpointOffsetX, robot.limelightPinpointOffsetXconfidence) : "X=(none)";
+                String yInfo = robot.limelightPinpointOffsetYvalid ?
+                    String.format("Y=%.2f(%.5f)", robot.limelightPinpointOffsetY, robot.limelightPinpointOffsetYconfidence) : "Y=(none)";
+                telemetry.addData("LL Offset", "%s %s", xInfo, yInfo);
+                telemetry.addData(" ","(press TRI to apply)");
+            } else {
+                telemetry.addData("LL Offset","(none - stop near apriltag)");
+            }
 //          telemetry.addData("Goal", "%s dist: %.2f in, angle: %.2f deg", ((blueAlliance)? "BLUE":"RED"), odoShootDistance, odoShootAngleDeg);
 //          telemetry.addData("Shooter POWER", "%.3f (P1 tri/cross to adjust)", shooterPower);
 //          if(robot.shooterMotorsReady) {
@@ -203,17 +246,23 @@ public abstract class Teleop extends LinearOpMode {
 //          }
 //          telemetry.addData("Shooter Velocity", "%.1f %.1f", robot.shooterMotor1Vel, robot.shooterMotor2Vel );
 //          telemetry.addData("Shooter mA", "%.1f %.1f", robot.shooterMotor1Amps, robot.shooterMotor2Amps );
-            telemetry.addData("Turret", "set %.3f get %.3f analog %.3f", robot.turretServoSet, robot.turretServoGet, robot.turretServoPos );
-            telemetry.addData(" ", "in position: %s", (robot.turretServoIsBusy)? "no":"YES");
+//          telemetry.addData("Turret", "set %.3f get %.3f analog %.3f", robot.turretServoSet, robot.turretServoGet, robot.turretServoPos );
+//          telemetry.addData(" ", "in position: %s autoAim: %s",
+//                  ((robot.turretServoIsBusy)? "no":"YES"), ((autoAimEnabled)?"ON":"off") );
+//          telemetry.addData(" manual offset", "%.1f deg", robot.turretManualOffset);
 //          telemetry.addData("Spindexer", "set=%.2f get=%.2f time=%.0f msec",
 //                  robot.spinServoSetPos, robot.getSpindexerPos(), robot.spinServoTime );
 //          telemetry.addData(" ", "delta=%.3f InPos=%s timeout=%.0f msec",
 //                  robot.spinServoDelta, ((robot.spinServoInPos)? "YES":"no"), robot.spinServoTimeout );
-            telemetry.addData("Spindexer",robot.spinServoCurPos  );
-            telemetry.addData("Triple-shoot time","%.0f msec", robot.shoot3Time  );
+            telemetry.addData("Spindexer ",robot.spinServoCurPos  );
+//          telemetry.addData("Triple-shoot time","%.0f msec", robot.shoot3Time  );
 //          telemetry.addData("Driver Angle", "%.3f deg", driverAngle );
 //          telemetry.addData("IMU Angle", "%.3f deg", robot.headingIMU() );
 //          telemetry.addData("Driver Centric", "%.3f deg", (driverAngle - robot.headingIMU()) );
+            telemetry.addData( "Presence ", "Left: %d Right: %d",
+                    (robot.leftBallIsPresent)? 1:0 ,(robot.rightBallIsPresent)? 1 : 0);
+            telemetry.addData( "Color Hue", "Left: %.1f Right: %.1f",
+                    robot.readColorSensor(robot.leftBallColorSensor) ,robot.readColorSensor(robot.rightBallColorSensor));
             telemetry.addData("Spinventory", "Spindex: %d SpindexL: %d SpindexR: %d SpindexC:%d",
                     robot.spindex, robot.spindexerLeft, robot.spindexerRight, robot.spindexerCenter );
             telemetry.addData("Spinventory", "Hue: %.1f LeftHue: %.1f RightHue: %.1f",
@@ -222,6 +271,9 @@ public abstract class Teleop extends LinearOpMode {
                 robot.getLeftBall(), robot.getCenterBall(), robot.getRightBall() );
             telemetry.addLine( (robot.isRobot2)? "Robot2" : "Robot1");
             telemetry.addData("CycleTime", "%.1f msec (%.1f Hz)", cycleTimeElapsed, cycleTimeHz);
+            if( limelightUpdateHz > 0 ) {
+                telemetry.addData("Limelight Rate", "%.1f msec (%.1f Hz)", limelightUpdateElapsed, limelightUpdateHz);
+            }
             telemetry.update();
 
             // Pause for metronome tick.  40 mS each cycle = update 25 times a second.
@@ -239,6 +291,7 @@ public abstract class Teleop extends LinearOpMode {
         robot.processInjectionStateMachine();
         robot.processTripleShotStateMachine();
         robot.processColorDetection();
+//      robot.autoSpindexIfAppropriate(); // TEMPORARY DEBUG
         if( enableOdometry ) {
             robot.updatePinpointFieldPosition();
             robot.updateLimelightFieldPosition();
@@ -249,29 +302,36 @@ public abstract class Teleop extends LinearOpMode {
             // (x,y location less critical; can be updated via AprilTag)
             robot.resetGlobalCoordinatePosition( 0.0, 0.0, 0.0 );
         }
+        // Apply the limelight-to-pinpoint offset correction
+        if( gamepad1.triangleWasPressed() ) {
+            if( robot.applyLimelightPinpointOffset() ) {
+                gamepad1.runRumbleEffect(odoUpdateRumble);  // notify driver offset was applied
+            }
+        }
     } // performEveryLoopTeleop
 
     /*---------------------------------------------------------------------------------*/
-    // used to dynamically update the pinpoint odometry using AprilTag on the goal
-    void updatePinpointFieldPosition() {
+    // Calculate the offset between limelight and pinpoint (doesn't apply it)
+    // The offset will be applied when the user presses a button
+    void updateLimelightPinpointOffset() {
         // Ensure we don't get a spurious zero/clear reading
         boolean canSeeAprilTag = (robot.limelightFieldXpos != 0.0) && (robot.limelightFieldYpos !=0.0);
-        boolean qualityReading = (robot.limelightFieldXstd <= 0.0022) && (robot.limelightFieldYstd <= 0.0027);
         boolean robotXslow = (Math.abs(robot.robotGlobalXvelocity) < 0.1)? true:false;
         boolean robotYslow = (Math.abs(robot.robotGlobalYvelocity) < 0.1)? true:false;
         boolean robotAslow = (Math.abs(robot.robotAngleVelocity)   < 0.1)? true:false;
         boolean notDriving = (robotXslow && robotYslow && robotAslow)?     true:false;
-        if( canSeeAprilTag && qualityReading && notDriving ) {
-            // We meet the conditions, but only want to update this once (not over and over and over)
-            if( !newPinpointFieldPositionUpdate ) {
-                robot.setPinpointFieldPosition(robot.limelightFieldXpos, robot.limelightFieldYpos);
-                gamepad1.runRumbleEffect(spindexerRumbleL);  // notify driver it's happening
+
+        if( canSeeAprilTag && notDriving ) {
+            // Calculate the offset between limelight and pinpoint positions
+            // This doesn't apply it yet - just tracks the difference
+            if( robot.updateLimelightPinpointOffsets() && !newPinpointFieldPositionUpdate ) {
+                gamepad1.runRumbleEffect(odoUpdateRumble);  // notify driver offset is ready
                 newPinpointFieldPositionUpdate = true;
             }
-        } else {  // we don't meet the conditions anymore; reset for next time we do
+        } else {  // we don't meet the conditions anymore; reset flag for next reading
             newPinpointFieldPositionUpdate = false;
         }
-    }  // updatePinpointFieldPosition
+    }  // updateLimelightPinpointOffset
 
     /*---------------------------------------------------------------------------------*/
     /*  TELE-OP: Mecanum-wheel drive control using Dpad (slow/fine-adjustment mode)    */
@@ -608,8 +668,6 @@ public abstract class Teleop extends LinearOpMode {
     private void processTurretAutoAim() {
         // Do we want to use them? (so long as the button is held...)
         if( autoAimEnabled ) {
-            // update pinpoint coordinates if conditions are good to do so
-            updatePinpointFieldPosition();
             // now that we have the latest coordinate update, compute the auto-aim parameters
             odoShootDistance = robot.getShootDistance( (blueAlliance)? Alliance.BLUE : Alliance.RED );
             odoShootAngleDeg = robot.getShootAngleDeg( (blueAlliance)? Alliance.BLUE : Alliance.RED );
@@ -638,21 +696,40 @@ public abstract class Teleop extends LinearOpMode {
                 robot.shooterMotorsSetPower(shooterPower);
             }
         }
+        // Does the driver want a manual adjustment of the auto-aim angle?
+        leftTriggerPressLast  = leftTriggerPressNow;
+        leftTriggerPressNow   = (gamepad1.left_trigger > 0.25);
+        rightTriggerPressLast = rightTriggerPressNow;
+        rightTriggerPressNow  = (gamepad1.right_trigger > 0.25);
+
+        if( leftTriggerPressNow && !leftTriggerPressLast  ) {
+            robot.turretManualOffset += 3.0; // degrees
+            if( robot.turretManualOffset > 15.0 ) robot.turretManualOffset = 15.0;
+        } else if( rightTriggerPressNow && !rightTriggerPressLast ) {
+            robot.turretManualOffset -= 3.0; // degrees
+            if( robot.turretManualOffset < -15.0 ) robot.turretManualOffset = -15.0;
+        }
     } // processTurretAutoAim
 
     /*---------------------------------------------------------------------------------*/
     void processInjector() {
+        boolean tooCloseToShoot = odoShootDistance < MIN_SHOOT_DISTANCE_INCHES;
+        if(tooCloseToShoot && (gamepad2.triangleWasPressed() || gamepad2.dpadUpWasPressed())) {
+            // notify both players robot is too close to shoot.
+            gamepad1.runRumbleEffect(tooCloseRumbleLR);
+            gamepad2.runRumbleEffect(tooCloseRumbleLR);
+        }
         // Has the spindexer achieved one of the 3 valid shooting positions?
         boolean safeToInject = (robot.spinServoInPos && !robot.spinServoMidPos)? true:false;
         // TRIANGLE button is a single-shot command
-        if( safeToInject && gamepad2.triangleWasPressed() ) {
+        if( safeToInject && tooCloseToShoot == false && gamepad2.triangleWasPressed() ) {
             // Ensure an earlier injection request isn't already underway
             if ((robot.liftServoBusyU == false) && (robot.liftServoBusyD == false)) {
                 robot.startInjectionStateMachine();
             }
         }
         // DPAD UP is the triple-shot command
-        if( safeToInject && gamepad2.dpadUpWasPressed() ) {
+        if( safeToInject && tooCloseToShoot == false && gamepad2.dpadUpWasPressed() ) {
             // Ensure shooter is ON
             if (shooterMotorsOn == false){
                 robot.shooterMotorsSetPower( shooterPower );

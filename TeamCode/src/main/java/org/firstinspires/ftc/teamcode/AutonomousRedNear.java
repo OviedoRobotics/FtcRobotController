@@ -46,36 +46,11 @@ public class AutonomousRedNear extends AutonomousBase {
             idle();
         } // !isStarted
 
-        // Start the autonomous timer so we know how much time is remaining when cycling samples
-        autonomousTimer.reset();
-
-        // Establish our starting position on the field (in field coordinate system)
-        resetGlobalCoordinatePositionAuto( 38.6, -54.3, +90.0 );
-
-        // Drive away from the wall to a point that can see the obelisk AprilTag
-        driveToPosition( 34.0, -45.0, +90.0, DRIVE_SPEED_30, TURN_SPEED_15, DRIVE_THRU);
-        driveToPosition( 24.2, -17.6, +20.0, DRIVE_SPEED_50, TURN_SPEED_15, DRIVE_TO);
-
-        // Process limelight for obelisk detection
-        obeliskDetected = false;
-        for( int i=0; i<4; i++ ) {
-            telemetry.addData("ALLIANCE", "%s", ((redAlliance)? "RED":"BLUE"));
-            telemetry.addData("Odometry","x=%.2f y=%.2f  %.2f deg",
-                 robotGlobalXCoordinatePosition, robotGlobalYCoordinatePosition, Math.toDegrees(robotOrientationRadians) );
-            processLimelightObelisk();
-            telemetry.update();
-            // If we saw the obelisk then we're done
-            if( obeliskDetected ) break;
-            // Pause briefly before looping
-            idle();
-        }
-
-        // We're done with the obelisk; switch to the pipeline for the Goal apriltag
-        robot.limelightPipelineSwitch( (redAlliance)? 7:6 );
-
         //---------------------------------------------------------------------------------
-        // AUTONOMOUS ROUTINE:  The following method is our main autonomous.
-        mainAutonomous( obeliskID );
+        if( opModeIsActive() ) {  // don't call this if they hit STOP instead of RUN
+            // AUTONOMOUS ROUTINE:  The following method is our main autonomous.
+            mainAutonomous( obeliskID );
+        }
 
         robot.limelightStop();
         telemetry.addData("Program", "Complete");
@@ -106,6 +81,33 @@ public class AutonomousRedNear extends AutonomousBase {
         double shooterPowerNear = 0.45;
         HardwareSwyftBot.SpindexerState firstBall;
         BallOrder loadOrder;
+
+        // Start the autonomous timer so we know how much time is remaining when cycling samples
+        autonomousTimer.reset();
+
+        // Establish our starting position on the field (in field coordinate system)
+        resetGlobalCoordinatePositionAuto( 38.6, -54.3, +90.0 );
+
+        // Drive away from the wall to a point that can see the obelisk AprilTag
+        driveToPosition( 34.0, -45.0, +90.0, DRIVE_SPEED_30, TURN_SPEED_15, DRIVE_THRU);
+        driveToPosition( 24.2, -17.6, +20.0, DRIVE_SPEED_50, TURN_SPEED_15, DRIVE_TO);
+
+        // Process limelight for obelisk detection
+        obeliskDetected = false;
+        for( int i=0; i<4; i++ ) {
+            telemetry.addData("ALLIANCE", "%s", ((redAlliance)? "RED":"BLUE"));
+            telemetry.addData("Odometry","x=%.2f y=%.2f  %.2f deg",
+                    robotGlobalXCoordinatePosition, robotGlobalYCoordinatePosition, Math.toDegrees(robotOrientationRadians) );
+            processLimelightObelisk();
+            telemetry.update();
+            // If we saw the obelisk then we're done
+            if( obeliskDetected ) break;
+            // Pause briefly before looping
+            idle();
+        }
+
+        // We're done with the obelisk; switch to the pipeline for the Goal apriltag
+        robot.limelightPipelineSwitch( (redAlliance)? 7:6 );
 
         //===== Score Preload Balls (from the NEAR zone) ==========
         // Enable collector/InKeeper so it's safe to spindex

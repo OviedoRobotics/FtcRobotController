@@ -14,10 +14,8 @@ import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
 import com.qualcomm.robotcore.hardware.NormalizedRGBA;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Servo;
-import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.SwitchableLight;
 import com.qualcomm.robotcore.util.ElapsedTime;
-import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
@@ -63,6 +61,7 @@ public class HardwareSwyftBot
     //====== LIMELIGHT SMART CAMERA ======
     public  Limelight3A limelight;
     private LLResult    llResultLast;
+    double limelightTimestamp = 0;  // timestamp from LLResult
 
     /**
      * https://ftc-docs.firstinspires.org/en/latest/game_specific_resources/field_coordinate_system/field-coordinate-system.html#square-field-inverted-alliance-area
@@ -126,6 +125,14 @@ public class HardwareSwyftBot
     double limelightFieldYstd     = 0;
     double limelightFieldAnglestd = 0;
 
+    // Limelight-to-Pinpoint offset tracking (update only on button press)
+    public double limelightPinpointOffsetX = 0;  // offset between limelight and pinpoint X
+    public double limelightPinpointOffsetY = 0;  // offset between limelight and pinpoint Y
+    public boolean limelightPinpointOffsetXvalid = false;  // do we have a valid X offset?
+    public boolean limelightPinpointOffsetYvalid = false;  // do we have a valid Y offset?
+    public double limelightPinpointOffsetXconfidence = 999.0;  // X stddev (lower is better)
+    public double limelightPinpointOffsetYconfidence = 999.0;  // Y stddev (lower is better)
+
     //====== 2025 DECODE SEASON MECHANISM MOTORS (RUN_USING_ENCODER) =====
     protected DcMotorEx intakeMotor     = null;
 
@@ -160,6 +167,8 @@ public class HardwareSwyftBot
     public double     turretServoPos    = 0.0;  // 5-turn servo position (analog feedback)
     public boolean    turretServoIsBusy = false; // are we still moving toward position?
 
+    public double     turretManualOffset = 0.0; // for when auto-aim gets off (before we recalibrate)
+
     // NOTE: Although the turret can spin to +180deg, the cable blocks the shooter hood exit
     // once you reach +55deg, so that's our effect MAX turret angle on the right side.
     public final static double TURRET_SERVO_MAX2 = 0.93; // +180 deg (turret max)
@@ -171,7 +180,7 @@ public class HardwareSwyftBot
     public final static double TURRET_CTS_PER_DEG = (TURRET_SERVO_P90 - TURRET_SERVO_N90)/180.0;
 
     public final static double TURRET_R1_OFFSET = -0.005; // ROBOT1 offset to align with reference
-    public final static double TURRET_R2_OFFSET =  0.000; // ROBOT2 offset to align with reference
+    public final static double TURRET_R2_OFFSET = +0.009; // ROBOT2 offset to align with reference
 
     //====== SPINDEXER SERVO =====
     public Servo       spinServo    = null;
@@ -242,7 +251,13 @@ public class HardwareSwyftBot
         SPIN_P3,
         SPIN_H4,
         SPIN_INCREMENT,
-        SPIN_DECREMENT
+        SPIN_DECREMENT;
+
+        int distanceTo(SpindexerState target) {
+            if(this == target) return 0;
+            if ((this == SPIN_P1 && target == SPIN_P3) || (this == SPIN_P3 && target == SPIN_P1)) return 2;
+            else return 1; //ignoring half positions.
+        }
     }
     
     public SpindexerState spinServoCurPos = SpindexerState.SPIN_P3;  // commanded spindexer enum
@@ -347,17 +362,21 @@ public class HardwareSwyftBot
     public List<Ball> spinventory = new ArrayList<>(Arrays.asList(Ball.None, Ball.None, Ball.None));
     protected DigitalChannel        leftBallPresenceSensor;
     protected NormalizedColorSensor leftBallColorSensor;
-    public boolean leftBallWasPresent     = false;
     public boolean leftBallIsPresent      = false;
+    public int     leftBallIsPresentCount = 0;
     public boolean leftBallDetectingColor = false;
     public double  leftBallHueDetected     = 0.0;
+    public Ball    leftSpinventoryWas      = Ball.None;
+    public Ball    leftSpinventoryNow      = Ball.None;
 
     private DigitalChannel          rightBallPresenceSensor;
     protected NormalizedColorSensor rightBallColorSensor;
-    public boolean rightBallWasPresent     = false;
     public boolean rightBallIsPresent      = false;
+    public int     rightBallIsPresentCount = 0;
     public boolean rightBallDetectingColor = false;
     public double  rightBallHueDetected     = 0.0;
+    public Ball    rightSpinventoryWas      = Ball.None;
+    public Ball    rightSpinventoryNow      = Ball.None;
 
     public int ballColorDetectingReads = 0;
     public static int MAX_BALL_COLOR_READS = 10;
@@ -515,29 +534,26 @@ public class HardwareSwyftBot
 
         //--------------------------------------------------------------------------------------------
         // Ball detector sensors
-        if(isRobot2)
-        {
-            leftBallColorSensor = hwMap.get(NormalizedColorSensor.class, "LeftColorSensor");
-            rightBallColorSensor = hwMap.get(NormalizedColorSensor.class, "RightColorSensor");
+        leftBallColorSensor = hwMap.get(NormalizedColorSensor.class, "LeftColorSensor");
+        rightBallColorSensor = hwMap.get(NormalizedColorSensor.class, "RightColorSensor");
 
-            // If possible, turn the light on in the beginning
-            // (it might already be on anyway, we just make sure it is if we can).
-            if (leftBallColorSensor instanceof SwitchableLight) {
-                ((SwitchableLight) leftBallColorSensor).enableLight(true);
-            }
-            leftBallColorSensor.setGain(10.0F);
-
-            if (rightBallColorSensor instanceof SwitchableLight) {
-                ((SwitchableLight) rightBallColorSensor).enableLight(true);
-            }
-            rightBallColorSensor.setGain(10.0F);
-
-            leftBallPresenceSensor  = hwMap.get(DigitalChannel.class, "LeftPresence");  // digital 0 (0-1)
-            rightBallPresenceSensor = hwMap.get(DigitalChannel.class, "RightPresence"); // digital 0 (0-1)
-
-            leftBallPresenceSensor.setMode(DigitalChannel.Mode.INPUT);
-            rightBallPresenceSensor.setMode(DigitalChannel.Mode.INPUT);
+        // If possible, turn the light on in the beginning
+        // (it might already be on anyway, we just make sure it is if we can).
+        if (leftBallColorSensor instanceof SwitchableLight) {
+            ((SwitchableLight) leftBallColorSensor).enableLight(true);
         }
+        leftBallColorSensor.setGain(10.0F);
+
+        if (rightBallColorSensor instanceof SwitchableLight) {
+            ((SwitchableLight) rightBallColorSensor).enableLight(true);
+        }
+        rightBallColorSensor.setGain(10.0F);
+
+        leftBallPresenceSensor  = hwMap.get(DigitalChannel.class, "LeftPresence");  // digital 0 (0-1)
+        rightBallPresenceSensor = hwMap.get(DigitalChannel.class, "RightPresence"); // digital 0 (0-1)
+
+        leftBallPresenceSensor.setMode(DigitalChannel.Mode.INPUT);
+        rightBallPresenceSensor.setMode(DigitalChannel.Mode.INPUT);
 
         // Ensure all servos are in the initialize position (YES for auto; NO for teleop)
         if( isAutonomous ) {
@@ -652,11 +668,17 @@ public class HardwareSwyftBot
         spinServoGetPos = getSpindexerPos();
 
         // Read presence sensors
-        if(isRobot2) {
-            leftBallWasPresent  = leftBallIsPresent;
-            leftBallIsPresent   = leftBallPresenceSensor.getState();
-            rightBallWasPresent = rightBallIsPresent;
-            rightBallIsPresent  = rightBallPresenceSensor.getState();
+        leftBallIsPresent   = leftBallPresenceSensor.getState();
+        if( leftBallIsPresent ) {
+            leftBallIsPresentCount++;
+        } else {
+            leftBallIsPresentCount = 0;
+        }
+        rightBallIsPresent  = rightBallPresenceSensor.getState();
+        if( rightBallIsPresent ) {
+            rightBallIsPresentCount++;
+        } else {
+            rightBallIsPresentCount = 0;
         }
     } // readBulkData
 
@@ -817,6 +839,9 @@ public class HardwareSwyftBot
      */
     public boolean setTurretAngle( double targetAngleDegrees )
     {
+        // do we need to apply a manual offset to the auto-aim angle?
+        targetAngleDegrees += turretManualOffset;
+
         // convert degrees into servo position setting centered around the init position.
         final double targetAngleCounts = -(targetAngleDegrees * TURRET_CTS_PER_DEG) + TURRET_SERVO_INIT;
         double setAngleCounts = targetAngleCounts;
@@ -879,11 +904,22 @@ public class HardwareSwyftBot
     // This function lets us update the Pinpoint odometry X,Y location using information from
 	// a field-mounted Apriltag.  Using the limelight3a Metatag2 values only provides X,Y
 	// not angle, so we depend on the Pinpoint internal high-accuracy IMU to maintain angle.
+    // Limelight/Pinpoint and turret offsets are also cleared since the values are no longer valid.
     public void setPinpointFieldPosition( double X, double Y ) {
         odom.setPosX(X, DistanceUnit.INCH);
         odom.setPosY(Y, DistanceUnit.INCH);
         robotGlobalXCoordinatePosition = X;
         robotGlobalYCoordinatePosition = Y;
+
+        turretManualOffset = 0.0; // we've updated; reset manual offset to zero
+
+        // limelight/pinpoint offsets are no longer valid.
+        limelightPinpointOffsetX = 0;
+        limelightPinpointOffsetY = 0;
+        limelightPinpointOffsetXvalid = false;
+        limelightPinpointOffsetYvalid = false;
+        limelightPinpointOffsetXconfidence = 999.0;  // reset to worst confidence
+        limelightPinpointOffsetYconfidence = 999.0;  // reset to worst confidence
     } // setPinpointFieldPosition
 
     /*--------------------------------------------------------------------------------------------*/
@@ -893,7 +929,7 @@ public class HardwareSwyftBot
         // we tell the limelight the current robot/camera orientation angle.
         double yawAngle = rotate180Yaw( robotOrientationDegrees );  // Rotate frame of reference!
         limelight.updateRobotOrientation( yawAngle );   // takes effect on next cycle...
-        // Lets see if the limelight camera can see the Apriltag (to provide updated field location data)
+        // Let's see if the limelight camera can see the Apriltag (to provide updated field location data)
         LLResult llResult = limelight.getLatestResult();
         if( llResult == null ) {
             // Nothing to process this cycle
@@ -908,11 +944,14 @@ public class HardwareSwyftBot
             limelightFieldXpos     = 0;    limelightFieldXstd     = 0;
             limelightFieldYpos     = 0;    limelightFieldYstd     = 0;
             limelightFieldAngleDeg = 0;    limelightFieldAnglestd = 0;
+            limelightTimestamp     = 0;
             return;
         }
         int STALENESS_LIMIT_MS = 30;
         if( llResult.getStaleness() < STALENESS_LIMIT_MS ) {
             llResultLast = llResult;
+            // Capture timestamp for update rate tracking
+            limelightTimestamp = llResult.getTimestamp();
             // Parse Limelight result for MegaTag2 robot pose data
             Pose3D   limelightBotpose = llResult.getBotpose_MT2();
             double[] stddev           = llResult.getStddevMt2();
@@ -936,8 +975,72 @@ public class HardwareSwyftBot
             limelightFieldXpos     = 0;    limelightFieldXstd     = 0;
             limelightFieldYpos     = 0;    limelightFieldYstd     = 0;
             limelightFieldAngleDeg = 0;    limelightFieldAnglestd = 0;
+            limelightTimestamp     = 0;
         }
     } // updateLimelightFieldPosition
+
+    /*--------------------------------------------------------------------------------------------*/
+    // Calculate the offset between limelight and pinpoint position but don't update pinpoint.
+    // Updates X or Y independently if the new reading has better confidence (lower stddev) than previous
+    // TODO: consider adjusting the offset with a weighted average based on the confidence.
+    public boolean updateLimelightPinpointOffsets() {
+        boolean notifyDriverUpdated = false;
+        // Only update X offset if this reading has better confidence than what we have
+        if (limelightFieldXpos != 0.0 && limelightFieldXstd < limelightPinpointOffsetXconfidence) {
+            limelightPinpointOffsetX = limelightFieldXpos - robotGlobalXCoordinatePosition;
+            limelightPinpointOffsetXconfidence = limelightFieldXstd;
+            limelightPinpointOffsetXvalid = true;
+            notifyDriverUpdated = limelightPinpointOffsetXconfidence < 0.0022; // only notify driver if good enough to update.
+        }
+        // If we already have a better X offset, keep it and don't update
+
+        // Only update Y offset if this reading has better confidence than what we have
+        if (limelightFieldYpos != 0.0 && limelightFieldYstd < limelightPinpointOffsetYconfidence) {
+            limelightPinpointOffsetY = limelightFieldYpos - robotGlobalYCoordinatePosition;
+            limelightPinpointOffsetYconfidence = limelightFieldYstd;
+            limelightPinpointOffsetYvalid = true;
+            notifyDriverUpdated = limelightPinpointOffsetYconfidence < 0.0027; // only notify driver if good enough to update.
+        }
+        // If we already have a better Y offset, keep it and don't update
+        return notifyDriverUpdated;
+    } // updateLimelightPinpointOffset
+
+    /*--------------------------------------------------------------------------------------------*/
+    // Apply the tracked offset to correct the pinpoint odometry position
+    // Can apply X and Y independently - applies whichever offsets are valid
+    // Call this when the user presses a button to confirm they want to update
+    public boolean applyLimelightPinpointOffset() {
+        boolean qualityReading = (limelightPinpointOffsetXconfidence <= 0.0022) && (limelightPinpointOffsetYconfidence <= 0.0027);
+        boolean robotXslow = (Math.abs(robotGlobalXvelocity) < 0.1)? true:false;
+        boolean robotYslow = (Math.abs(robotGlobalYvelocity) < 0.1)? true:false;
+        boolean robotAslow = (Math.abs(robotAngleVelocity)   < 0.1)? true:false;
+        boolean moving = (robotXslow && robotYslow && robotAslow)?   false:true;
+
+        if(moving || !qualityReading) return false; // don't allow updating.
+
+        // Start with current pinpoint position
+        double correctedX = robotGlobalXCoordinatePosition;
+        double correctedY = robotGlobalYCoordinatePosition;
+
+        // Apply X offset if valid
+        if (limelightPinpointOffsetXvalid) {
+            correctedX = robotGlobalXCoordinatePosition + limelightPinpointOffsetX;
+        }
+
+        // Apply Y offset if valid
+        if (limelightPinpointOffsetYvalid) {
+            correctedY = robotGlobalYCoordinatePosition + limelightPinpointOffsetY;
+        }
+
+        // Only update pinpoint if at least one offset was valid
+        if (limelightPinpointOffsetXvalid || limelightPinpointOffsetYvalid) {
+            setPinpointFieldPosition(correctedX, correctedY);
+            // this will also reset all the limelight offsets.
+            return true;  // offset was applied
+        }
+
+        return false;  // no valid offset to apply
+    } // applyLimelightPinpointOffset
 
     /*--------------------------------------------------------------------------------------------*/
     // The current pinpoint odometry is configured with a different +X/+Y/+angle than Limelight field
@@ -1502,6 +1605,12 @@ public class HardwareSwyftBot
         spindexerRight  = Math.floorMod(spindex, 3);
         spindexerCenter = Math.floorMod(1 + spindex, 3);
         spindexerLeft   = Math.floorMod(2 + spindex, 3);
+
+        // Reset the autospindexer variables now that we've shifted things around
+        leftSpinventoryNow  = getLeftBall();
+        leftSpinventoryWas  = leftSpinventoryNow;
+        rightSpinventoryNow = getRightBall();
+        rightSpinventoryWas = rightSpinventoryNow;
     }
     public void setStartingSpinventory(Ball left, Ball center, Ball right)
     {
@@ -1515,7 +1624,9 @@ public class HardwareSwyftBot
     }
     public void setRightBall(Ball rightBall)
     {
+        rightSpinventoryWas = rightSpinventoryNow;
         spinventory.set(spindexerRight, rightBall);
+        rightSpinventoryNow = rightBall;
     }
     public Ball getCenterBall()
     {
@@ -1525,14 +1636,24 @@ public class HardwareSwyftBot
     {
         spinventory.set(spindexerCenter, centerBall);
     }
-    public Ball getLeftBall()
-    {
-        return spinventory.get(spindexerLeft);
-    }
+    public Ball getLeftBall()   { return spinventory.get(spindexerLeft); }
     public void setLeftBall(Ball leftBall)
     {
+        leftSpinventoryWas = leftSpinventoryNow;
         spinventory.set(spindexerLeft, leftBall);
+        leftSpinventoryNow = leftBall;
     }
+
+    /*--------------------------------------------------------------------------------------------*/
+    public float readColorSensor(NormalizedColorSensor colorSensor)
+    {
+        NormalizedRGBA ballColors = colorSensor.getNormalizedColors();
+        final float[] hsvValues = new float[3];
+        Color.colorToHSV(ballColors.toColor(), hsvValues);
+        return hsvValues[0];
+    } // readColorSensor
+
+    /*--------------------------------------------------------------------------------------------*/
     public Ball getBallColor(NormalizedColorSensor colorSensor)
     {
         Ball detectedBall = Ball.None;
@@ -1546,7 +1667,7 @@ public class HardwareSwyftBot
             detectedBall = Ball.Purple;
             ballColorDetectingReads = 0;
         }
-        else if (hsvValues[0] > 110.0)
+        else if (hsvValues[0] > 90.0)
         {
             detectedBall = Ball.Green;
             ballColorDetectingReads = 0;
@@ -1561,19 +1682,26 @@ public class HardwareSwyftBot
             }
         }
         return detectedBall;
-    }
+    } // getBallColor
 
+    /*--------------------------------------------------------------------------------------------*/
     public void processColorDetection ()
     {
-        if(isRobot1) return;
+        boolean spindexerMoving = (spinServoInPos == false);
+        boolean spindexerHalfPos = (spinServoCurPos == SpindexerState.SPIN_H1) || (spinServoCurPos == SpindexerState.SPIN_H2)
+                                || (spinServoCurPos == SpindexerState.SPIN_H3) || (spinServoCurPos == SpindexerState.SPIN_H4);
+        boolean skipPresenceSensor = (spindexerMoving || spindexerHalfPos);
+
+        // Don't get false readings on the presence sensor
+        if( skipPresenceSensor ) return;
 
         // First check if there are undetected balls present
-        if((leftBallIsPresent) && (!leftBallWasPresent) && (getLeftBall() == Ball.None))
+        if((leftBallIsPresentCount == 5) && (getLeftBall() == Ball.None))
         {
             leftBallDetectingColor = true;
             ballColorDetectingReads = 0;
         }
-        if((rightBallIsPresent) && (!rightBallWasPresent) && (getRightBall() == Ball.None))
+        if((rightBallIsPresentCount == 5) && (getRightBall() == Ball.None))
         {
             rightBallDetectingColor = true;
             ballColorDetectingReads = 0;
@@ -1628,6 +1756,37 @@ public class HardwareSwyftBot
             }
         }
     } // processColorDetection
+
+    /*---------------------------------------------------------------------------------*/
+    public void autoSpindexIfAppropriate()
+    {
+        // Are we still processing a prior spindexing?
+        if( spinServoInPos == false ) return;
+        // Any change to our spinventory?
+        boolean newLeftBall  = (leftSpinventoryNow  != Ball.None) && (leftSpinventoryWas  == Ball.None);
+        boolean newRightBall = (rightSpinventoryNow != Ball.None) && (rightSpinventoryWas == Ball.None);
+        // Handle the simple cases first
+        // 1) Is there nothing to detect?
+        if( !newLeftBall && !newRightBall ) return;
+        // Have we collected a new ball on the LEFT side?
+        if( newLeftBall ) {
+            switch(spinServoCurPos) {
+                case SPIN_P1: spinServoSetPosition(SpindexerState.SPIN_P2); break;
+                case SPIN_P2: spinServoSetPosition(SpindexerState.SPIN_P3); break;
+                case SPIN_P3: spinServoSetPosition(SpindexerState.SPIN_P1); break;
+                default:      spinServoSetPosition(SpindexerState.SPIN_P1); break; // error case
+            } // switch()
+        }
+        // Have we collected a new ball on the RIGHT side?
+        if( newRightBall ) {
+            switch(spinServoCurPos) {
+                case SPIN_P1: spinServoSetPosition(SpindexerState.SPIN_P2); break;
+                case SPIN_P2: spinServoSetPosition(SpindexerState.SPIN_P1); break;
+                case SPIN_P3: spinServoSetPosition(SpindexerState.SPIN_P2); break;
+                default:      spinServoSetPosition(SpindexerState.SPIN_P1); break; // error case
+            } // switch()
+        }
+    } // autoSpindexIfAppropriate
 
     /*--------------------------------------------------------------------------------------------*/
 
