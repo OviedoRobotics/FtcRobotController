@@ -55,6 +55,7 @@ public abstract class Teleop extends LinearOpMode {
     Gamepad.RumbleEffect tooCloseRumbleLR;    // Too close to shoot!
     Gamepad.RumbleEffect spindexerRumbleL;    // Can't spin further LEFT!
     Gamepad.RumbleEffect spindexerRumbleR;    // Can't spin further RIGHT!
+    Gamepad.RumbleEffect odoUpdateRumble;
 
     long      nanoTimeCurr=0, nanoTimePrev=0;
     double    cycleTimeElapsed, cycleTimeHz;
@@ -82,6 +83,11 @@ public abstract class Teleop extends LinearOpMode {
                 .build();
 
         spindexerRumbleR = new Gamepad.RumbleEffect.Builder()
+                .addStep(0.0, 1.0, 250)  //  Rumble RIGHT motor 100% for 250 mSec
+                .build();
+
+        odoUpdateRumble = new Gamepad.RumbleEffect.Builder()
+                .addStep(1.0, 0.0, 250)  //  Rumble LEFT motor 100% for 250 mSec
                 .addStep(0.0, 1.0, 250)  //  Rumble RIGHT motor 100% for 250 mSec
                 .build();
                 
@@ -188,6 +194,8 @@ public abstract class Teleop extends LinearOpMode {
                 } // switch()
             } // processDpadDriveMode
 
+            updateLimelightPinpointOffset();
+
             processCollector();
             processTurretAutoAim();
             processSpindexer();
@@ -217,6 +225,18 @@ public abstract class Teleop extends LinearOpMode {
                    robot.robotGlobalXCoordinatePosition, robot.robotGlobalYCoordinatePosition, robot.robotOrientationDegrees );
             telemetry.addData(" "," %.2f in/sec %.2f in/sec %.2f deg/sec",
                    robot.robotGlobalXvelocity, robot.robotGlobalYvelocity, robot.robotAngleVelocity );
+            // Show limelight-to-pinpoint offset (press triangle to apply)
+            // Display X and Y offsets with their individual confidence values
+            if( robot.limelightPinpointOffsetXvalid || robot.limelightPinpointOffsetYvalid ) {
+                String xInfo = robot.limelightPinpointOffsetXvalid ?
+                    String.format("X=%.2f(%.5f)", robot.limelightPinpointOffsetX, robot.limelightPinpointOffsetXconfidence) : "X=(none)";
+                String yInfo = robot.limelightPinpointOffsetYvalid ?
+                    String.format("Y=%.2f(%.5f)", robot.limelightPinpointOffsetY, robot.limelightPinpointOffsetYconfidence) : "Y=(none)";
+                telemetry.addData("LL Offset", "%s %s", xInfo, yInfo);
+                telemetry.addData(" ","(press TRI to apply)");
+            } else {
+                telemetry.addData("LL Offset","(none - stop near apriltag)");
+            }
 //          telemetry.addData("Goal", "%s dist: %.2f in, angle: %.2f deg", ((blueAlliance)? "BLUE":"RED"), odoShootDistance, odoShootAngleDeg);
 //          telemetry.addData("Shooter POWER", "%.3f (P1 tri/cross to adjust)", shooterPower);
 //          if(robot.shooterMotorsReady) {
@@ -282,30 +302,36 @@ public abstract class Teleop extends LinearOpMode {
             // (x,y location less critical; can be updated via AprilTag)
             robot.resetGlobalCoordinatePosition( 0.0, 0.0, 0.0 );
         }
+        // Apply the limelight-to-pinpoint offset correction
+        if( gamepad1.triangleWasPressed() ) {
+            if( robot.applyLimelightPinpointOffset() ) {
+                gamepad1.runRumbleEffect(odoUpdateRumble);  // notify driver offset was applied
+            }
+        }
     } // performEveryLoopTeleop
 
     /*---------------------------------------------------------------------------------*/
-    // used to dynamically update the pinpoint odometry using AprilTag on the goal
-    void updatePinpointFieldPosition() {
+    // Calculate the offset between limelight and pinpoint (doesn't apply it)
+    // The offset will be applied when the user presses a button
+    void updateLimelightPinpointOffset() {
         // Ensure we don't get a spurious zero/clear reading
         boolean canSeeAprilTag = (robot.limelightFieldXpos != 0.0) && (robot.limelightFieldYpos !=0.0);
-        boolean qualityReading = (robot.limelightFieldXstd <= 0.0022) && (robot.limelightFieldYstd <= 0.0027);
         boolean robotXslow = (Math.abs(robot.robotGlobalXvelocity) < 0.1)? true:false;
         boolean robotYslow = (Math.abs(robot.robotGlobalYvelocity) < 0.1)? true:false;
         boolean robotAslow = (Math.abs(robot.robotAngleVelocity)   < 0.1)? true:false;
         boolean notDriving = (robotXslow && robotYslow && robotAslow)?     true:false;
-        if( canSeeAprilTag && qualityReading && notDriving ) {
-            // We meet the conditions, but only want to update this once (not over and over and over)
-            if( !newPinpointFieldPositionUpdate ) {
-                robot.setPinpointFieldPosition(robot.limelightFieldXpos, robot.limelightFieldYpos);
-                robot.turretManualOffset = 0.0; // we've updated; reset manual offset to zero
-                gamepad1.runRumbleEffect(spindexerRumbleL);  // notify driver it's happening
+
+        if( canSeeAprilTag && notDriving ) {
+            // Calculate the offset between limelight and pinpoint positions
+            // This doesn't apply it yet - just tracks the difference
+            if( robot.updateLimelightPinpointOffsets() && !newPinpointFieldPositionUpdate ) {
+                gamepad1.runRumbleEffect(odoUpdateRumble);  // notify driver offset is ready
                 newPinpointFieldPositionUpdate = true;
             }
-        } else {  // we don't meet the conditions anymore; reset for next time we do
+        } else {  // we don't meet the conditions anymore; reset flag for next reading
             newPinpointFieldPositionUpdate = false;
         }
-    }  // updatePinpointFieldPosition
+    }  // updateLimelightPinpointOffset
 
     /*---------------------------------------------------------------------------------*/
     /*  TELE-OP: Mecanum-wheel drive control using Dpad (slow/fine-adjustment mode)    */
@@ -642,8 +668,6 @@ public abstract class Teleop extends LinearOpMode {
     private void processTurretAutoAim() {
         // Do we want to use them? (so long as the button is held...)
         if( autoAimEnabled ) {
-            // update pinpoint coordinates if conditions are good to do so
-            updatePinpointFieldPosition();
             // now that we have the latest coordinate update, compute the auto-aim parameters
             odoShootDistance = robot.getShootDistance( (blueAlliance)? Alliance.BLUE : Alliance.RED );
             odoShootAngleDeg = robot.getShootAngleDeg( (blueAlliance)? Alliance.BLUE : Alliance.RED );

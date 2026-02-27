@@ -14,10 +14,8 @@ import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
 import com.qualcomm.robotcore.hardware.NormalizedRGBA;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Servo;
-import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.SwitchableLight;
 import com.qualcomm.robotcore.util.ElapsedTime;
-import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
@@ -126,6 +124,14 @@ public class HardwareSwyftBot
     double limelightFieldXstd     = 0;
     double limelightFieldYstd     = 0;
     double limelightFieldAnglestd = 0;
+
+    // Limelight-to-Pinpoint offset tracking (update only on button press)
+    public double limelightPinpointOffsetX = 0;  // offset between limelight and pinpoint X
+    public double limelightPinpointOffsetY = 0;  // offset between limelight and pinpoint Y
+    public boolean limelightPinpointOffsetXvalid = false;  // do we have a valid X offset?
+    public boolean limelightPinpointOffsetYvalid = false;  // do we have a valid Y offset?
+    public double limelightPinpointOffsetXconfidence = 999.0;  // X stddev (lower is better)
+    public double limelightPinpointOffsetYconfidence = 999.0;  // Y stddev (lower is better)
 
     //====== 2025 DECODE SEASON MECHANISM MOTORS (RUN_USING_ENCODER) =====
     protected DcMotorEx intakeMotor     = null;
@@ -898,11 +904,22 @@ public class HardwareSwyftBot
     // This function lets us update the Pinpoint odometry X,Y location using information from
 	// a field-mounted Apriltag.  Using the limelight3a Metatag2 values only provides X,Y
 	// not angle, so we depend on the Pinpoint internal high-accuracy IMU to maintain angle.
+    // Limelight/Pinpoint and turret offsets are also cleared since the values are no longer valid.
     public void setPinpointFieldPosition( double X, double Y ) {
         odom.setPosX(X, DistanceUnit.INCH);
         odom.setPosY(Y, DistanceUnit.INCH);
         robotGlobalXCoordinatePosition = X;
         robotGlobalYCoordinatePosition = Y;
+
+        turretManualOffset = 0.0; // we've updated; reset manual offset to zero
+
+        // limelight/pinpoint offsets are no longer valid.
+        limelightPinpointOffsetX = 0;
+        limelightPinpointOffsetY = 0;
+        limelightPinpointOffsetXvalid = false;
+        limelightPinpointOffsetYvalid = false;
+        limelightPinpointOffsetXconfidence = 999.0;  // reset to worst confidence
+        limelightPinpointOffsetYconfidence = 999.0;  // reset to worst confidence
     } // setPinpointFieldPosition
 
     /*--------------------------------------------------------------------------------------------*/
@@ -961,6 +978,69 @@ public class HardwareSwyftBot
             limelightTimestamp     = 0;
         }
     } // updateLimelightFieldPosition
+
+    /*--------------------------------------------------------------------------------------------*/
+    // Calculate the offset between limelight and pinpoint position but don't update pinpoint.
+    // Updates X or Y independently if the new reading has better confidence (lower stddev) than previous
+    // TODO: consider adjusting the offset with a weighted average based on the confidence.
+    public boolean updateLimelightPinpointOffsets() {
+        boolean notifyDriverUpdated = false;
+        // Only update X offset if this reading has better confidence than what we have
+        if (limelightFieldXpos != 0.0 && limelightFieldXstd < limelightPinpointOffsetXconfidence) {
+            limelightPinpointOffsetX = limelightFieldXpos - robotGlobalXCoordinatePosition;
+            limelightPinpointOffsetXconfidence = limelightFieldXstd;
+            limelightPinpointOffsetXvalid = true;
+            notifyDriverUpdated = limelightPinpointOffsetXconfidence < 0.0022; // only notify driver if good enough to update.
+        }
+        // If we already have a better X offset, keep it and don't update
+
+        // Only update Y offset if this reading has better confidence than what we have
+        if (limelightFieldYpos != 0.0 && limelightFieldYstd < limelightPinpointOffsetYconfidence) {
+            limelightPinpointOffsetY = limelightFieldYpos - robotGlobalYCoordinatePosition;
+            limelightPinpointOffsetYconfidence = limelightFieldYstd;
+            limelightPinpointOffsetYvalid = true;
+            notifyDriverUpdated = limelightPinpointOffsetYconfidence < 0.0027; // only notify driver if good enough to update.
+        }
+        // If we already have a better Y offset, keep it and don't update
+        return notifyDriverUpdated;
+    } // updateLimelightPinpointOffset
+
+    /*--------------------------------------------------------------------------------------------*/
+    // Apply the tracked offset to correct the pinpoint odometry position
+    // Can apply X and Y independently - applies whichever offsets are valid
+    // Call this when the user presses a button to confirm they want to update
+    public boolean applyLimelightPinpointOffset() {
+        boolean qualityReading = (limelightPinpointOffsetXconfidence <= 0.0022) && (limelightPinpointOffsetYconfidence <= 0.0027);
+        boolean robotXslow = (Math.abs(robotGlobalXvelocity) < 0.1)? true:false;
+        boolean robotYslow = (Math.abs(robotGlobalYvelocity) < 0.1)? true:false;
+        boolean robotAslow = (Math.abs(robotAngleVelocity)   < 0.1)? true:false;
+        boolean moving = (robotXslow && robotYslow && robotAslow)?   false:true;
+
+        if(moving || !qualityReading) return false; // don't allow updating.
+
+        // Start with current pinpoint position
+        double correctedX = robotGlobalXCoordinatePosition;
+        double correctedY = robotGlobalYCoordinatePosition;
+
+        // Apply X offset if valid
+        if (limelightPinpointOffsetXvalid) {
+            correctedX = robotGlobalXCoordinatePosition + limelightPinpointOffsetX;
+        }
+
+        // Apply Y offset if valid
+        if (limelightPinpointOffsetYvalid) {
+            correctedY = robotGlobalYCoordinatePosition + limelightPinpointOffsetY;
+        }
+
+        // Only update pinpoint if at least one offset was valid
+        if (limelightPinpointOffsetXvalid || limelightPinpointOffsetYvalid) {
+            setPinpointFieldPosition(correctedX, correctedY);
+            // this will also reset all the limelight offsets.
+            return true;  // offset was applied
+        }
+
+        return false;  // no valid offset to apply
+    } // applyLimelightPinpointOffset
 
     /*--------------------------------------------------------------------------------------------*/
     // The current pinpoint odometry is configured with a different +X/+Y/+angle than Limelight field
