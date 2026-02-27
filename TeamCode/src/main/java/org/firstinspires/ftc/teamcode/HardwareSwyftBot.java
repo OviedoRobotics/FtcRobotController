@@ -14,8 +14,10 @@ import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
 import com.qualcomm.robotcore.hardware.NormalizedRGBA;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.SwitchableLight;
 import com.qualcomm.robotcore.util.ElapsedTime;
+import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
@@ -60,8 +62,8 @@ public class HardwareSwyftBot
 
     //====== LIMELIGHT SMART CAMERA ======
     public  Limelight3A limelight;
+    public  double      limelightTimestamp = 0;  // timestamp from LLResult
     private LLResult    llResultLast;
-    double limelightTimestamp = 0;  // timestamp from LLResult
 
     /**
      * https://ftc-docs.firstinspires.org/en/latest/game_specific_resources/field_coordinate_system/field-coordinate-system.html#square-field-inverted-alliance-area
@@ -365,18 +367,21 @@ public class HardwareSwyftBot
     public boolean leftBallIsPresent      = false;
     public int     leftBallIsPresentCount = 0;
     public boolean leftBallDetectingColor = false;
-    public double  leftBallHueDetected     = 0.0;
-    public Ball    leftSpinventoryWas      = Ball.None;
-    public Ball    leftSpinventoryNow      = Ball.None;
+    public double  leftBallHueDetected    = 0.0;
+    public Ball    leftSpinventoryWas     = Ball.None;
+    public Ball    leftSpinventoryNow     = Ball.None;
 
     private DigitalChannel          rightBallPresenceSensor;
     protected NormalizedColorSensor rightBallColorSensor;
     public boolean rightBallIsPresent      = false;
     public int     rightBallIsPresentCount = 0;
     public boolean rightBallDetectingColor = false;
-    public double  rightBallHueDetected     = 0.0;
-    public Ball    rightSpinventoryWas      = Ball.None;
-    public Ball    rightSpinventoryNow      = Ball.None;
+    public double  rightBallHueDetected    = 0.0;
+    public Ball    rightSpinventoryWas     = Ball.None;
+    public Ball    rightSpinventoryNow     = Ball.None;
+
+    public Ball    centerSpinventoryWas    = Ball.None;
+    public Ball    centerSpinventoryNow    = Ball.None;
 
     public int ballColorDetectingReads = 0;
     public static int MAX_BALL_COLOR_READS = 10;
@@ -1607,10 +1612,12 @@ public class HardwareSwyftBot
         spindexerLeft   = Math.floorMod(2 + spindex, 3);
 
         // Reset the autospindexer variables now that we've shifted things around
-        leftSpinventoryNow  = getLeftBall();
-        leftSpinventoryWas  = leftSpinventoryNow;
-        rightSpinventoryNow = getRightBall();
-        rightSpinventoryWas = rightSpinventoryNow;
+        leftSpinventoryNow   = getLeftBall();
+        leftSpinventoryWas   = leftSpinventoryNow;
+        rightSpinventoryNow  = getRightBall();
+        rightSpinventoryWas  = rightSpinventoryNow;
+        centerSpinventoryNow = getCenterBall();
+        centerSpinventoryWas = centerSpinventoryNow;
     }
     public void setStartingSpinventory(Ball left, Ball center, Ball right)
     {
@@ -1634,7 +1641,9 @@ public class HardwareSwyftBot
     }
     public void setCenterBall(Ball centerBall)
     {
+        centerSpinventoryWas = centerSpinventoryNow;
         spinventory.set(spindexerCenter, centerBall);
+        centerSpinventoryNow = centerBall;
     }
     public Ball getLeftBall()   { return spinventory.get(spindexerLeft); }
     public void setLeftBall(Ball leftBall)
@@ -1758,7 +1767,7 @@ public class HardwareSwyftBot
     } // processColorDetection
 
     /*---------------------------------------------------------------------------------*/
-    public void autoSpindexIfAppropriate()
+    public void autoSpindexIfAppropriate0()
     {
         // Are we still processing a prior spindexing?
         if( spinServoInPos == false ) return;
@@ -1773,19 +1782,99 @@ public class HardwareSwyftBot
             switch(spinServoCurPos) {
                 case SPIN_P1: spinServoSetPosition(SpindexerState.SPIN_P2); break;
                 case SPIN_P2: spinServoSetPosition(SpindexerState.SPIN_P3); break;
-                case SPIN_P3: spinServoSetPosition(SpindexerState.SPIN_P1); break;
+                case SPIN_P3: break; // spinServoSetPosition(SpindexerState.SPIN_P3); break;  // TODO: fix later
                 default:      spinServoSetPosition(SpindexerState.SPIN_P1); break; // error case
             } // switch()
         }
         // Have we collected a new ball on the RIGHT side?
         if( newRightBall ) {
             switch(spinServoCurPos) {
-                case SPIN_P1: spinServoSetPosition(SpindexerState.SPIN_P2); break;
+                case SPIN_P1: break; // spinServoSetPosition(SpindexerState.SPIN_P1); break; // TODO: fix later
                 case SPIN_P2: spinServoSetPosition(SpindexerState.SPIN_P1); break;
-                case SPIN_P3: spinServoSetPosition(SpindexerState.SPIN_P2); break;
+                case SPIN_P3: spinServoSetPosition(SpindexerState.SPIN_P2); break;  // fix later
                 default:      spinServoSetPosition(SpindexerState.SPIN_P1); break; // error case
             } // switch()
         }
+    } // autoSpindexIfAppropriate0
+
+    public void autoSpindexIfAppropriate()
+    {
+        // Are we still processing a prior spindexing?
+        if( spinServoInPos == false ) return;
+        // Is the spinventory already full?
+        boolean isLeftFull   = (leftSpinventoryWas   != Ball.None);
+        boolean isRightFull  = (rightSpinventoryWas  != Ball.None);
+        boolean isCenterFull = (centerSpinventoryWas != Ball.None);
+        if( isLeftFull && isRightFull && isCenterFull ) return;
+        // Spinventory NOT full; let's identify the remaining open spots
+        boolean wasLeftEmpty   = (leftSpinventoryWas   == Ball.None);
+        boolean wasRightEmpty  = (rightSpinventoryWas  == Ball.None);
+        boolean wasCenterEmpty = (centerSpinventoryWas == Ball.None);
+        // Has anything new been collected into the Left or Right this cycle?
+        boolean newLeftBall  = (leftSpinventoryNow  != Ball.None) && wasLeftEmpty;
+        boolean newRightBall = (rightSpinventoryNow != Ball.None) && wasRightEmpty;
+        if( !newLeftBall && !newRightBall ) return;
+        // We've either collected a new LEFT, a new RIGHT, or BOTH LEFT/RIGHT
+        // ----------------------------
+        // Start with LEFT-ONLY collect
+        if( newLeftBall && !newRightBall ) {
+            // Was LEFT the only remaining open spot? (meaning nowhere to go)
+            if( wasLeftEmpty && !wasRightEmpty && !wasCenterEmpty ) return;
+            // No, so is RIGHT empty? (let's index it over to collect more from the LEFT)
+            if( wasRightEmpty ) {
+               switch(spinServoCurPos) { // spin the current RIGHT over to the LEFT
+                   case SPIN_P1: spinServoSetPosition(SpindexerState.SPIN_P2); break;
+                   case SPIN_P2: spinServoSetPosition(SpindexerState.SPIN_P3); break;
+                   case SPIN_P3: spinServoSetPosition(SpindexerState.SPIN_P1); break;
+                   default: break;  // unexpected; do nothing
+               } // switch()
+            }
+            else { // RIGHT was already full, so CENTER must be the remaining empty slot
+               switch(spinServoCurPos) { // spin the current CENTER up to the LEFT
+                   case SPIN_P1: spinServoSetPosition(SpindexerState.SPIN_P3); break;
+                   case SPIN_P2: spinServoSetPosition(SpindexerState.SPIN_P1); break;
+                   case SPIN_P3: spinServoSetPosition(SpindexerState.SPIN_P2); break;
+                   default: break;  // unexpected; do nothing
+               } // switch()
+            }
+        } // LEFT
+        // ----------------------------
+        // Move on to the RIGHT-ONLY collect cases
+        else if( newRightBall && !newLeftBall ) {
+            // Was RIGHT the only remaining open spot? (meaning nowhere to go)
+            if( wasRightEmpty && !wasLeftEmpty && !wasCenterEmpty ) return;
+            // No, so is LEFT empty? (let's index it over to collect more from the RIGHT)
+            if( wasLeftEmpty ) {
+               switch(spinServoCurPos) { // spin the current LEFT over to the RIGHT
+                   case SPIN_P1: spinServoSetPosition(SpindexerState.SPIN_P3); break;
+                   case SPIN_P2: spinServoSetPosition(SpindexerState.SPIN_P1); break;
+                   case SPIN_P3: spinServoSetPosition(SpindexerState.SPIN_P2); break;
+                   default: break;  // unexpected; do nothing
+               } // switch()
+            }
+            else { // LEFT was already full, so CENTER must be the remaining empty slot
+               switch(spinServoCurPos) { // spin the current CENTER up to the RIGHT
+                   case SPIN_P1: spinServoSetPosition(SpindexerState.SPIN_P2); break;
+                   case SPIN_P2: spinServoSetPosition(SpindexerState.SPIN_P3); break;
+                   case SPIN_P3: spinServoSetPosition(SpindexerState.SPIN_P1); break;
+                   default: break;  // unexpected; do nothing
+               } // switch()
+            }
+        } // RIGHT
+        // ----------------------------
+        // Finally, handle the combined LEFT + RIGHT dual-collect case
+        else {
+            // Was CENTER already populated?  If so, we're now full (nothing to do)
+            if( !wasCenterEmpty ) return;
+            // No, CENTER is still empty; what's shortest distance to the front?
+            switch(spinServoCurPos) {
+                case SPIN_P1: spinServoSetPosition(SpindexerState.SPIN_P2); break;  // spin CENTER up to RIGHT
+                case SPIN_P2: spinServoSetPosition(SpindexerState.SPIN_P3); break;  // spin CENTER up to RIGHT
+//              case SPIN_P2: spinServoSetPosition(SpindexerState.SPIN_P1); break;  // spin CENTER up to LEFT
+                case SPIN_P3: spinServoSetPosition(SpindexerState.SPIN_P2); break;  // spin CENTER up to LEFT
+                default: break;  // unexpected; do nothing
+            } // switch()
+        }  // BOTH               
     } // autoSpindexIfAppropriate
 
     /*--------------------------------------------------------------------------------------------*/

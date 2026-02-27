@@ -1302,7 +1302,7 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
     } // AngleWrapDegrees
 
     /*--------------------------------------------------------------------------------------------*/
-    public void collectCorner3FromFar( boolean isRed, SpindexerState firstBall ) {
+    public void collectCorner3FromFar( boolean isRed ) {
 
         // Transition from shooting zone to corner
         if( opModeIsActive() ) {
@@ -1343,6 +1343,7 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
             // Turn collector back on forward
             robot.intakeMotor.setPower( robot.INTAKE_FWD_COLLECT );
             // Pre-spindex to the first position we need to be in when we shoot all 3
+            HardwareSwyftBot.SpindexerState firstBall = getObeliskFirstBall(obeliskID);
             robot.spinServoSetPosition( firstBall );
             autoAimEnabled = true;
             driveToPosition(-50.8, ((isRed)? -16.3 : +16.3), ((isRed)?  0.0:0.0), DRIVE_SPEED_80, TURN_SPEED_10, DRIVE_TO);
@@ -1413,7 +1414,7 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
     } // collectSpikemarkFromFar0
 
     /*--------------------------------------------------------------------------------------------*/
-    public void collectSpikemarkFromNear( int spikeMarkNumber, boolean isRed, SpindexerState firstBall ) {
+    public void collectSpikemarkFromNear( int spikeMarkNumber, boolean isRed ) {
         double redStartx=0, blueStartx=0, endx=0, xPos, yPos, angDeg;
         // Reset the spindexer for collecting
         robot.spinServoSetPosition( (isRed)? SPIN_P3 : SPIN_P1 );   // red=P3/P2/P1 on right, blue=P1/P2/P3 on left
@@ -1465,6 +1466,7 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
             // Turn collector back on forward
             robot.intakeMotor.setPower( robot.INTAKE_FWD_COLLECT );
             // Pre-spindex to the first position we need to be in when we shoot all 3
+            HardwareSwyftBot.SpindexerState firstBall = getObeliskFirstBall(obeliskID);
             robot.spinServoSetPosition( firstBall );
             // Return to the far shooting zone, preparing the auto-aim as we go
             autoAimEnabled = true;
@@ -1491,7 +1493,7 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
 
     /*--------------------------------------------------------------------------------------------*/
     // This version uses spindexToPosition() to dynamically rotate the spindexer while driving
-    public void collectSpikemarkFromFar( int spikeMarkNumber, boolean isRed, SpindexerState firstBall ) {
+    public void collectSpikemarkFromFar( int spikeMarkNumber, boolean isRed ) {
         double redStartx=0, blueStartx=0, endx=0, xPos, yPos, angDeg;
         // Reset the spindexer for collecting
         robot.spinServoSetPosition( (isRed)? SPIN_P1 : SPIN_P3 );   // red=P1/P2/P3 on left, blue=P3/P2/P1 on right
@@ -1535,6 +1537,7 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
             // Turn collector back on forward
             robot.intakeMotor.setPower( robot.INTAKE_FWD_COLLECT );
             // Pre-spindex to the first position we need to be in when we shoot all 3
+            HardwareSwyftBot.SpindexerState firstBall = getObeliskFirstBall(obeliskID);
             robot.spinServoSetPosition( firstBall );
             // Return to the far shooting zone, preparing the auto-aim as we go
             autoAimEnabled = true;
@@ -1548,12 +1551,12 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
     /* - robot is already parked in a shooting zone                                               */
     /* - turret is already rotated toward the goal                                                */
     /* - shooter is already up to speed                                                           */
-    public void scoreThreeBallsFromField(BallOrder obeliskID, BallOrder loadOrder) {
+    public void scoreThreeBallsFromField(BallOrder obeliskID) {
         if( opModeIsActive() ) {
             // Ensure collector to ON to retain balls while spindexing
             robot.intakeMotor.setPower( robot.INTAKE_FWD_COLLECT );
             // Convert the obelisk value into a shooting order
-            SpindexerState[] shootOrder = getObeliskShootOrder(obeliskID, loadOrder);
+            SpindexerState[] shootOrder = getObeliskShootOrder(obeliskID);
             // FIXME: should we swap SPIN_P1 and SPIN_P3 if alliance == blue since we reverse intake direction?
             // Shoot all 3 balls
             for(int i=0; i<shootOrder.length; i++) {
@@ -1589,7 +1592,46 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
     } // launchBall
 
     //--------------------------------------------------------------------------------------------
-    SpindexerState[] getObeliskShootOrder(BallOrder obeliskID, BallOrder loadOrder) {
+    static SpindexerState[] getObeliskShootOrder0(BallOrder obeliskID, BallOrder loadOrder) {
+
+        // Based on our preload pattern PPG_23:
+        // SPIN_P1 = purple
+        // SPIN_P2 = purple
+        // SPIN_P3 = green
+
+        switch (loadOrder) {
+            case GPP_21:
+                switch (obeliskID) {
+                    case GPP_21:
+                        return new SpindexerState[] {SPIN_P1, SPIN_P2, SPIN_P3};
+                    case PGP_22:
+                        return new SpindexerState[] {SPIN_P2, SPIN_P1, SPIN_P3};
+                    case PPG_23:
+                        return new SpindexerState[] {SPIN_P3, SPIN_P2, SPIN_P1};
+                }
+            case PGP_22:
+                switch (obeliskID) {
+                    case GPP_21:
+                        return new SpindexerState[] {SPIN_P2, SPIN_P3, SPIN_P1};
+                    case PGP_22:
+                        return new SpindexerState[] {SPIN_P3, SPIN_P2, SPIN_P1};
+                    case PPG_23:
+                        return new SpindexerState[] {SPIN_P3, SPIN_P1, SPIN_P2};
+                }
+            case PPG_23:
+                switch (obeliskID) {
+                    case GPP_21:
+                        return new SpindexerState[] {SPIN_P3, SPIN_P2, SPIN_P1};
+                    case PGP_22:
+                        return new SpindexerState[] {SPIN_P2, SPIN_P3, SPIN_P1};
+                    case PPG_23:
+                        return new SpindexerState[] {SPIN_P2, SPIN_P1, SPIN_P3};
+                }
+        }
+        return new SpindexerState[] {SPIN_P3, SPIN_P2, SPIN_P1}; // default
+    } // getObeliskShootOrder0
+
+    SpindexerState[] getObeliskShootOrder(BallOrder obeliskID) {
         SpindexerState spinServoCurPos = robot.spinServoCurPos;
         HardwareSwyftBot.Ball p1Ball = robot.spinventory.get(0);
         HardwareSwyftBot.Ball p2Ball = robot.spinventory.get(1);
@@ -1611,7 +1653,7 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
     };
     static SpindexerState[] getObeliskShootOrder(BallOrder obeliskID, SpindexerState spinServoCurPos,
                  HardwareSwyftBot.Ball p1Ball, HardwareSwyftBot.Ball p2Ball, HardwareSwyftBot.Ball p3Ball) {
-        // +20 points for each correct color, + 10 for wrong color, -20 for shooting empty, -1 for each move.
+        // +20 points for each correct color, +10 for wrong color, -20 for shooting empty, -1 for each move.
         int maxScore = 0;
         SpindexerState[] bestOrder = new SpindexerState[] {};
         for(int i = 0; i < SHOOT_ORDERS.length; i++) {
@@ -1630,49 +1672,28 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
         HardwareSwyftBot.Ball shot1 = null;
         if(shootOrder.length > 0) {
             switch (shootOrder[0]) {
-                case SPIN_P1:
-                    shot1 = p1;
-                    break;
-                case SPIN_P2:
-                    shot1 = p2;
-                    break;
-                case SPIN_P3:
-                    shot1 = p3;
-                    break;
-                default:
-                    break;
+                case SPIN_P1: shot1=p1; break;
+                case SPIN_P2: shot1=p2; break;
+                case SPIN_P3: shot1=p3; break;
+                default:                break;
             }
         }
         HardwareSwyftBot.Ball shot2 = null;
         if(shootOrder.length > 1) {
             switch (shootOrder[1]) {
-                case SPIN_P1:
-                    shot2 = p1;
-                    break;
-                case SPIN_P2:
-                    shot2 = p2;
-                    break;
-                case SPIN_P3:
-                    shot2 = p3;
-                    break;
-                default:
-                    break;
+                case SPIN_P1: shot2=p1; break;
+                case SPIN_P2: shot2=p2; break;
+                case SPIN_P3: shot2=p3; break;
+                default:                break;
             }
         }
         HardwareSwyftBot.Ball shot3 = null;
         if(shootOrder.length > 2) {
             switch (shootOrder[2]) {
-                case SPIN_P1:
-                    shot3 = p1;
-                    break;
-                case SPIN_P2:
-                    shot3 = p2;
-                    break;
-                case SPIN_P3:
-                    shot3 = p3;
-                    break;
-                default:
-                    break;
+                case SPIN_P1: shot3=p1; break;
+                case SPIN_P2: shot3=p2; break;
+                case SPIN_P3: shot3=p3; break;
+                default:                break;
             }
         }
 
@@ -1691,19 +1712,19 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
         // +1 for correct color shot.
         switch (obeliskID) {
             case GPP_21:
-                if(shot1 == HardwareSwyftBot.Ball.Green) score++;
+                if(shot1 == HardwareSwyftBot.Ball.Green)  score++;
                 if(shot2 == HardwareSwyftBot.Ball.Purple) score++;
                 if(shot3 == HardwareSwyftBot.Ball.Purple) score++;
                 break;
             case PGP_22:
                 if(shot1 == HardwareSwyftBot.Ball.Purple) score++;
-                if(shot2 == HardwareSwyftBot.Ball.Green) score++;
+                if(shot2 == HardwareSwyftBot.Ball.Green)  score++;
                 if(shot3 == HardwareSwyftBot.Ball.Purple) score++;
                 break;
             case PPG_23:
                 if(shot1 == HardwareSwyftBot.Ball.Purple) score++;
                 if(shot2 == HardwareSwyftBot.Ball.Purple) score++;
-                if(shot3 == HardwareSwyftBot.Ball.Green) score++;
+                if(shot3 == HardwareSwyftBot.Ball.Green)  score++;
                 break;
         }
         return score;
@@ -1723,8 +1744,36 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
     // before we can shoot the first ball.  This function gives us advance insight into the
     // position of the first ball we need to shoot based on which spike mark we've collected
     // (ie, the loadOrder)
-    SpindexerState getObeliskFirstBall(BallOrder obeliskID, BallOrder loadOrder) {
-        SpindexerState[] obeliskShootOrder = getObeliskShootOrder(obeliskID, loadOrder);
+    static SpindexerState getObeliskFirstBall0(BallOrder obeliskID, BallOrder loadOrder) {
+        SpindexerState firstBall = SPIN_P3;
+        switch(loadOrder) {
+            case GPP_21:
+                switch(obeliskID) {
+                    case GPP_21: firstBall=SPIN_P1; break;
+                    case PGP_22: firstBall=SPIN_P2; break;
+                    case PPG_23: firstBall=SPIN_P3; break;
+                }
+                break;
+            case PGP_22:
+                switch(obeliskID) {
+                    case GPP_21: firstBall=SPIN_P2; break;
+                    case PGP_22: firstBall=SPIN_P3; break;
+                    case PPG_23: firstBall=SPIN_P3; break;
+                }
+                break;
+            case PPG_23:
+                switch(obeliskID) {
+                    case GPP_21: firstBall=SPIN_P3; break;
+                    case PGP_22: firstBall=SPIN_P2; break;
+                    case PPG_23: firstBall=SPIN_P2; break;
+                }
+                break;
+        }
+        return firstBall;
+    } // getObeliskFirstBall0
+
+    SpindexerState getObeliskFirstBall(BallOrder obeliskID) {
+        SpindexerState[] obeliskShootOrder = getObeliskShootOrder(obeliskID);
         if(obeliskShootOrder.length > 0) {
             return obeliskShootOrder[0];
         }

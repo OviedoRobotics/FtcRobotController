@@ -27,7 +27,7 @@ public abstract class Teleop extends LinearOpMode {
     boolean isAutoShooterSpeedGood = false; // is shooter motor up to target speed
     boolean autoAimEnabled         = false; // wait until we move to avoid early PLAY button movement penalty
     // FIXME: enter correct min distance value.
-    double MIN_SHOOT_DISTANCE_INCHES = 45; // minimum distance required to shoot
+    double MIN_SHOOT_DISTANCE_INCHES = 30; // minimum distance required to shoot
 
     boolean leftTriggerPressNow   = false;
     boolean leftTriggerPressLast  = false;
@@ -75,7 +75,9 @@ public abstract class Teleop extends LinearOpMode {
         telemetry.update();
 
         tooCloseRumbleLR = new Gamepad.RumbleEffect.Builder()
-                .addStep(1.0, 1.0, 250)  //  Rumble BOTH motors 100% for 250 mSec
+                .addStep(1.0, 1.0, 300)  //  Rumble BOTH motor 100% for 300 mSec
+                .addStep(0.0, 0.0, 250)  //  Pause for 250 mSec
+                .addStep(1.0, 1.0, 300)  //  Rumble BOTH motor 100% for 300 mSec
                 .build();
 
         spindexerRumbleL = new Gamepad.RumbleEffect.Builder()
@@ -125,6 +127,7 @@ public abstract class Teleop extends LinearOpMode {
             if( gamepad1.crossWasPressed() ) {
                 robot.resetEncoders();
                 robot.resetGlobalCoordinatePosition( 0.0, 0.0, 0.0 );
+                autoAimEnabled = true;   // implies teleop without autonomous first (
             }
             // Pause briefly before looping
             idle();
@@ -211,7 +214,8 @@ public abstract class Teleop extends LinearOpMode {
             // Compute limelight update rate
             limelightTimestampPrev = limelightTimestampCurr;
             limelightTimestampCurr = robot.limelightTimestamp;
-            if( limelightTimestampCurr > 0 && limelightTimestampPrev > 0 ) {
+            if( (limelightTimestampCurr > 0) && (limelightTimestampPrev > 0) &&
+                (limelightTimestampCurr > limelightTimestampPrev)) {
                 limelightUpdateElapsed = (limelightTimestampCurr - limelightTimestampPrev) * 1000.0;  // convert to msec
                 limelightUpdateHz = 1000.0 / limelightUpdateElapsed;
             }
@@ -237,7 +241,7 @@ public abstract class Teleop extends LinearOpMode {
             } else {
                 telemetry.addData("LL Offset","(none - stop near apriltag)");
             }
-//          telemetry.addData("Goal", "%s dist: %.2f in, angle: %.2f deg", ((blueAlliance)? "BLUE":"RED"), odoShootDistance, odoShootAngleDeg);
+            telemetry.addData("Goal", "%s dist: %.2f in, angle: %.2f deg", ((blueAlliance)? "BLUE":"RED"), odoShootDistance, odoShootAngleDeg);
 //          telemetry.addData("Shooter POWER", "%.3f (P1 tri/cross to adjust)", shooterPower);
 //          if(robot.shooterMotorsReady) {
 //              telemetry.addData("Shooter ms to ready ", "%.1f", robot.shooterMotorsTime);
@@ -271,9 +275,7 @@ public abstract class Teleop extends LinearOpMode {
                 robot.getLeftBall(), robot.getCenterBall(), robot.getRightBall() );
             telemetry.addLine( (robot.isRobot2)? "Robot2" : "Robot1");
             telemetry.addData("CycleTime", "%.1f msec (%.1f Hz)", cycleTimeElapsed, cycleTimeHz);
-            if( limelightUpdateHz > 0 ) {
-                telemetry.addData("Limelight Rate", "%.1f msec (%.1f Hz)", limelightUpdateElapsed, limelightUpdateHz);
-            }
+            telemetry.addData("Limelight Rate", "%.1f msec (%.1f Hz)", limelightUpdateElapsed, limelightUpdateHz);
             telemetry.update();
 
             // Pause for metronome tick.  40 mS each cycle = update 25 times a second.
@@ -309,6 +311,29 @@ public abstract class Teleop extends LinearOpMode {
             }
         }
     } // performEveryLoopTeleop
+
+    /*---------------------------------------------------------------------------------*/
+    // used to dynamically update the pinpoint odometry using AprilTag on the goal
+    void updatePinpointFieldPosition0() {
+        // Ensure we don't get a spurious zero/clear reading
+        boolean canSeeAprilTag = (robot.limelightFieldXpos != 0.0) && (robot.limelightFieldYpos !=0.0);
+        boolean qualityReading = (robot.limelightFieldXstd <= 0.0022) && (robot.limelightFieldYstd <= 0.0027);
+        boolean robotXslow = (Math.abs(robot.robotGlobalXvelocity) < 0.1)? true:false;
+        boolean robotYslow = (Math.abs(robot.robotGlobalYvelocity) < 0.1)? true:false;
+        boolean robotAslow = (Math.abs(robot.robotAngleVelocity)   < 0.1)? true:false;
+        boolean notDriving = (robotXslow && robotYslow && robotAslow)?     true:false;
+        if( canSeeAprilTag && qualityReading && notDriving ) {
+            // We meet the conditions, but only want to update this once (not over and over and over)
+            if( !newPinpointFieldPositionUpdate ) {
+                robot.setPinpointFieldPosition(robot.limelightFieldXpos, robot.limelightFieldYpos);
+                robot.turretManualOffset = 0.0; // we've updated; reset manual offset to zero
+                gamepad1.runRumbleEffect(spindexerRumbleL);  // notify driver it's happening
+                newPinpointFieldPositionUpdate = true;
+            }
+        } else {  // we don't meet the conditions anymore; reset for next time we do
+            newPinpointFieldPositionUpdate = false;
+        }
+    }  // updatePinpointFieldPosition0
 
     /*---------------------------------------------------------------------------------*/
     // Calculate the offset between limelight and pinpoint (doesn't apply it)
@@ -668,6 +693,8 @@ public abstract class Teleop extends LinearOpMode {
     private void processTurretAutoAim() {
         // Do we want to use them? (so long as the button is held...)
         if( autoAimEnabled ) {
+            // update pinpoint coordinates if conditions are good to do so
+//          updatePinpointFieldPosition0();
             // now that we have the latest coordinate update, compute the auto-aim parameters
             odoShootDistance = robot.getShootDistance( (blueAlliance)? Alliance.BLUE : Alliance.RED );
             odoShootAngleDeg = robot.getShootAngleDeg( (blueAlliance)? Alliance.BLUE : Alliance.RED );
@@ -713,25 +740,27 @@ public abstract class Teleop extends LinearOpMode {
 
     /*---------------------------------------------------------------------------------*/
     void processInjector() {
-        boolean trianglePressed = gamepad2.triangleWasPressed();
-        boolean dpadUpPressed   = gamepad2.dpadUpWasPressed();
-        boolean tooCloseToShoot = odoShootDistance < MIN_SHOOT_DISTANCE_INCHES;
-        if(tooCloseToShoot && (trianglePressed || dpadUpPressed)) {
-            // notify both players robot is too close to shoot.
-            gamepad1.runRumbleEffect(tooCloseRumbleLR);
-            gamepad2.runRumbleEffect(tooCloseRumbleLR);
-        }
         // Has the spindexer achieved one of the 3 valid shooting positions?
         boolean safeToInject = (robot.spinServoInPos && !robot.spinServoMidPos)? true:false;
+        // Is the operator attempting to shoot? (either single or triple)
+        boolean shootSingle = gamepad2.triangleWasPressed();//only query this once per cycle!
+        boolean shootTriple = gamepad2.dpadUpWasPressed();
+        // Is the robot too close to the goal to shoot?
+        boolean tooCloseToShoot = (odoShootDistance < MIN_SHOOT_DISTANCE_INCHES);
+        if( (shootSingle || shootTriple) && tooCloseToShoot ) {
+            // notify both players robot is too close to shoot
+            gamepad1.runRumbleEffect( tooCloseRumbleLR );
+            gamepad2.runRumbleEffect( tooCloseRumbleLR );
+        }
         // TRIANGLE button is a single-shot command
-        if( safeToInject && tooCloseToShoot == false && trianglePressed ) {
+        if( shootSingle && safeToInject && !tooCloseToShoot ) {
             // Ensure an earlier injection request isn't already underway
             if ((robot.liftServoBusyU == false) && (robot.liftServoBusyD == false)) {
                 robot.startInjectionStateMachine();
             }
         }
         // DPAD UP is the triple-shot command
-        if( safeToInject && tooCloseToShoot == false && dpadUpPressed ) {
+        if( shootTriple && safeToInject && !tooCloseToShoot ) {
             // Ensure shooter is ON
             if (shooterMotorsOn == false){
                 robot.shooterMotorsSetPower( shooterPower );
@@ -752,5 +781,39 @@ public abstract class Teleop extends LinearOpMode {
             robot.abortTripleShotStateMachine();
         }
     } // processInjector
+
+/*---------------------------------------------------------------------------------*/
+    void processInjector0() {
+        // Has the spindexer achieved one of the 3 valid shooting positions?
+        boolean safeToInject = (robot.spinServoInPos && !robot.spinServoMidPos)? true:false;
+        // TRIANGLE button is a single-shot command
+        if( safeToInject && gamepad2.triangleWasPressed() ) {
+            // Ensure an earlier injection request isn't already underway
+            if ((robot.liftServoBusyU == false) && (robot.liftServoBusyD == false)) {
+                robot.startInjectionStateMachine();
+            }
+        }
+        // DPAD UP is the triple-shot command
+        if( safeToInject && gamepad2.dpadUpWasPressed() ) {
+            // Ensure shooter is ON
+            if (shooterMotorsOn == false){
+                robot.shooterMotorsSetPower( shooterPower );
+                shooterMotorsOn = true;
+            }
+            // Ensure collector is ON
+            if (intakeMotorOnFwd == false){
+                // Turn on collector in FORWARD
+                robot.intakeMotor.setPower( robot.INTAKE_FWD_COLLECT );
+                intakeMotorOnFwd = true;
+                intakeMotorOnRev = false;
+            }
+            // start pew-pew-pew
+            robot.startTripleShotStateMachine();
+        }
+        // DPAD DOWN cancels triple-shot
+        else if( gamepad2.dpadDownWasPressed() ) {
+            robot.abortTripleShotStateMachine();
+        }
+    } // processInjector0
 
 } // Teleop

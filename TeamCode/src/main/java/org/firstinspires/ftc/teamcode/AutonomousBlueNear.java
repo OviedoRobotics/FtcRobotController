@@ -114,9 +114,8 @@ public class AutonomousBlueNear extends AutonomousBase {
         robot.intakeMotor.setPower( robot.INTAKE_FWD_COLLECT );
         // Even if we delay, we want to immediately start getting shooter up to speed
         robot.shooterMotorsSetPower( shooterPowerNear );
-        // Pre-index to the first spindexer position for the preload order we use
-        loadOrder = PPG_23;
-        firstBall = getObeliskFirstBall(obeliskID,loadOrder);
+        // Pre-index to the first spindexer position
+        firstBall = getObeliskFirstBall(obeliskID);
         robot.spinServoSetPosition( firstBall );
         // Enable automatic shooter power/angle as we drive the next segment
         autoAimEnabled = true;
@@ -127,44 +126,38 @@ public class AutonomousBlueNear extends AutonomousBase {
         if( waitBeforePL > 0 ) {
             sleep( waitBeforePL * 500 );
         }
-        scoreThreeBallsFromField(obeliskID,loadOrder);
+        scoreThreeBallsFromField(obeliskID);
         // update our field position based on the AprilTag
         robot.setPinpointFieldPosition(robot.limelightFieldXpos, robot.limelightFieldYpos);
 
         // Collect and Score 3rd spike mark
         if( doSpikeMark3 ) {
-            loadOrder = (redAlliance)? PPG_23:GPP_21;
-            firstBall = getObeliskFirstBall(obeliskID,loadOrder);
-            collectSpikemarkFromNear(3,redAlliance,firstBall);
+            collectSpikemarkFromNear(3,redAlliance);
             // Do we pause before shooting?
             if( waitBeforeC3 > 0 ) {
                 sleep( waitBeforeC3 * 500 );
                 }
-            scoreThreeBallsFromField(obeliskID,loadOrder);
+            scoreThreeBallsFromField(obeliskID);
         }
 
         // Collect and Score 2nd spike mark
         if( doSpikeMark2 ) {
-            loadOrder = (redAlliance)? GPP_21:PPG_23;
-            firstBall = getObeliskFirstBall(obeliskID,loadOrder);
-            collectSpikemarkFromNear(2,redAlliance,firstBall);
+            collectSpikemarkFromNear(2,redAlliance);
             // Do we pause before shooting?
             if( waitBeforeS2 > 0 ) {
                sleep( waitBeforeS2 * 500 );
             }
-            scoreThreeBallsFromField(obeliskID,loadOrder);
+            scoreThreeBallsFromField(obeliskID);
         }
 
         // Collect and Score 1st spike mark
         if( doSpikeMark1 ) {
-            loadOrder = (redAlliance)? PGP_22:PGP_22;
-            firstBall = getObeliskFirstBall(obeliskID,loadOrder);
-            collectSpikemarkFromNear(1,redAlliance,firstBall);
+            collectSpikemarkFromNear(1,redAlliance);
             // Do we pause before shooting?
             if( waitBeforeS1 > 0 ) {
                sleep( waitBeforeS1 * 500 );
             }
-            scoreThreeBallsFromField(obeliskID,loadOrder);
+            scoreThreeBallsFromField(obeliskID);
         }
 
         // Drive the final position we want for MOVEMENT points
