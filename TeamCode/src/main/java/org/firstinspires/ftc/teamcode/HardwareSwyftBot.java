@@ -63,6 +63,7 @@ public class HardwareSwyftBot
     //====== LIMELIGHT SMART CAMERA ======
     public  Limelight3A limelight;
     private LLResult    llResultLast;
+    double limelightTimestamp = 0;  // timestamp from LLResult
 
     /**
      * https://ftc-docs.firstinspires.org/en/latest/game_specific_resources/field_coordinate_system/field-coordinate-system.html#square-field-inverted-alliance-area
@@ -911,7 +912,7 @@ public class HardwareSwyftBot
         // we tell the limelight the current robot/camera orientation angle.
         double yawAngle = rotate180Yaw( robotOrientationDegrees );  // Rotate frame of reference!
         limelight.updateRobotOrientation( yawAngle );   // takes effect on next cycle...
-        // Lets see if the limelight camera can see the Apriltag (to provide updated field location data)
+        // Let's see if the limelight camera can see the Apriltag (to provide updated field location data)
         LLResult llResult = limelight.getLatestResult();
         if( llResult == null ) {
             // Nothing to process this cycle
@@ -926,11 +927,14 @@ public class HardwareSwyftBot
             limelightFieldXpos     = 0;    limelightFieldXstd     = 0;
             limelightFieldYpos     = 0;    limelightFieldYstd     = 0;
             limelightFieldAngleDeg = 0;    limelightFieldAnglestd = 0;
+            limelightTimestamp     = 0;
             return;
         }
         int STALENESS_LIMIT_MS = 30;
         if( llResult.getStaleness() < STALENESS_LIMIT_MS ) {
             llResultLast = llResult;
+            // Capture timestamp for update rate tracking
+            limelightTimestamp = llResult.getTimestamp();
             // Parse Limelight result for MegaTag2 robot pose data
             Pose3D   limelightBotpose = llResult.getBotpose_MT2();
             double[] stddev           = llResult.getStddevMt2();
@@ -954,6 +958,7 @@ public class HardwareSwyftBot
             limelightFieldXpos     = 0;    limelightFieldXstd     = 0;
             limelightFieldYpos     = 0;    limelightFieldYstd     = 0;
             limelightFieldAngleDeg = 0;    limelightFieldAnglestd = 0;
+            limelightTimestamp     = 0;
         }
     } // updateLimelightFieldPosition
 
