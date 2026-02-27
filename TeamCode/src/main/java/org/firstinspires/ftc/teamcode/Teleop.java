@@ -291,7 +291,7 @@ public abstract class Teleop extends LinearOpMode {
         robot.processInjectionStateMachine();
         robot.processTripleShotStateMachine();
         robot.processColorDetection();
-//      robot.autoSpindexIfAppropriate(); // TEMPORARY DEBUG
+//      robot.autoSpindexIfAppropriate(blueAlliance? false : true); // TEMPORARY DEBUG
         if( enableOdometry ) {
             robot.updatePinpointFieldPosition();
             robot.updateLimelightFieldPosition();

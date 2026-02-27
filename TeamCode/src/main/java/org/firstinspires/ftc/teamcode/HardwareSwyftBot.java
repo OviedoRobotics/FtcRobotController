@@ -1644,6 +1644,10 @@ public class HardwareSwyftBot
         leftSpinventoryNow = leftBall;
     }
 
+    public boolean isSpinventoryFull() {
+        return spinventory.stream().noneMatch(ball -> ball.equals(Ball.None));
+    }
+
     /*--------------------------------------------------------------------------------------------*/
     public float readColorSensor(NormalizedColorSensor colorSensor)
     {
@@ -1758,33 +1762,59 @@ public class HardwareSwyftBot
     } // processColorDetection
 
     /*---------------------------------------------------------------------------------*/
-    public void autoSpindexIfAppropriate()
+    // Slot-to-spinventory index mapping (by spindexer position):
+    //   P1: left sensor → [P2],  right sensor → [P3]
+    //   P2: left sensor → [P3],  right sensor → [P1]
+    //   P3: left sensor → [P1],  right sensor → [P2]
+    public void autoSpindexIfAppropriate(boolean isRed)
     {
         // Are we still processing a prior spindexing?
         if( spinServoInPos == false ) return;
         // Any change to our spinventory?
         boolean newLeftBall  = (leftSpinventoryNow  != Ball.None) && (leftSpinventoryWas  == Ball.None);
         boolean newRightBall = (rightSpinventoryNow != Ball.None) && (rightSpinventoryWas == Ball.None);
-        // Handle the simple cases first
-        // 1) Is there nothing to detect?
+        // Is there nothing to detect?
         if( !newLeftBall && !newRightBall ) return;
-        // Have we collected a new ball on the LEFT side?
-        if( newLeftBall ) {
-            switch(spinServoCurPos) {
-                case SPIN_P1: spinServoSetPosition(SpindexerState.SPIN_P2); break;
-                case SPIN_P2: spinServoSetPosition(SpindexerState.SPIN_P3); break;
-                case SPIN_P3: spinServoSetPosition(SpindexerState.SPIN_P1); break;
-                default:      spinServoSetPosition(SpindexerState.SPIN_P1); break; // error case
-            } // switch()
-        }
-        // Have we collected a new ball on the RIGHT side?
-        if( newRightBall ) {
-            switch(spinServoCurPos) {
-                case SPIN_P1: spinServoSetPosition(SpindexerState.SPIN_P2); break;
-                case SPIN_P2: spinServoSetPosition(SpindexerState.SPIN_P1); break;
-                case SPIN_P3: spinServoSetPosition(SpindexerState.SPIN_P2); break;
-                default:      spinServoSetPosition(SpindexerState.SPIN_P1); break; // error case
-            } // switch()
+        if( isRed ) {
+            // RED: intake from the left — rotate to whichever position exposes an empty left slot.
+            // Prefer the natural P1→P2→P3 advance direction.
+            if( newLeftBall ) {
+                switch(spinServoCurPos) {
+                    case SPIN_P1: // filled [P2]
+                        if      (spinventory.get(2) == Ball.None) spinServoSetPosition(SpindexerState.SPIN_P2);
+                        else if (spinventory.get(0) == Ball.None) spinServoSetPosition(SpindexerState.SPIN_P3);
+                        break;
+                    case SPIN_P2: // filled [P3]
+                        if      (spinventory.get(0) == Ball.None) spinServoSetPosition(SpindexerState.SPIN_P3);
+                        else if (spinventory.get(1) == Ball.None) spinServoSetPosition(SpindexerState.SPIN_P1);
+                        break;
+                    case SPIN_P3: // filled [P1]
+                        if      (spinventory.get(1) == Ball.None) spinServoSetPosition(SpindexerState.SPIN_P1);
+                        else if (spinventory.get(2) == Ball.None) spinServoSetPosition(SpindexerState.SPIN_P2);
+                        break;
+                    default: spinServoSetPosition(SpindexerState.SPIN_INCREMENT); break;
+                } // switch()
+            }
+        } else {
+            // BLUE: intake from the right — rotate to whichever position exposes an empty right slot.
+            // Prefer the natural P3→P2→P1 advance direction.
+            if( newRightBall ) {
+                switch(spinServoCurPos) {
+                    case SPIN_P3: // filled [P2]
+                        if      (spinventory.get(0) == Ball.None) spinServoSetPosition(SpindexerState.SPIN_P2);
+                        else if (spinventory.get(2) == Ball.None) spinServoSetPosition(SpindexerState.SPIN_P1);
+                        break;
+                    case SPIN_P2: // filled [P1]
+                        if      (spinventory.get(2) == Ball.None) spinServoSetPosition(SpindexerState.SPIN_P1);
+                        else if (spinventory.get(1) == Ball.None) spinServoSetPosition(SpindexerState.SPIN_P3);
+                        break;
+                    case SPIN_P1: // filled [P3]
+                        if      (spinventory.get(1) == Ball.None) spinServoSetPosition(SpindexerState.SPIN_P3);
+                        else if (spinventory.get(0) == Ball.None) spinServoSetPosition(SpindexerState.SPIN_P2);
+                        break;
+                    default: spinServoSetPosition(SpindexerState.SPIN_DECREMENT); break;
+                } // switch()
+            }
         }
     } // autoSpindexIfAppropriate
 

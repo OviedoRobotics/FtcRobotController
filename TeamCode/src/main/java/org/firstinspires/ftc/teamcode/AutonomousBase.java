@@ -1477,15 +1477,19 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
 
     /*---------------------------------------------------------------------------------*/
     public void spindexToPosition(double xTarget, double yTarget, double angleTarget,
-                                double speedMax, double turnMax, int driveType) {
+                                double speedMax, double turnMax, int driveType, boolean isRed) {
         // Loop until we get to destination.
         performEveryLoop();
         while(!driveToXY( xTarget, yTarget, angleTarget, speedMax, driveType)
                 && opModeIsActive()) {
             // Update all our values
             performEveryLoop();
+            if(robot.isSpinventoryFull()) {
+                // all balls collected. no need to keep driving forward.
+                break;
+            }
             // Do we need to spindex here?
-            robot.autoSpindexIfAppropriate();
+            robot.autoSpindexIfAppropriate(isRed);
         }
     } // spindexToPosition
 
@@ -1522,10 +1526,10 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
             xPos   = (isRed)? redStartx : blueStartx;
             yPos   = ((isRed)? -26.9 : +26.9);
             angDeg = (isRed)? -90.0 : +90.0;
-            spindexToPosition( xPos, yPos, angDeg, DRIVE_SPEED_40, TURN_SPEED_10, DRIVE_THRU);
+            spindexToPosition( xPos, yPos, angDeg, DRIVE_SPEED_40, TURN_SPEED_10, DRIVE_THRU, isRed);
             // Drive into the line of all 3 balls, spindexing when the presence sensor detects a ball
             yPos   = ((isRed)? -47.3 : +47.3);
-            spindexToPosition( xPos, yPos, angDeg, DRIVE_SPEED_15, TURN_SPEED_15, DRIVE_TO);
+            spindexToPosition( xPos, yPos, angDeg, DRIVE_SPEED_15, TURN_SPEED_15, DRIVE_TO, isRed);
         } // opModeIsActive
         // Drive back to the shooting zone (back the way we came!)
         if( opModeIsActive() ) {
