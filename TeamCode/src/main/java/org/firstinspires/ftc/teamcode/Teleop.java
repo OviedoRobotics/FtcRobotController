@@ -615,6 +615,8 @@ public abstract class Teleop extends LinearOpMode {
         boolean leftTriggerHeld  = (gamepad2.left_trigger  > 0.25)? true:false;
         boolean rightTriggerHeld = (gamepad2.right_trigger > 0.25)? true:false;
         if( !safeToSpindex ) return;
+        // TODO: what limits/constraints should be in place for auto spindexing?
+        robot.autoSpindexIfAppropriateTeleop();
         // Rotate spindexer RIGHT one FULL position?
         if( gamepad2.rightBumperWasPressed() ) {
             if (robot.spinServoCurPos != SPIN_P1)

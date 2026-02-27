@@ -1818,6 +1818,42 @@ public class HardwareSwyftBot
         }
     } // autoSpindexIfAppropriate
 
+    /*---------------------------------------------------------------------------------*/
+    public void autoSpindexIfAppropriateTeleop()
+    {
+        // Are we still processing a prior spindexing?
+        if( spinServoInPos == false ) return;
+        // Any change to our spinventory?
+        boolean newLeftBall  = (leftSpinventoryNow  != Ball.None) && (leftSpinventoryWas  == Ball.None);
+        boolean newRightBall = (rightSpinventoryNow != Ball.None) && (rightSpinventoryWas == Ball.None);
+        // Is there nothing to detect?
+        if( !newLeftBall && !newRightBall ) return;
+        // Only act on the first ball — move it to center so the injector is loaded
+        // and both sides remain available for the next collection.
+        long ballCount = spinventory.stream().filter(b -> b != Ball.None).count();
+        if( ballCount != 1 ) return;
+        // Rotate so the newly collected ball ends up in the center (injector) position.
+        // The target is whichever position centers the slot that just received a ball.
+        // Using slot map: P1-left=[P2], P1-right=[P3], P2-left=[P3],
+        //                 P2-right=[P1], P3-left=[P1], P3-right=[P2]
+        if( newLeftBall ) {
+            switch(spinServoCurPos) {
+                case SPIN_P1: spinServoSetPosition(SpindexerState.SPIN_P2); break; // [P2]→center at P2
+                case SPIN_P2: spinServoSetPosition(SpindexerState.SPIN_P3); break; // [P3]→center at P3
+                case SPIN_P3: spinServoSetPosition(SpindexerState.SPIN_P1); break; // [P1]→center at P1
+                default:      break; // error case. Don't do anything.
+            } // switch()
+        }
+        if( newRightBall ) {
+            switch(spinServoCurPos) {
+                case SPIN_P1: spinServoSetPosition(SpindexerState.SPIN_P3); break; // [P3]→center at P3
+                case SPIN_P2: spinServoSetPosition(SpindexerState.SPIN_P1); break; // [P1]→center at P1
+                case SPIN_P3: spinServoSetPosition(SpindexerState.SPIN_P2); break; // [P2]→center at P2
+                default:      break; // error case. Don't do anything.
+            } // switch()
+        }
+    } // autoSpindexIfAppropriateTeleop
+
     /*--------------------------------------------------------------------------------------------*/
 
     /***
