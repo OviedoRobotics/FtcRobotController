@@ -14,10 +14,9 @@ import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
 import com.qualcomm.robotcore.hardware.NormalizedRGBA;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Servo;
-import com.qualcomm.robotcore.hardware.CRServo;
+//import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.SwitchableLight;
 import com.qualcomm.robotcore.util.ElapsedTime;
-import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
@@ -30,11 +29,15 @@ import org.firstinspires.ftc.robotcore.external.navigation.Position;
 import org.firstinspires.ftc.robotcore.external.navigation.UnnormalizedAngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 
+import org.firstinspires.ftc.teamcode.HardwareDrivers.Prism.Color;
+import org.firstinspires.ftc.teamcode.HardwareDrivers.Prism.GoBildaPrismDriver;
+import org.firstinspires.ftc.teamcode.HardwareDrivers.Prism.PrismAnimations;
+
+import static org.firstinspires.ftc.teamcode.HardwareDrivers.Prism.GoBildaPrismDriver.LayerHeight;
+
 import static com.qualcomm.hardware.rev.RevHubOrientationOnRobot.LogoFacingDirection;
 import static com.qualcomm.hardware.rev.RevHubOrientationOnRobot.UsbFacingDirection;
 import static java.lang.Thread.sleep;
-
-import android.graphics.Color;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -167,22 +170,24 @@ public class HardwareSwyftBot
     public double     turretServoSet    = 0.0;  // 5-turn servo commanded setpoint
     public double     turretServoGet    = 0.0;  // 5-turn servo queried setpoint
     public double     turretServoPos    = 0.0;  // 5-turn servo position (analog feedback)
+    public boolean    turretInPos       = false; // Has turret moved to the commanded servo position? 
     public boolean    turretServoIsBusy = false; // are we still moving toward position?
+    public boolean    turretRangeLimited = false; // are we unable to achieve the angle autoaim wants?
 
     public double     turretManualOffset = 0.0; // for when auto-aim gets off (before we recalibrate)
 
     // NOTE: Although the turret can spin to +180deg, the cable blocks the shooter hood exit
     // once you reach +55deg, so that's our effect MAX turret angle on the right side.
     public final static double TURRET_SERVO_MAX2 = 0.93; // +180 deg (turret max)
-    public final static double TURRET_SERVO_P90  = 0.73; // +90 deg
+    public final static double TURRET_SERVO_P90  = 0.68; // +90 deg (R1)
     public final static double TURRET_SERVO_MAX  = 0.64; // +53deg
     public final static double TURRET_SERVO_INIT = 0.49; //   0 deg
-    public final static double TURRET_SERVO_N90  = 0.29; // -90 deg
+    public final static double TURRET_SERVO_N90  = 0.27; // -90 deg (R1)
     public final static double TURRET_SERVO_MIN  = 0.06; // -180deg
     public final static double TURRET_CTS_PER_DEG = (TURRET_SERVO_P90 - TURRET_SERVO_N90)/180.0;
 
     public final static double TURRET_R1_OFFSET = -0.005; // ROBOT1 offset to align with reference
-    public final static double TURRET_R2_OFFSET = +0.009; // ROBOT2 offset to align with reference
+    public final static double TURRET_R2_OFFSET = -0.000; // ROBOT2 offset to align with reference
 
     //====== SPINDEXER SERVO =====
     public Servo       spinServo    = null;
@@ -323,15 +328,6 @@ public class HardwareSwyftBot
     public double LIFT_SERVO_RESET_ANG;
     public double LIFT_SERVO_INJECT_ANG;
 
-    //====== LED CONTROLLERS (controlled via SERVO signals) =====
-    public Servo  ledServo = null;   // goBilda RGB LED
-
-    public final static double LED_INIT   = 0.000;  // off
-    public final static double LED_RED    = 0.279;
-    public final static double LED_GREEN  = 0.488;
-    public final static double LED_BLUE   = 0.611;
-    public final static double LED_PURPLE = 0.723;
-
     //====== MOTIF CONSTANTS =====
     public enum MotifOptions {
         MOTIF_GPP,  // GREEN, PURPLE, PURPLE
@@ -385,6 +381,22 @@ public class HardwareSwyftBot
 
     public int ballColorDetectingReads = 0;
     public static int MAX_BALL_COLOR_READS = 10;
+
+    //====== goBilda Prism LED CONTROLLER (controlled via I2C cable) =====
+    GoBildaPrismDriver prism = null;
+    // Create individual objects (called Animations) for each LED using SOLID pattern (no blink/animation)
+    // and populate with default/starting colors
+    //    LED 0 = Spinventory LEFT   contents (white=empty; purple/green=ball)
+    //    LED 1 = Spinventory CENTER contents (white=empty; purple/green=ball)
+    //    LED 2 = Spinventory RIGHT  contents (white=empty; purple/green=ball)
+    //    LEDs 3-5 = Shoot Status (yellow=not-ready; blue=ready)
+    PrismAnimations.Solid ledLeftBall   = new PrismAnimations.Solid(Color.WHITE,10,  0, 0);
+    PrismAnimations.Solid ledCenterBall = new PrismAnimations.Solid(Color.WHITE,10,  1, 1);
+    PrismAnimations.Solid ledRightBall  = new PrismAnimations.Solid(Color.WHITE,10,  2, 2);
+    PrismAnimations.Solid ledShootReady = new PrismAnimations.Solid(Color.RED,  30,  3, 5);
+    public boolean        shootReadyPrev = false;  // Track changes in ShootReady status so
+    public boolean        shootReadyNow  = false;  // we know when to update the LED colors
+    public boolean        goodFieldPosition = false; // Are we too close to shoot into the goal?
 
     /* local OpMode members. */
     protected HardwareMap hwMap = null;
@@ -534,10 +546,6 @@ public class HardwareSwyftBot
         liftServoPos = hwMap.analogInput.get("liftServoPos");       // Analog port 1 (Control Hub)
 
         //--------------------------------------------------------------------------------------------
-        // Initialize servo control of the goBilda LED
-        ledServo = hwMap.tryGet(Servo.class, "ledServo");
-
-        //--------------------------------------------------------------------------------------------
         // Ball detector sensors
         leftBallColorSensor = hwMap.get(NormalizedColorSensor.class, "LeftColorSensor");
         rightBallColorSensor = hwMap.get(NormalizedColorSensor.class, "RightColorSensor");
@@ -559,6 +567,16 @@ public class HardwareSwyftBot
 
         leftBallPresenceSensor.setMode(DigitalChannel.Mode.INPUT);
         rightBallPresenceSensor.setMode(DigitalChannel.Mode.INPUT);
+
+        //--------------------------------------------------------------------------------------------
+        prism = hwMap.tryGet(GoBildaPrismDriver.class, "prism");
+        if( prism != null ) {
+           // Push our LED configuration to the goBilda controller 
+           prism.insertAndUpdateAnimation( LayerHeight.LAYER_0, ledLeftBall   );
+           prism.insertAndUpdateAnimation( LayerHeight.LAYER_1, ledCenterBall );
+           prism.insertAndUpdateAnimation( LayerHeight.LAYER_2, ledRightBall  );
+           prism.insertAndUpdateAnimation( LayerHeight.LAYER_3, ledShootReady );
+        }
 
         // Ensure all servos are in the initialize position (YES for auto; NO for teleop)
         if( isAutonomous ) {
@@ -661,10 +679,10 @@ public class HardwareSwyftBot
 //      shooterMotor2Amps = shooterMotor1.getCurrent(MILLIAMPS);
 
         // Where has the turret been commanded to?
-        turretServoGet   = turretServo.getPosition();
+        turretServoGet = turretServo.getPosition();
         // Where is the turret currently located?  (average the two feedback values)
-        turretServoPos   = (getTurretPosition(true) + getTurretPosition(false))/2.0;
-        boolean turretInPos = (Math.abs(turretServoPos - turretServoSet) < 0.009)? true:false;
+        turretServoPos = (getTurretPosition(true) + getTurretPosition(false))/2.0;
+        turretInPos = (Math.abs(turretServoPos - turretServoSet) < 0.011)? true:false;
         if(turretServoIsBusy && turretInPos ) {
             turretServoIsBusy = false;
         }
@@ -685,6 +703,9 @@ public class HardwareSwyftBot
         } else {
             rightBallIsPresentCount = 0;
         }
+
+        // Check if we need to update the ledShootReady indication
+        updateShootReadyLedAttributes();
     } // readBulkData
 
     /*--------------------------------------------------------------------------------------------*/
@@ -719,52 +740,6 @@ public class HardwareSwyftBot
         // Start polling for data (skipping this has getLatestResult() return null results)
         limelight.stop();
     } // limelightStop
-
-    //BRODY!!
-    static double thetaMaxTurret = 375;
-    static double thetaMinTurret = 0;
-    static double thetaMaxFlapper = 355;
-    static double thetaMinFlapper = 0;
-    static double X_BIN_L = 0.6667; // in feet
-    static double Y_BIN_L = 12;   // in feet
-    static double LAUNCH_EXIT_SPEED = 22;
-    static double Z_BIN = 3.23;
-    static double Z_SHOOTER = 0.5;  // get actual measurement
-    static double TURRET_SERVO_RELATIVE_0_ANGLE = 0;
-    static double TURRET_SERVO_HORIZONTAL_ANGLE_INIT = TURRET_SERVO_INIT*(thetaMaxTurret - thetaMinTurret);
-
-    static double SHOOTER_SERVO_HORIZONTAL_POSITION = 0.39;
-    public double computeAlignedTurretPos() {
-        double deltaServoPos = (computeTurretAngle())/(thetaMaxTurret - thetaMinTurret); // servo 0->1 is clockwise
-        return (deltaServoPos > TURRET_SERVO_P90 || deltaServoPos < TURRET_SERVO_N90)? turretServo.getPosition() : deltaServoPos;
-    }
-
-    public double computeTurretAngle() {
-        // absolute heading of the robot relative to the field. 90 is facing obelisk (ccw is positive)
-        double driveTrainHeading = robotOrientationDegrees;
-        double xR = robotGlobalXCoordinatePosition/12.0; // convert to feet
-        double yR = robotGlobalYCoordinatePosition/12.0; // convert to feet
-        double xB = X_BIN_L;
-        double yB = Y_BIN_L;
-
-        double deltaHeading = calculateHeadingChange(xR, yR, xB, yB, driveTrainHeading);
-
-        return deltaHeading;
-    }
-
-    public double calculateHeadingChange(double xR, double yR, double xB, double yB, double heading) {
-        double angleToTarget = Math.atan2(yB-yR, xB-xR); // in radians
-        // in radians. servo clockwise direction is positive need to multiply by negative one.
-        double delta = -(angleToTarget - (Math.toRadians(heading) + Math.toRadians(TURRET_SERVO_RELATIVE_0_ANGLE)));
-        // determine angle that the turret servo needs
-        // to turn to and account for the offset of the angle of the turret servo from the robot.
-        delta = Math.toDegrees(delta);
-        delta += TURRET_SERVO_HORIZONTAL_ANGLE_INIT;
-        // Normalize to [0, 360]
-        if(delta < 0) delta += 360;
-        if(delta > 360) delta -= 360;
-        return delta;
-    }
 
     /*--------------------------------------------------------------------------------------------*/
     public void driveTrainMotors( double frontLeft, double frontRight, double rearLeft, double rearRight )
@@ -857,8 +832,9 @@ public class HardwareSwyftBot
         // set both turret servos (connected on Y cable)
         turretServoSetPosition( setAngleCounts );
 
-        double epsilon = 0.000001d;
-        return Math.abs(targetAngleCounts - setAngleCounts) < epsilon;
+        // Are we limited from achieving the desired turret angle?
+        turretRangeLimited = (Math.abs(targetAngleCounts - setAngleCounts) > 0.0001d);
+        return turretRangeLimited;
     } // setTurretAngle
 
     /*--------------------------------------------------------------------------------------------*/
@@ -866,11 +842,11 @@ public class HardwareSwyftBot
     // attempt to convert the servo position from a 0..1 value to an actual 0..360deg value.  All
     // we need to know is that whatever position commanded (0..1) has been achieved according to
     // the analog feedback, and we can do that in the 0..1 domain
-    // INPUT:  analog1?  (do we want to know the current feedback based on servo1 or servo2 sensor?
+    // INPUT:  analog1?  (are we requesting position-feedback using servo1 or servo2 sensor?
     public double getTurretPosition( boolean analog1 )
     {   // NOTE: the analog position feedback for the 5-turn AndyMark servos differs from Axon 3.3V
-        final double MAX_ANALOG_VOLTAGE   = 2.88; // Volts: maximum analog feedback (for 1.0)
-        final double MIN_ANALOG_VOLTAGE   = 0.46; // Volts: minimum analog feedback (for 0.0) 1.66V = 0.5
+        double MAX_ANALOG_VOLTAGE = (isRobot1)? 2.88 : 2.872; // Volts: maximum analog feedback (for 1.0)
+        double MIN_ANALOG_VOLTAGE = (isRobot1)? 0.46 : 0.430; // Volts: minimum analog feedback (for 0.0) 1.66V = 0.5
         double measuredVoltage, scaledVoltage, positionFeedback;  // NOTE: 0.267 = -90   0.667 = +90
         // Which feedback does the user want?
         if( analog1 ) {
@@ -1476,7 +1452,7 @@ public class HardwareSwyftBot
              }
              break;
            case SHOOT3_INJECT :
-             // We're in position but is shooter up to speed?
+               // We're now in position; is there anything in this center slot?
                if( shooterMotorsReady ){
                    startInjectionStateMachine(); // start the injection cycle
                    currentShoot3state = Shoot3state.SHOOT3_INJECT_WAIT;
@@ -1614,11 +1590,19 @@ public class HardwareSwyftBot
         // Reset the autospindexer variables now that we've shifted things around
         leftSpinventoryNow   = getLeftBall();
         leftSpinventoryWas   = leftSpinventoryNow;
+        updateBallLedAttributes(ledLeftBall,leftSpinventoryNow);
+        prism.updateAnimationFromIndex(LayerHeight.LAYER_0);
+
         rightSpinventoryNow  = getRightBall();
         rightSpinventoryWas  = rightSpinventoryNow;
+        updateBallLedAttributes(ledRightBall,rightSpinventoryNow);
+        prism.updateAnimationFromIndex(LayerHeight.LAYER_2);
+
         centerSpinventoryNow = getCenterBall();
         centerSpinventoryWas = centerSpinventoryNow;
-    }
+        updateBallLedAttributes(ledCenterBall,centerSpinventoryNow);
+        prism.updateAnimationFromIndex(LayerHeight.LAYER_1);
+    } // setSpindexPosition
     public void setStartingSpinventory(Ball left, Ball center, Ball right)
     {
         setRightBall(right);
@@ -1634,6 +1618,8 @@ public class HardwareSwyftBot
         rightSpinventoryWas = rightSpinventoryNow;
         spinventory.set(spindexerRight, rightBall);
         rightSpinventoryNow = rightBall;
+        updateBallLedAttributes(ledRightBall,rightBall);
+        prism.updateAnimationFromIndex(LayerHeight.LAYER_2);
     }
     public Ball getCenterBall()
     {
@@ -1644,6 +1630,8 @@ public class HardwareSwyftBot
         centerSpinventoryWas = centerSpinventoryNow;
         spinventory.set(spindexerCenter, centerBall);
         centerSpinventoryNow = centerBall;
+        updateBallLedAttributes(ledCenterBall,centerBall);
+        prism.updateAnimationFromIndex(LayerHeight.LAYER_1);
     }
     public Ball getLeftBall()   { return spinventory.get(spindexerLeft); }
     public void setLeftBall(Ball leftBall)
@@ -1651,14 +1639,57 @@ public class HardwareSwyftBot
         leftSpinventoryWas = leftSpinventoryNow;
         spinventory.set(spindexerLeft, leftBall);
         leftSpinventoryNow = leftBall;
+        updateBallLedAttributes(ledLeftBall,leftBall);
+        prism.updateAnimationFromIndex(LayerHeight.LAYER_0);
     }
+
+    /*--------------------------------------------------------------------------------------------*/
+    private void updateBallLedAttributes(PrismAnimations.Solid led, Ball ball) {
+        switch (ball) {
+            case None:
+                led.setPrimaryColor(Color.WHITE);
+                led.setBrightness(10);   // dim white = empty slot
+                break;
+            case Purple:
+                led.setPrimaryColor(Color.PURPLE);
+                led.setBrightness(60);
+                break;
+            case Green:
+                led.setPrimaryColor(Color.GREEN);
+                led.setBrightness(35);
+                break;
+        }
+    } // updateBallLedAttributes
+
+    /*--------------------------------------------------------------------------------------------*/
+    public void setGoodFieldPosition( boolean okayToShoot ) {
+        goodFieldPosition = okayToShoot;
+    } // setGoodFieldPosition
+
+    /*--------------------------------------------------------------------------------------------*/
+    private void updateShootReadyLedAttributes() {
+       // Update our ShootReady status flags
+       shootReadyPrev = shootReadyNow;
+       shootReadyNow  = (turretInPos && !turretRangeLimited) && shooterMotorsReady && goodFieldPosition;
+       // Has our status changed?
+       if( shootReadyNow != shootReadyPrev ) {
+          if ( shootReadyNow ) {
+              ledShootReady.setPrimaryColor(Color.BLUE);
+              ledShootReady.setBrightness(50);
+          } else {
+              ledShootReady.setPrimaryColor(Color.RED);
+              ledShootReady.setBrightness(30);
+          }
+          prism.updateAnimationFromIndex(LayerHeight.LAYER_3);
+       } // changed
+    } // updateShootReadyLedAttributes
 
     /*--------------------------------------------------------------------------------------------*/
     public float readColorSensor(NormalizedColorSensor colorSensor)
     {
         NormalizedRGBA ballColors = colorSensor.getNormalizedColors();
         final float[] hsvValues = new float[3];
-        Color.colorToHSV(ballColors.toColor(), hsvValues);
+        android.graphics.Color.colorToHSV(ballColors.toColor(), hsvValues);
         return hsvValues[0];
     } // readColorSensor
 
@@ -1669,7 +1700,7 @@ public class HardwareSwyftBot
         NormalizedRGBA ballColors;
         final float[] hsvValues = new float[3];
         ballColors = colorSensor.getNormalizedColors();
-        Color.colorToHSV(ballColors.toColor(), hsvValues);
+        android.graphics.Color.colorToHSV(ballColors.toColor(), hsvValues);
         ballHueDetected = hsvValues[0];
         if(hsvValues[0] > 180.0)
         {
@@ -1767,36 +1798,13 @@ public class HardwareSwyftBot
     } // processColorDetection
 
     /*---------------------------------------------------------------------------------*/
-    public void autoSpindexIfAppropriate0()
-    {
-        // Are we still processing a prior spindexing?
-        if( spinServoInPos == false ) return;
-        // Any change to our spinventory?
-        boolean newLeftBall  = (leftSpinventoryNow  != Ball.None) && (leftSpinventoryWas  == Ball.None);
-        boolean newRightBall = (rightSpinventoryNow != Ball.None) && (rightSpinventoryWas == Ball.None);
-        // Handle the simple cases first
-        // 1) Is there nothing to detect?
-        if( !newLeftBall && !newRightBall ) return;
-        // Have we collected a new ball on the LEFT side?
-        if( newLeftBall ) {
-            switch(spinServoCurPos) {
-                case SPIN_P1: spinServoSetPosition(SpindexerState.SPIN_P2); break;
-                case SPIN_P2: spinServoSetPosition(SpindexerState.SPIN_P3); break;
-                case SPIN_P3: break; // spinServoSetPosition(SpindexerState.SPIN_P3); break;  // TODO: fix later
-                default:      spinServoSetPosition(SpindexerState.SPIN_P1); break; // error case
-            } // switch()
-        }
-        // Have we collected a new ball on the RIGHT side?
-        if( newRightBall ) {
-            switch(spinServoCurPos) {
-                case SPIN_P1: break; // spinServoSetPosition(SpindexerState.SPIN_P1); break; // TODO: fix later
-                case SPIN_P2: spinServoSetPosition(SpindexerState.SPIN_P1); break;
-                case SPIN_P3: spinServoSetPosition(SpindexerState.SPIN_P2); break;  // fix later
-                default:      spinServoSetPosition(SpindexerState.SPIN_P1); break; // error case
-            } // switch()
-        }
-    } // autoSpindexIfAppropriate0
+    public boolean isSpinventoryFull(){
+        return ( (leftSpinventoryWas   != Ball.None) &&
+                 (rightSpinventoryWas  != Ball.None) &&
+                 (centerSpinventoryWas != Ball.None) );
+    } // isSpinventoryFull
 
+    /*---------------------------------------------------------------------------------*/
     public void autoSpindexTeleopIfAppropriate()
     {
         // Are we still processing a prior spindexing?

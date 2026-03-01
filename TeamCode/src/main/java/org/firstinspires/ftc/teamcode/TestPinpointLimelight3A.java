@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.LLStatus;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
@@ -18,7 +19,7 @@ import java.util.List;
  * Test program to compare localization results from Limelight with GoBilda Pinpoint
  */
 @TeleOp(name = "Pinpoint+Limelight3A", group = "Test")
-//@Disabled
+@Disabled
 public class TestPinpointLimelight3A extends LinearOpMode {
     HardwareSwyftBot robot = new HardwareSwyftBot();
 

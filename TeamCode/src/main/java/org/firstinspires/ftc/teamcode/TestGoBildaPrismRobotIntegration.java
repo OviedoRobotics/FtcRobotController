@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode;
 
 import static org.firstinspires.ftc.teamcode.HardwareDrivers.Prism.GoBildaPrismDriver.LayerHeight;
 
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
@@ -37,7 +38,7 @@ import org.firstinspires.ftc.teamcode.HardwareDrivers.Prism.PrismAnimations;
  *   Dpad Down    → clear all animations
  */
 @TeleOp(name = "Prism Robot Integration Test", group = "Test")
-//@Disabled
+@Disabled
 public class TestGoBildaPrismRobotIntegration extends LinearOpMode {
 
     // Mirrors HardwareSwyftBot.Ball
@@ -54,7 +55,7 @@ public class TestGoBildaPrismRobotIntegration extends LinearOpMode {
     boolean angleReady = false;
 
     // One Solid animation per spinventory LED (initial state: dim white = empty slot)
-    // Plus one Solid spanning LEDs 3–5 for shoot status (initial state: orange = not ready)
+    // Plus one Solid spanning LEDs 3–5 for shoot status (initial state: yellow = not ready)
     PrismAnimations.Solid ledLeft   = new PrismAnimations.Solid(Color.WHITE, 10,  0, 0);
     PrismAnimations.Solid ledCenter = new PrismAnimations.Solid(Color.WHITE, 10,  1, 1);
     PrismAnimations.Solid ledRight  = new PrismAnimations.Solid(Color.WHITE, 10,  2, 2);

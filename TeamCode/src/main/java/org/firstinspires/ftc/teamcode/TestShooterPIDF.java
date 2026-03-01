@@ -8,7 +8,7 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 
 @TeleOp(name="Test Shooter PIDF Control", group="Test")
-//@Disabled
+@Disabled
 public class TestShooterPIDF extends OpMode {
 
     // Hardware

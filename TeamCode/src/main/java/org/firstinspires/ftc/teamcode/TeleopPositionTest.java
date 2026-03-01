@@ -51,11 +51,6 @@ public class TeleopPositionTest extends LinearOpMode {
         liftPos = robot.LIFT_SERVO_INIT;
         robot.liftServo.setPosition(liftPos);
 
-        if( robot.isRobot2 ) {
-            ledValue = robot.LED_INIT;
-            robot.ledServo.setPosition(ledValue);
-        }
-
         // Send telemetry message to signify robot waiting;
         telemetry.addData("State", "Ready");
         telemetry.update();
@@ -85,7 +80,9 @@ public class TeleopPositionTest extends LinearOpMode {
                     telemetry.addData("SELECTED:", "turretServo" );
                     telemetry.addData("Turret Servo Set Position", "%.3f", turretPos );
                     telemetry.addData("Turret Servo Get Position", "%.3f", robot.turretServo.getPosition() );
+                    telemetry.addData("Turret Servo1 Voltage Feedback", "%.3f", robot.turretServoPos1.getVoltage() );
                     telemetry.addData("Turret Servo1 Angle Feedback", "%.3f", robot.getTurretPosition(true) );
+                    telemetry.addData("Turret Servo2 Voltage Feedback", "%.3f", robot.turretServoPos2.getVoltage() );
                     telemetry.addData("Turret Servo2 Angle Feedback", "%.3f", robot.getTurretPosition(false) );
                     break;
                 case 3 :
@@ -101,9 +98,6 @@ public class TeleopPositionTest extends LinearOpMode {
                     break;
                 case 5 :
                     telemetry.addData("SELECTED:", "ledServo" );
-                    if( robot.isRobot2 ) {
-                        telemetry.addData("goBilda LED setting", "%.3f", robot.ledServo.getPosition());
-                    }
                     break;
                 default :
                     selectedMechanism = 1;
@@ -151,12 +145,9 @@ public class TeleopPositionTest extends LinearOpMode {
                         robot.liftServo.setPosition(liftPos);
                         break;
                     case 5 :
-                        ledValue -= stepSizes[stepIndex];
+                        ledValue -= stepSizes[stepIndex];   // UNUSED!!!
                         if( ledValue < 0.0 ) ledValue = 0.0;
                         if( ledValue > 1.0 ) ledValue = 1.0;
-                        if( robot.isRobot2 ) {
-                            robot.ledServo.setPosition(ledValue);
-                        }
                         break;
                     default :
                         break;
@@ -195,9 +186,6 @@ public class TeleopPositionTest extends LinearOpMode {
                         ledValue += stepSizes[stepIndex];
                         if( ledValue < 0.0 ) ledValue = 0.0;
                         if( ledValue > 1.0 ) ledValue = 1.0;
-                        if( robot.isRobot2 ) {
-                            robot.ledServo.setPosition(ledValue);
-                        }
                         break;
                     default :
                         break;

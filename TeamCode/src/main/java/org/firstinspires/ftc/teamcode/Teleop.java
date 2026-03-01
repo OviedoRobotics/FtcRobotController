@@ -292,7 +292,7 @@ public abstract class Teleop extends LinearOpMode {
         robot.processInjectionStateMachine();
         robot.processTripleShotStateMachine();
         robot.processColorDetection();
-        robot.autoSpindexTeleopIfAppropriate(); // TEMPORARY DEBUG
+        robot.autoSpindexTeleopIfAppropriate();
         if( enableOdometry ) {
             robot.updatePinpointFieldPosition();
             robot.updateLimelightFieldPosition();
@@ -746,6 +746,7 @@ public abstract class Teleop extends LinearOpMode {
         boolean shootTriple = gamepad2.dpadUpWasPressed();
         // Is the robot too close to the goal to shoot?
         boolean tooCloseToShoot = (odoShootDistance < MIN_SHOOT_DISTANCE_INCHES);
+        robot.setGoodFieldPosition( !tooCloseToShoot );
         if( (shootSingle || shootTriple) && tooCloseToShoot ) {
             // notify both players robot is too close to shoot
             gamepad1.runRumbleEffect( tooCloseRumbleLR );

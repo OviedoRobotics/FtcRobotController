@@ -1484,10 +1484,18 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
         performEveryLoop();
         while(!driveToXY( xTarget, yTarget, angleTarget, speedMax, driveType)
                 && opModeIsActive()) {
-            // Update all our values
+            // Update all our values related to driving
             performEveryLoop();
-            // Do we need to spindex here?
+            // all balls collected? no need to keep driving forward!
+            if(robot.isSpinventoryFull()) {
+                break;
+            }
+            // Has a new ball been collected? (Do we need to spindex here?)
             robot.autoSpindexAutonIfAppropriate();
+        }
+        //
+        if (driveType != DRIVE_THRU) {
+            robot.stopMotion();
         }
     } // spindexToPosition
 
@@ -1526,7 +1534,7 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
             angDeg = (isRed)? -90.0 : +90.0;
             spindexToPosition( xPos, yPos, angDeg, DRIVE_SPEED_40, TURN_SPEED_10, DRIVE_THRU);
             // Drive into the line of all 3 balls, spindexing when the presence sensor detects a ball
-            yPos   = ((isRed)? -47.3 : +47.3);
+            yPos   = ((isRed)? -49.0 : +49.0); // stops automatically once we have all 3!
             spindexToPosition( xPos, yPos, angDeg, DRIVE_SPEED_15, TURN_SPEED_15, DRIVE_TO);
         } // opModeIsActive
         // Drive back to the shooting zone (back the way we came!)
