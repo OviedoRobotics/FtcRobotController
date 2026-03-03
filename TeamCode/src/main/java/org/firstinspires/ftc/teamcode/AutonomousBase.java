@@ -1491,7 +1491,7 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
                 break;
             }
             // Has a new ball been collected? (Do we need to spindex here?)
-            robot.autoSpindexAutonIfAppropriate();
+            robot.autoSpindexAutonIfAppropriate( redAlliance? true:false );
         }
         //
         if (driveType != DRIVE_THRU) {

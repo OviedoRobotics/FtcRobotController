@@ -738,20 +738,54 @@ public abstract class Teleop extends LinearOpMode {
     } // processTurretAutoAim
 
     /*---------------------------------------------------------------------------------*/
+    void ensureShooterCollectorBothOn() {
+       // Ensure shooter is ON
+       if (shooterMotorsOn == false){
+           robot.shooterMotorsSetPower( shooterPower );
+           shooterMotorsOn = true;
+       }
+       // Ensure collector is ON
+       if (intakeMotorOnFwd == false){
+           // Turn on collector in FORWARD
+           robot.intakeMotor.setPower( robot.INTAKE_FWD_COLLECT );
+           intakeMotorOnFwd = true;
+           intakeMotorOnRev = false;
+       }
+    } // ensureShooterCollectorBothOn
+
+    /*---------------------------------------------------------------------------------*/
     void processInjector() {
         // Has the spindexer achieved one of the 3 valid shooting positions?
         boolean safeToInject = (robot.spinServoInPos && !robot.spinServoMidPos)? true:false;
         // Is the operator attempting to shoot? (either single or triple)
         boolean shootSingle = gamepad2.triangleWasPressed();//only query this once per cycle!
         boolean shootTriple = gamepad2.dpadUpWasPressed();
+        boolean shootPurple = gamepad2.dpadLeftWasPressed();
+        boolean shootGreen  = gamepad2.dpadRightWasPressed();
+        boolean tryToShoot  = (shootSingle || shootTriple || shootPurple || shootGreen);
+        //------------------------------------------------------------------------------
         // Is the robot too close to the goal to shoot?
         boolean tooCloseToShoot = (odoShootDistance < MIN_SHOOT_DISTANCE_INCHES);
+        // Pass this to the hardware class so the LED color can be set
         robot.setGoodFieldPosition( !tooCloseToShoot );
-        if( (shootSingle || shootTriple) && tooCloseToShoot ) {
+        // If we're too close and they don't see the LEDs, rumble the gamepad
+        if( tryToShoot && tooCloseToShoot ) {
             // notify both players robot is too close to shoot
             gamepad1.runRumbleEffect( tooCloseRumbleLR );
             gamepad2.runRumbleEffect( tooCloseRumbleLR );
         }
+        //------------------------------------------------------------------------------
+        // Translate shootPurple or shootGreen into a simple ShootSingle if
+        // the desired ball color is already in the center spot
+        if( shootPurple && (robot.getCenterBall() == HardwareSwyftBot.Ball.Purple) ) {
+            shootSingle = true;
+            shootPurple = false;
+        }
+        else if( shootGreen && (robot.getCenterBall() == HardwareSwyftBot.Ball.Green) ) {
+            shootSingle = true;
+            shootGreen = false;
+        }
+        //------------------------------------------------------------------------------
         // TRIANGLE button is a single-shot command
         if( shootSingle && safeToInject && !tooCloseToShoot ) {
             // Ensure an earlier injection request isn't already underway
@@ -759,61 +793,46 @@ public abstract class Teleop extends LinearOpMode {
                 robot.startInjectionStateMachine();
             }
         }
+        //------------------------------------------------------------------------------
         // DPAD UP is the triple-shot command
-        if( shootTriple && safeToInject && !tooCloseToShoot ) {
-            // Ensure shooter is ON
-            if (shooterMotorsOn == false){
-                robot.shooterMotorsSetPower( shooterPower );
-                shooterMotorsOn = true;
-            }
-            // Ensure collector is ON
-            if (intakeMotorOnFwd == false){
-                // Turn on collector in FORWARD
-                robot.intakeMotor.setPower( robot.INTAKE_FWD_COLLECT );
-                intakeMotorOnFwd = true;
-                intakeMotorOnRev = false;
-            }
+        else if( shootTriple && safeToInject && !tooCloseToShoot ) {
+            ensureShooterCollectorBothOn();
             // start pew-pew-pew
             robot.startTripleShotStateMachine();
         }
+        //------------------------------------------------------------------------------
+        // DPAD LEFT is the shoot-purple command
+        else if( shootPurple && safeToInject && !tooCloseToShoot ) {
+            // Only act if we actually have a PURPLE ball
+            if( robot.spinventoryIncludesColor( HardwareSwyftBot.Ball.Purple ) )
+            {
+               ensureShooterCollectorBothOn();
+               // spindex to PURPLE and shoot
+//             robot.startTripleShotStateMachine();  TODO: finish this!
+            }
+            else {
+                gamepad2.runRumbleEffect(spindexerRumbleL);
+            }
+        }
+        //------------------------------------------------------------------------------
+        // DPAD RIGHT is the shoot-green command
+        else if( shootGreen && safeToInject && !tooCloseToShoot ) {
+            // Only act if we actually have a GREEN ball
+            if( robot.spinventoryIncludesColor( HardwareSwyftBot.Ball.Green ) )
+            {
+               ensureShooterCollectorBothOn();
+               // spindex to GREEN and shoot
+//             robot.startTripleShotStateMachine();  TODO: finish this!
+            }
+            else {
+                gamepad2.runRumbleEffect(spindexerRumbleR);
+            }
+        }
+        //------------------------------------------------------------------------------
         // DPAD DOWN cancels triple-shot
         else if( gamepad2.dpadDownWasPressed() ) {
             robot.abortTripleShotStateMachine();
         }
     } // processInjector
-
-/*---------------------------------------------------------------------------------*/
-    void processInjector0() {
-        // Has the spindexer achieved one of the 3 valid shooting positions?
-        boolean safeToInject = (robot.spinServoInPos && !robot.spinServoMidPos)? true:false;
-        // TRIANGLE button is a single-shot command
-        if( safeToInject && gamepad2.triangleWasPressed() ) {
-            // Ensure an earlier injection request isn't already underway
-            if ((robot.liftServoBusyU == false) && (robot.liftServoBusyD == false)) {
-                robot.startInjectionStateMachine();
-            }
-        }
-        // DPAD UP is the triple-shot command
-        if( safeToInject && gamepad2.dpadUpWasPressed() ) {
-            // Ensure shooter is ON
-            if (shooterMotorsOn == false){
-                robot.shooterMotorsSetPower( shooterPower );
-                shooterMotorsOn = true;
-            }
-            // Ensure collector is ON
-            if (intakeMotorOnFwd == false){
-                // Turn on collector in FORWARD
-                robot.intakeMotor.setPower( robot.INTAKE_FWD_COLLECT );
-                intakeMotorOnFwd = true;
-                intakeMotorOnRev = false;
-            }
-            // start pew-pew-pew
-            robot.startTripleShotStateMachine();
-        }
-        // DPAD DOWN cancels triple-shot
-        else if( gamepad2.dpadDownWasPressed() ) {
-            robot.abortTripleShotStateMachine();
-        }
-    } // processInjector0
 
 } // Teleop
