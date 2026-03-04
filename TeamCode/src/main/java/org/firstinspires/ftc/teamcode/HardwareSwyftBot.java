@@ -27,6 +27,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 import org.firstinspires.ftc.robotcore.external.navigation.Position;
 import org.firstinspires.ftc.robotcore.external.navigation.UnnormalizedAngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.VoltageUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 
 import org.firstinspires.ftc.teamcode.HardwareDrivers.Prism.Color;
@@ -42,6 +43,7 @@ import static java.lang.Thread.sleep;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /*
  * Hardware class for Swyft Robotics SWYFT DRIVE V2 chassis with 86mm mecanum wheels
@@ -51,6 +53,10 @@ public class HardwareSwyftBot
     //====== REV CONTROL/EXPANSION HUBS =====
     LynxModule controlHub;
     LynxModule expansionHub;
+    double controlHubV;
+    long controlHubVLastUpdateTime;
+    boolean warningAnimationPlaying = false; // lock out other LED pattern updates.
+    private static final double LOW_BATTERY_THRESHOLD = 11.7;
     
     public boolean isRobot1 = false;  // 7592-C (see IMU initialization below)
     public boolean isRobot2 = false;  // 7592-D
@@ -397,6 +403,7 @@ public class HardwareSwyftBot
     PrismAnimations.Solid ledCenterBall = new PrismAnimations.Solid(Color.WHITE,10,  1, 1);
     PrismAnimations.Solid ledRightBall  = new PrismAnimations.Solid(Color.WHITE,10,  2, 2);
     PrismAnimations.Solid ledShootReady = new PrismAnimations.Solid(Color.RED,  30,  3, 5);
+    PrismAnimations.Solid ledLowBattery = new PrismAnimations.Solid(Color.ORANGE,  100,  0, 5);
     public boolean        shootReadyPrev = false;  // Track changes in ShootReady status so
     public boolean        shootReadyNow  = false;  // we know when to update the LED colors
     public boolean        goodFieldPosition = false; // Are we too close to shoot into the goal?
@@ -669,6 +676,18 @@ public class HardwareSwyftBot
         // For MANUAL mode, we must clear the BulkCache once per control cycle
         expansionHub.clearBulkCache();
         controlHub.clearBulkCache();
+
+        long currentNanoTime = System.nanoTime();
+        if(shooterMotorsSet == 0 && currentNanoTime - controlHubVLastUpdateTime > TimeUnit.SECONDS.toNanos(5)) {
+            controlHubV = controlHub.getInputVoltage(VoltageUnit.VOLTS);
+        }
+        if(controlHubV < LOW_BATTERY_THRESHOLD && !warningAnimationPlaying) {
+            // Battery is dangerously low.  Play the warning animation.
+            prism.clearAllAnimations();
+            prism.insertAndUpdateAnimation(LayerHeight.LAYER_0, ledLowBattery);
+            warningAnimationPlaying = true;
+        }
+
         // Get a fresh set of values for this cycle
         //   getCurrentPosition() / getTargetPosition() / getTargetPositionTolerance()
         //   getPower() / getVelocity() / getCurrent()
@@ -1597,18 +1616,24 @@ public class HardwareSwyftBot
         // Reset the autospindexer variables now that we've shifted things around
         leftSpinventoryNow   = getLeftBall();
         leftSpinventoryWas   = leftSpinventoryNow;
-        updateBallLedAttributes(ledLeftBall,leftSpinventoryNow);
-        prism.updateAnimationFromIndex(LayerHeight.LAYER_0);
+        if(!warningAnimationPlaying) {
+            updateBallLedAttributes(ledLeftBall, leftSpinventoryNow);
+            prism.updateAnimationFromIndex(LayerHeight.LAYER_0);
+        }
 
         rightSpinventoryNow  = getRightBall();
         rightSpinventoryWas  = rightSpinventoryNow;
-        updateBallLedAttributes(ledRightBall,rightSpinventoryNow);
-        prism.updateAnimationFromIndex(LayerHeight.LAYER_2);
+        if(!warningAnimationPlaying) {
+            updateBallLedAttributes(ledRightBall, rightSpinventoryNow);
+            prism.updateAnimationFromIndex(LayerHeight.LAYER_2);
+        }
 
         centerSpinventoryNow = getCenterBall();
         centerSpinventoryWas = centerSpinventoryNow;
-        updateBallLedAttributes(ledCenterBall,centerSpinventoryNow);
-        prism.updateAnimationFromIndex(LayerHeight.LAYER_1);
+        if(!warningAnimationPlaying) {
+            updateBallLedAttributes(ledCenterBall, centerSpinventoryNow);
+            prism.updateAnimationFromIndex(LayerHeight.LAYER_1);
+        }
     } // setSpindexPosition
     public void setStartingSpinventory(Ball left, Ball center, Ball right)
     {
