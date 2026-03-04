@@ -275,6 +275,7 @@ public abstract class Teleop extends LinearOpMode {
             telemetry.addLine( (robot.isRobot2)? "Robot2" : "Robot1");
             telemetry.addData("CycleTime", "%.1f msec (%.1f Hz)", cycleTimeElapsed, cycleTimeHz);
             telemetry.addData("Limelight Rate", "%.1f msec (%.1f Hz)", limelightUpdateElapsed, limelightUpdateHz);
+            telemetry.addData("Battery Level", "%.1f", robot.controlHubV);
             telemetry.update();
 
             // Pause for metronome tick.  40 mS each cycle = update 25 times a second.
