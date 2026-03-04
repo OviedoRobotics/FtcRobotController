@@ -154,13 +154,10 @@ public class HardwareSwyftBot
     public    double    shooterMotor2Amps= 0.0;  // mA
 
     public    double      shooterMotorsSet   = 0.0;
+    private   boolean     shooterMotorsOn    = false;
     public    boolean     shooterMotorsReady = false; // Have we reached the target velocity?
     public    ElapsedTime shooterMotorsTimer = new ElapsedTime();
     public    double      shooterMotorsTime  = 0.0;   // how long it took to reach "ready" (msec)
-
-    public final static double SHOOTER_MOTOR_FAR  = 0.55;
-    public final static double SHOOTER_MOTOR_MID  = 0.45;
-    public final static double SHOOTER_MOTOR_AUTO = 0.45;
 
     //====== TURRET 5-turn SERVOS =====
     public Servo       turretServo     = null;  // 2 servos! (controlled together via Y cable)
@@ -725,6 +722,7 @@ public class HardwareSwyftBot
         shooterMotorsSet = shooterPower;
         shooterTargetVel = computeShooterVelocity(shooterPower);
         // reset our "ready" flag and start a timer
+        shooterMotorsOn = (shooterPower > 0.40)? true:false;
         shooterMotorsReady = false;
         shooterMotorsTime = 0.0;  // lets us only capture time ONCE, when shooter reaches ready
         shooterMotorsTimer.reset();
@@ -1679,7 +1677,9 @@ public class HardwareSwyftBot
     private void updateShootReadyLedAttributes() {
        // Update our ShootReady status flags
        shootReadyPrev = shootReadyNow;
-       shootReadyNow  = (turretInPos && !turretRangeLimited) && shooterMotorsReady && goodFieldPosition;
+       boolean turretIsReady = (turretInPos && !turretRangeLimited);
+       boolean shooterIsReady = (shooterMotorsOn && shooterMotorsReady);
+       shootReadyNow  = turretIsReady && shooterIsReady && goodFieldPosition;
        // Has our status changed?
        if( shootReadyNow != shootReadyPrev ) {
           if ( shootReadyNow ) {
@@ -1823,8 +1823,12 @@ public class HardwareSwyftBot
     /*---------------------------------------------------------------------------------*/
     public void autoSpindexTeleopIfAppropriate()
     {
+        // Are we in the middle of an injection? (don't spindex!!)(
+        if( liftServoBusyU || liftServoBusyD ) return;
         // Are we still processing a prior spindexing?
         if( spinServoInPos == false ) return;
+        // Are we partway thru a triple-shoot state machine operation?
+        if( currentShoot3state != Shoot3state.SHOOT3_IDLE ) return;
         // Is the spinventory already full?
         boolean isLeftFull   = (getLeftBall()   != Ball.None);
         boolean isRightFull  = (getRightBall()  != Ball.None);

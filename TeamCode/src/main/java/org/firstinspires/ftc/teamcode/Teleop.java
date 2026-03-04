@@ -789,17 +789,20 @@ public abstract class Teleop extends LinearOpMode {
         // TRIANGLE button is a single-shot command
         if( shootSingle && safeToInject && !tooCloseToShoot ) {
             // Ensure an earlier injection request isn't already underway
-            if ((robot.liftServoBusyU == false) && (robot.liftServoBusyD == false)) {
+            if ((robot.liftServoBusyU == false) && (robot.liftServoBusyD == false) && robot.spinServoInPos) {
                 robot.startInjectionStateMachine();
             }
-        }
+        } // TRIANGLE
         //------------------------------------------------------------------------------
         // DPAD UP is the triple-shot command
         else if( shootTriple && safeToInject && !tooCloseToShoot ) {
             ensureShooterCollectorBothOn();
-            // start pew-pew-pew
-            robot.startTripleShotStateMachine();
-        }
+            // verify one last time we're not auto-spindexing
+            if( robot.spinServoInPos ) {
+                // start pew-pew-pew
+                robot.startTripleShotStateMachine();
+            }
+        }  // DPAD UP
         //------------------------------------------------------------------------------
         // DPAD LEFT is the shoot-purple command
         else if( shootPurple && safeToInject && !tooCloseToShoot ) {
@@ -813,7 +816,7 @@ public abstract class Teleop extends LinearOpMode {
             else {
                 gamepad2.runRumbleEffect(spindexerRumbleL);
             }
-        }
+        } // DPAD LEFT
         //------------------------------------------------------------------------------
         // DPAD RIGHT is the shoot-green command
         else if( shootGreen && safeToInject && !tooCloseToShoot ) {

@@ -129,7 +129,6 @@ public class AutonomousBlueFar extends AutonomousBase {
 
         // Collect and Score 2nd spike mark
         if( doSpikeMark2 ) {
-            firstBall = getObeliskFirstBall(obeliskID);
             collectSpikemarkFromFar(2,redAlliance);
             // Do we pause before shooting?
             if( waitBeforeS2 > 0 ) {
@@ -140,7 +139,6 @@ public class AutonomousBlueFar extends AutonomousBase {
 
         // Collect and Score 3rd spike mark
         if( doSpikeMark3 ) {
-            firstBall = getObeliskFirstBall(obeliskID);
             collectSpikemarkFromFar(3,redAlliance);
             // Do we pause before shooting?
             if( waitBeforeS3 > 0 ) {

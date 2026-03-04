@@ -80,7 +80,6 @@ public class AutonomousBlueNear extends AutonomousBase {
     private void mainAutonomous(BallOrder obeliskID) {
         double shooterPowerNear = 0.45;
         HardwareSwyftBot.SpindexerState firstBall;
-        BallOrder loadOrder;
 
         // Start the autonomous timer so we know how much time is remaining when cycling samples
         autonomousTimer.reset();
@@ -89,8 +88,8 @@ public class AutonomousBlueNear extends AutonomousBase {
         resetGlobalCoordinatePositionAuto( 38.6, 54.3, -90.0 );
 
         // Drive away from the wall to a point that can see the obelisk AprilTag
-        driveToPosition( 34.0, 45.0, -90.0, DRIVE_SPEED_30, TURN_SPEED_15, DRIVE_THRU);
-        driveToPosition( 24.2, 17.6, -20.0, DRIVE_SPEED_50, TURN_SPEED_15, DRIVE_TO);
+        driveToPosition( 34.0, 45.0, -90.0, DRIVE_SPEED_60, TURN_SPEED_15, DRIVE_THRU);
+        driveToPosition( 24.2, 17.6, -20.0, DRIVE_SPEED_80, TURN_SPEED_15, DRIVE_TO);
 
         // Process limelight for obelisk detection
         obeliskDetected = false;
@@ -120,7 +119,7 @@ public class AutonomousBlueNear extends AutonomousBase {
         // Enable automatic shooter power/angle as we drive the next segment
         autoAimEnabled = true;
         // Drive to where we can both shoot and refresh our field position based on the AprilTag
-        driveToPosition( 24.2, 17.6, +49.0, DRIVE_SPEED_30, TURN_SPEED_15, DRIVE_TO);
+        driveToPosition( 24.2, 17.6, +49.0, DRIVE_SPEED_70, TURN_SPEED_20, DRIVE_TO);
         autoAimEnabled = false;
         // Do we pause before shooting?
         if( waitBeforePL > 0 ) {
