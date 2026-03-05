@@ -53,10 +53,13 @@ public class HardwareSwyftBot
     //====== REV CONTROL/EXPANSION HUBS =====
     LynxModule controlHub;
     LynxModule expansionHub;
-    double controlHubV;
-    long controlHubVLastUpdateTime;
-    boolean warningAnimationPlaying = false; // lock out other LED pattern updates.
-    private static final double LOW_BATTERY_THRESHOLD = 11.7;
+	
+	// Battery voltage monitoring (since shooter is brutal on batteries)
+    public  double controlHubV        = 0.0;
+    long    controlHubVLastUpdateTime = 0;
+    boolean batteryLevelMonitoring    = false; // PRACTICE ONLY! DISABLE FOR COMPETITION! (slow I2C reads!)
+    boolean ledBatteryWarningOverride = false; // lock out other LED pattern updates.
+    private static final double LOW_BATTERY_THRESHOLD = 10.5;
     
     public boolean isRobot1 = false;  // 7592-C (see IMU initialization below)
     public boolean isRobot2 = false;  // 7592-D
@@ -389,7 +392,7 @@ public class HardwareSwyftBot
     public Ball    centerSpinventoryNow    = Ball.None;
 
     public int ballColorDetectingReads = 0;
-    public static int MAX_BALL_COLOR_READS = 10;
+    public static int MAX_BALL_COLOR_READS = 5;
 
     //====== goBilda Prism LED CONTROLLER (controlled via I2C cable) =====
     GoBildaPrismDriver prism = null;
@@ -677,16 +680,25 @@ public class HardwareSwyftBot
         expansionHub.clearBulkCache();
         controlHub.clearBulkCache();
 
-        long currentNanoTime = System.nanoTime();
-        if(shooterMotorsSet == 0 && currentNanoTime - controlHubVLastUpdateTime > TimeUnit.SECONDS.toNanos(5)) {
-            controlHubV = controlHub.getInputVoltage(VoltageUnit.VOLTS);
-        }
-        if(controlHubV < LOW_BATTERY_THRESHOLD && !warningAnimationPlaying) {
-            // Battery is dangerously low.  Play the warning animation.
-            prism.clearAllAnimations();
-            prism.insertAndUpdateAnimation(LayerHeight.LAYER_0, ledLowBattery);
-            warningAnimationPlaying = true;
-        }
+        // Is this during driver practice, where we need to monitor battery health every 5 sec?
+        if( batteryLevelMonitoring ) {
+            long currentNanoTime = System.nanoTime();
+            long elapsedNanoTime = currentNanoTime - controlHubVLastUpdateTime;
+            boolean timeForNewBatteryReading = (elapsedNanoTime > TimeUnit.SECONDS.toNanos(5));
+            // Must wait until shooter is OFF to get a true battery voltage level reading
+            if( timeForNewBatteryReading && !shooterMotorsOn ) {
+                // Update our control hub voltage information
+                controlHubV = controlHub.getInputVoltage(VoltageUnit.VOLTS);
+                controlHubVLastUpdateTime = currentNanoTime;
+                // Has battery voltage dropped below our allowed threshold?
+                if( (controlHubV < LOW_BATTERY_THRESHOLD) && !ledBatteryWarningOverride ) {
+                    // Battery is dangerously low.  Display the warning animation.
+                    prism.clearAllAnimations();
+                    prism.insertAndUpdateAnimation( LayerHeight.LAYER_0, ledLowBattery);
+                    ledBatteryWarningOverride = true;
+                } // low
+            } // time to check
+        } // are we monitoring
 
         // Get a fresh set of values for this cycle
         //   getCurrentPosition() / getTargetPosition() / getTargetPositionTolerance()
@@ -1616,21 +1628,21 @@ public class HardwareSwyftBot
         // Reset the autospindexer variables now that we've shifted things around
         leftSpinventoryNow   = getLeftBall();
         leftSpinventoryWas   = leftSpinventoryNow;
-        if(!warningAnimationPlaying) {
+        if(!ledBatteryWarningOverride) {
             updateBallLedAttributes(ledLeftBall, leftSpinventoryNow);
             prism.updateAnimationFromIndex(LayerHeight.LAYER_0);
         }
 
         rightSpinventoryNow  = getRightBall();
         rightSpinventoryWas  = rightSpinventoryNow;
-        if(!warningAnimationPlaying) {
+        if(!ledBatteryWarningOverride) {
             updateBallLedAttributes(ledRightBall, rightSpinventoryNow);
             prism.updateAnimationFromIndex(LayerHeight.LAYER_2);
         }
 
         centerSpinventoryNow = getCenterBall();
         centerSpinventoryWas = centerSpinventoryNow;
-        if(!warningAnimationPlaying) {
+        if(!ledBatteryWarningOverride) {
             updateBallLedAttributes(ledCenterBall, centerSpinventoryNow);
             prism.updateAnimationFromIndex(LayerHeight.LAYER_1);
         }
@@ -1770,12 +1782,12 @@ public class HardwareSwyftBot
         if( skipPresenceSensor ) return;
 
         // First check if there are undetected balls present
-        if((leftBallIsPresentCount == 5) && (getLeftBall() == Ball.None))
+        if((leftBallIsPresentCount >= 5) && (getLeftBall() == Ball.None))
         {
             leftBallDetectingColor = true;
             ballColorDetectingReads = 0;
         }
-        if((rightBallIsPresentCount == 5) && (getRightBall() == Ball.None))
+        if((rightBallIsPresentCount >= 5) && (getRightBall() == Ball.None))
         {
             rightBallDetectingColor = true;
             ballColorDetectingReads = 0;

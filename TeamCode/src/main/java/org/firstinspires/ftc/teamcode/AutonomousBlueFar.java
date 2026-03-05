@@ -17,8 +17,6 @@ public class AutonomousBlueFar extends AutonomousBase {
     static final boolean DRIVE_Y = true;    // Drive forward/backward
     static final boolean DRIVE_X = false;   // Drive right/left (not DRIVE_Y)
 
-    double pos_y=robotGlobalYCoordinatePosition, pos_x=robotGlobalXCoordinatePosition, pos_angle=robotOrientationRadians;  // Allows us to specify movement ABSOLUTELY
-
     @Override
     public void runOpMode() throws InterruptedException {
 
@@ -42,6 +40,11 @@ public class AutonomousBlueFar extends AutonomousBase {
         } // !isStarted
 
         robot.limelightStop();
+
+        // We always preload the 3 balls the same way (left,center,right)
+        robot.setStartingSpinventory( HardwareSwyftBot.Ball.Purple,
+                                      HardwareSwyftBot.Ball.Green,
+                                      HardwareSwyftBot.Ball.Purple );
 
         //---------------------------------------------------------------------------------
         if( opModeIsActive() ) {  // don't call this if they hit STOP instead of RUN

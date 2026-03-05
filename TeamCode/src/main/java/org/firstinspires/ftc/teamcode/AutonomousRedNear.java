@@ -2,8 +2,6 @@
  */
 package org.firstinspires.ftc.teamcode;
 
-import static org.firstinspires.ftc.teamcode.BallOrder.*;
-
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
 /**
@@ -41,15 +39,20 @@ public class AutonomousRedNear extends AutonomousBase {
             // Do we need to change any of the other autonomous options?
             processAutonomousInitMenu(false);  // not auto5 start position
             // No point processing limelight for obelisk detection
-            // since we can't see it...
+            // since we can't see it from our starting position...
             // Pause briefly before looping
             idle();
         } // !isStarted
 
+        // We always preload the 3 balls the same way (left,center,right)
+        robot.setStartingSpinventory( HardwareSwyftBot.Ball.Purple,
+                                      HardwareSwyftBot.Ball.Green,
+                                      HardwareSwyftBot.Ball.Purple );
+
         //---------------------------------------------------------------------------------
         if( opModeIsActive() ) {  // don't call this if they hit STOP instead of RUN
             // AUTONOMOUS ROUTINE:  The following method is our main autonomous.
-            mainAutonomous( obeliskID );
+            mainAutonomous();
         }
 
         robot.limelightStop();
@@ -77,7 +80,7 @@ public class AutonomousRedNear extends AutonomousBase {
     /*   4 Drive back to launch zone                                                              */
     /*   5 Score collected balls                                                                  */
     /*--------------------------------------------------------------------------------------------*/
-    private void mainAutonomous(BallOrder obeliskID) {
+    private void mainAutonomous() {
         double shooterPowerNear = 0.45;
         HardwareSwyftBot.SpindexerState firstBall;
 

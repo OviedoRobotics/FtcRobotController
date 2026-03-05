@@ -35,6 +35,7 @@ public abstract class AutonomousBase extends LinearOpMode {
     static final double  HEADING_THRESHOLD    = 2.0;     // Minimum of 1 degree for an integer gyro
     static final double  P_TURN_COEFF         = 0.050;   // Larger is more responsive, but also less stable
     static final double  DRIVE_SPEED_10       = 0.10;    // 
+    static final double  DRIVE_SPEED_12       = 0.12;    //
     static final double  DRIVE_SPEED_15       = 0.15;    //
     static final double  DRIVE_SPEED_20       = 0.20;    // Lower speed for moving from a standstill
     static final double  DRIVE_SPEED_30       = 0.30;    // Lower speed for fine control going sideways
@@ -1399,16 +1400,16 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
             switch( spikeMarkNumber ) {
                 case 1  :
                     spindexToPosition( -6.9, ((isRed)? -22.3 : +22.3), ((isRed)? -91.0:91.0), DRIVE_SPEED_90, TURN_SPEED_20, DRIVE_THRU);
-                    redStartx=-32.2; blueStartx=-32.2; endx=-31.2;
+                    redStartx=-27.0; blueStartx=-27.0; endx=-30.0;
                     break;
                 case 2  :
                     spindexToPosition( 1.5, ((isRed)? -22.0 : +22.0), ((isRed)? -107.0:107.0),  DRIVE_SPEED_90, TURN_SPEED_20, DRIVE_THRU);
-                    redStartx=-8.7; blueStartx=-8.7; endx=-7.7;
+                    redStartx=-7.0; blueStartx=-7.0; endx=-7.7;
                     break;
                 case 3  :
                 default :
                     spindexToPosition( 24.9, ((isRed)? -20.0 : +20.0), ((isRed)? -111.8:111.8), DRIVE_SPEED_90, TURN_SPEED_20, DRIVE_THRU);
-                    redStartx=15.8;  blueStartx=15.8;   endx=14.3;
+                    redStartx=15.8;  blueStartx=15.8;  endx=15.3;
                     break;
             } // switch
         }
@@ -1418,10 +1419,10 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
             xPos   = (isRed)? redStartx : blueStartx;
             yPos   = (isRed)? -26.9 : +26.9;
             angDeg = (isRed)? -90.0 : +90.0;
-            spindexToPosition( xPos, yPos, angDeg, DRIVE_SPEED_40, TURN_SPEED_10, DRIVE_THRU);
+            spindexToPosition( xPos, yPos, angDeg, DRIVE_SPEED_50, TURN_SPEED_10, DRIVE_THRU);
             // Drive into the line of all 3 balls, spindexing when the presence sensor detects a ball
             yPos   = ((isRed)? -51.0 : +51.0); // stops automatically once we have all 3!
-            spindexToPosition( xPos, yPos, angDeg, DRIVE_SPEED_15, TURN_SPEED_15, DRIVE_TO);
+            spindexToPosition( xPos, yPos, angDeg, DRIVE_SPEED_12, TURN_SPEED_15, DRIVE_TO);
         } // opModeIsActive
         // Drive back to the shooting zone (back the way we came!)
         if( opModeIsActive() ) {
@@ -1445,6 +1446,12 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
     /*---------------------------------------------------------------------------------*/
     public void spindexToPosition(double xTarget, double yTarget, double angleTarget,
                                 double speedMax, double turnMax, int driveType) {
+        boolean keepLeftOpen;
+        if( runningAutonomousFar) {
+            keepLeftOpen = redAlliance? true:false;
+        } else {
+            keepLeftOpen = redAlliance? false:true;
+        }
         // Loop until we get to destination.
         performEveryLoop();
         while(!driveToXY( xTarget, yTarget, angleTarget, speedMax, driveType)
@@ -1456,7 +1463,7 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
                 break;
             }
             // Has a new ball been collected? (Do we need to spindex here?)
-            robot.autoSpindexAutonIfAppropriate( redAlliance? true:false );
+            robot.autoSpindexAutonIfAppropriate( keepLeftOpen );
         }
         //
         if (driveType != DRIVE_THRU) {
