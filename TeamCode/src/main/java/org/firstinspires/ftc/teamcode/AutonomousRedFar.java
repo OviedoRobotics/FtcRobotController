@@ -25,6 +25,8 @@ public class AutonomousRedFar extends AutonomousBase {
         telemetry.update();
         robot.init(hardwareMap,true);
         redAlliance = true;
+        runningAutonomousFar = true;
+        blackboard.put("AUTO_WAS_FAR",true);
 
         robot.limelightPipelineSwitch( 1 );
         robot.limelightStart();  // Start polling for data (skipping this has getLatestResult() return null results)

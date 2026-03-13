@@ -78,6 +78,8 @@ public abstract class AutonomousBase extends LinearOpMode {
     double robotGlobalYCoordinatePosition       = 0.0;   // inches
     double robotOrientationRadians              = 0.0;   // radians 0deg (straight forward)
 
+    double GLOBAL_DRIVE_TOLERANCE = 0.5; // default tolerance for DRIVE_TO unless override for a given driveToPosition()
+
     boolean runningAutonomousFar                = true;  // affects our target location
     double  autoAimDistance                     = 0.0;   // inches  (always calculated)
     double  autoAimPower                        = 0.0;   // power   (always calculated)
@@ -382,8 +384,8 @@ public abstract class AutonomousBase extends LinearOpMode {
         double currentY = robotGlobalYCoordinatePosition;
         double targetX, targetY;
         if( runningAutonomousFar ) {
-            targetX = (redAlliance)? +62.2 : +67.2;
-            targetY = (redAlliance)? -63.3 : +63.3;
+            targetX = (redAlliance)? +62.2 : +64.7;
+            targetY = (redAlliance)? -63.3 : +64.3;
         }
         else {
             targetX = (redAlliance)? +58.0 : +56.0;  // 6ft = 72"
@@ -1071,7 +1073,7 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
         // Convert from cm to inches
         double errorMultiplier = 0.033;  // ramp down from 100% starting at 30" from target
         double speedMin = MIN_DRIVE_MAGNITUDE;
-        double allowedError = (driveType == DRIVE_THRU) ? 2.50 : 0.5;
+        double allowedError = (driveType == DRIVE_THRU) ? 2.50 : GLOBAL_DRIVE_TOLERANCE;
 
         return (driveToXY(xTarget, yTarget, angleTarget, speedMin, speedMax, errorMultiplier,
                 allowedError, driveType));
@@ -1303,7 +1305,7 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
     } // AngleWrapDegrees
 
     /*--------------------------------------------------------------------------------------------*/
-    public void collectCorner3FromFar0( boolean isRed ) {
+    public void collectCorner3FromFar( boolean isRed ) {
 
         // Transition from shooting zone to corner
         if( opModeIsActive() ) {
@@ -1325,7 +1327,7 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
           // Drive forward some more to collect 2nd and align bumper to grab the 3rd ball
           timeDriveStraight(DRIVE_SPEED_10, 300);
           // By now we should have collected both balls (1 & 2) either with initial drive in, or during the strafe, so index
-          robot.spinServoSetPosition( SPIN_P2 );  // TODO: use a half position?
+          robot.spinServoSetPosition( SPIN_P2 );
           // strafe sideways (away from corner) to pull the 3rd ball out
           timeDriveStrafe( (isRed)? DRIVE_SPEED_30:-DRIVE_SPEED_30, 300);
           // where are we now?
@@ -1350,10 +1352,12 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
             driveToPosition(-50.8, ((isRed)? -16.3 : +16.3), ((isRed)?  0.0:0.0), DRIVE_SPEED_80, TURN_SPEED_10, DRIVE_TO);
             autoAimEnabled = false;
         } // opModeIsActive
-    } // collectCorner3FromFar0
+    } // collectCorner3FromFar
 
     /*--------------------------------------------------------------------------------------------*/
-    public void collectCorner3FromFar( boolean isRed ) {
+    // This uses the spindexToPosition() that's dangerous near the wall because there's no timeout
+    // and we might not get there.
+    public void collectCorner3FromFar0( boolean isRed ) {
 
         // Transition from shooting zone to corner
         if( opModeIsActive() ) {
@@ -1362,30 +1366,31 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
             // Turn on collector
             robot.intakeMotor.setPower( robot.INTAKE_FWD_COLLECT );
             spindexToPosition(-51.0, ((isRed)? -32.4 : +32.4), ((isRed)? -90.0:+90.0), DRIVE_SPEED_90, TURN_SPEED_10, DRIVE_THRU);
-            spindexToPosition(-52.8, ((isRed)? -52.3 : +52.3), ((isRed)? -128.0:+128.0), DRIVE_SPEED_90, TURN_SPEED_10, DRIVE_THRU);
+            spindexToPosition(-52.8, ((isRed)? -52.3 : +52.3), ((isRed)? -128.0:+128.0), DRIVE_SPEED_70, TURN_SPEED_10, DRIVE_THRU);
             // collect balls 1 and 2 (constrains ball 3 with the wheel/bumper)
-            spindexToPosition(-52.4, ((isRed)? -56.9 : +56.9), ((isRed)? -143.3:+143.3), DRIVE_SPEED_20, TURN_SPEED_10, DRIVE_TO);
+            spindexToPositionC(-52.4, ((isRed)? -56.9 : +56.9), ((isRed)? -140.0:+140.0), DRIVE_SPEED_20, TURN_SPEED_10, DRIVE_TO);
         }
         // Collect the 3 corner balls
         if( opModeIsActive() ) {
             // rotate to an angle that we can collect the 3rd ball
-            spindexToPosition( -57.4, ((isRed)? -57.4 : +57.4), ((isRed)? -153.0:+153.0), DRIVE_SPEED_40, TURN_SPEED_30, DRIVE_TO);
+            spindexToPositionC( -59, ((isRed)? -57.4 : +57.4), ((isRed)? -155.0:+155.0), DRIVE_SPEED_20, TURN_SPEED_30, DRIVE_TO);
         }
         // Drive back to the shooting zone (back the way we came!)
         if( opModeIsActive() ) {
+            driveToPosition(-55.0, ((isRed)? -54.0: +54.0), ((isRed)? -150.0:+150), DRIVE_SPEED_50, TURN_SPEED_20, DRIVE_THRU);
             // reverse collector in case we over collected
             robot.intakeMotor.setPower( robot.INTAKE_AUTO_REJECT );
-            driveToPosition(-56.4, ((isRed)? -36.8 : +36.8), ((isRed)? -90.0:+90), DRIVE_SPEED_90, TURN_SPEED_10, DRIVE_THRU);
+            driveToPosition(-53.0, ((isRed)? -40.0 : +40.0), ((isRed)? -90.0:+90.0), DRIVE_SPEED_90, TURN_SPEED_10, DRIVE_THRU);
             // Turn collector back on forward
             robot.intakeMotor.setPower( robot.INTAKE_FWD_COLLECT );
             // Pre-spindex to the first position we need to be in when we shoot all 3
             HardwareSwyftBot.SpindexerState firstBall = getObeliskFirstBall(obeliskID);
             robot.spinServoSetPosition( firstBall );
             autoAimEnabled = true;
-            driveToPosition(-50.8, ((isRed)? -16.3 : +16.3), ((isRed)?  0.0:0.0), DRIVE_SPEED_80, TURN_SPEED_10, DRIVE_TO);
+            driveToPosition(-50.8, ((isRed)? -16.3 : +16.3), ((isRed)?  0.0:0.0), DRIVE_SPEED_70, TURN_SPEED_10, DRIVE_TO);
             autoAimEnabled = false;
         } // opModeIsActive
-    } // collectCorner3FromFar
+    } // collectCorner3FromFar0
 
     /*--------------------------------------------------------------------------------------------*/
     public void collectSpikemarkFromNear( int spikeMarkNumber, boolean isRed ) {
@@ -1400,7 +1405,7 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
             switch( spikeMarkNumber ) {
                 case 1  :
                     spindexToPosition( -6.9, ((isRed)? -22.3 : +22.3), ((isRed)? -91.0:91.0), DRIVE_SPEED_90, TURN_SPEED_20, DRIVE_THRU);
-                    redStartx=-27.0; blueStartx=-27.0; endx=-30.0;
+                    redStartx=-27.5; blueStartx=-27.0; endx=-30.0;
                     break;
                 case 2  :
                     spindexToPosition( 1.5, ((isRed)? -22.0 : +22.0), ((isRed)? -107.0:107.0),  DRIVE_SPEED_90, TURN_SPEED_20, DRIVE_THRU);
@@ -1409,7 +1414,7 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
                 case 3  :
                 default :
                     spindexToPosition( 24.9, ((isRed)? -20.0 : +20.0), ((isRed)? -111.8:111.8), DRIVE_SPEED_90, TURN_SPEED_20, DRIVE_THRU);
-                    redStartx=15.8;  blueStartx=15.8;  endx=15.3;
+                    redStartx=18.0;  blueStartx=16.8;  endx=15.3;
                     break;
             } // switch
         }
@@ -1421,7 +1426,7 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
             angDeg = (isRed)? -90.0 : +90.0;
             spindexToPosition( xPos, yPos, angDeg, DRIVE_SPEED_50, TURN_SPEED_10, DRIVE_THRU);
             // Drive into the line of all 3 balls, spindexing when the presence sensor detects a ball
-            yPos   = ((isRed)? -51.0 : +51.0); // stops automatically once we have all 3!
+            yPos   = ((isRed)? -49.0 : +49.0); // stops automatically once we have all 3!
             spindexToPosition( xPos, yPos, angDeg, DRIVE_SPEED_12, TURN_SPEED_15, DRIVE_TO);
         } // opModeIsActive
         // Drive back to the shooting zone (back the way we came!)
@@ -1436,7 +1441,17 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
             robot.spinServoSetPosition( firstBall );
             // Return to the far shooting zone, preparing the auto-aim as we go
             autoAimEnabled = true;
-            driveToPosition(18.0, ((isRed)? -20.4 : +20.4), ((isRed)? -52.4:52.4), DRIVE_SPEED_80, TURN_SPEED_30, DRIVE_TO);
+            GLOBAL_DRIVE_TOLERANCE = 1.5; // temporarily enlarge our DRIVE_TO tolerance to 1.5" for speed
+            if( spikeMarkNumber == 3 ) {
+                // just drive straight back (faster to next position)
+                xPos = (isRed)? redStartx : blueStartx;
+                yPos   = (isRed)? -24.0 : +24.0;
+                angDeg = (isRed)? -90.0 : +90.0;
+                driveToPosition( xPos, yPos, angDeg, DRIVE_SPEED_90, TURN_SPEED_30, DRIVE_TO);
+            } else {
+                driveToPosition(18.0, ((isRed)? -20.4 : +20.4), ((isRed)? -52.4:52.4), DRIVE_SPEED_90, TURN_SPEED_30, DRIVE_TO);
+            }
+            GLOBAL_DRIVE_TOLERANCE = 0.5; // reset
             performEveryLoop();    // ensure one last auto-aim loop
             sleep(100); // let turret settle at final angle
             autoAimEnabled = false;
@@ -1470,6 +1485,31 @@ protected boolean driveToXY(double xTarget, double yTarget, double angleTarget, 
             robot.stopMotion();
         }
     } // spindexToPosition
+
+    /*---------------------------------------------------------------------------------*/
+    // Special version for Corner Collect From Far
+    public void spindexToPositionC(double xTarget, double yTarget, double angleTarget,
+                                  double speedMax, double turnMax, int driveType) {
+        boolean keepLeftOpen = (redAlliance)? false:true;
+
+        // Loop until we get to destination.
+        performEveryLoop();
+        while(!driveToXY( xTarget, yTarget, angleTarget, speedMax, driveType)
+                && opModeIsActive()) {
+            // Update all our values related to driving
+            performEveryLoop();
+            // all balls collected? no need to keep driving forward!
+            if(robot.isSpinventoryFull()) {
+                break;
+            }
+            // Has a new ball been collected? (Do we need to spindex here?)
+            robot.autoSpindexAutonIfAppropriate( keepLeftOpen );
+        }
+        //
+        if (driveType != DRIVE_THRU) {
+            robot.stopMotion();
+        }
+    } // spindexToPositionC
 
     /*--------------------------------------------------------------------------------------------*/
     // This version uses spindexToPosition() to dynamically rotate the spindexer while driving/collecting

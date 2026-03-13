@@ -293,7 +293,8 @@ public class HardwareSwyftBot
     public ElapsedTime    shoot3Timer     = new ElapsedTime();
     public double         shoot3Time      = 0.0;   // msec to shoot all 3 balls
 
-    public enum Shoot3state {
+    //--------------------------------------------------------------------------------------------
+    public enum Shoot3state {  // Triple-shoot state machine states
         SHOOT3_IDLE,
         SHOOT3_SPIN_P1,
         SHOOT3_SPIN_P2,
@@ -304,6 +305,17 @@ public class HardwareSwyftBot
         SHOOT3_DONE,
     }
     public Shoot3state currentShoot3state = Shoot3state.SHOOT3_IDLE;
+
+    //--------------------------------------------------------------------------------------------
+    public enum ShootCstate {  // Shoot Color (purple/green state machine states
+        SHOOTC_IDLE,
+        SHOOTC_SPIN,
+        SHOOTC_SPIN_WAIT,
+        SHOOTC_INJECT,
+        SHOOTC_INJECT_WAIT,
+        SHOOTC_DONE,
+    }
+    public ShootCstate currentShootCstate = ShootCstate.SHOOTC_IDLE;
 
     public enum Shoot3order {   // other orders may be needed for motif shooting (132, 231, 312)
         SHOOT3_123,
@@ -1437,7 +1449,8 @@ public class HardwareSwyftBot
         
     } // abortSpindexerMovement
 
-    /*--------------------------------------------------------------------------------------------*/
+    //=============================================================================================
+
     public void startTripleShotStateMachine()
     {
         // Determine SHOOTING ORDER based on initial spindexer orientation
@@ -1561,6 +1574,93 @@ public class HardwareSwyftBot
         currentShoot3state = Shoot3state.SHOOT3_IDLE;
 
     } // abortTripleShotStateMachine
+
+    //=============================================================================================
+
+    public void startColorShootStateMachine( Ball ball )
+    {
+        // To get here, we've passed the following checks:
+        // a) We know one of the Spinventory positions (LEFT, CENTER, or RIGHT) has our color
+        // b) We know it's not the CENTER position (or we'd have just shot it)
+        // So determine whether the color we want is in the LEFT or RIGHT position
+        boolean colorIsInLeft  = (getLeftBall()  == ball);
+        boolean colorIsInRight = (getRightBall() == ball);
+        // This shouldn't happen, but double check to be sure before we start
+        if( !colorIsInLeft && !colorIsInRight ) return;
+        
+        // Translate LEFT/RIGHT into P1/P2/P3 based on current spindexer position
+        // and command that position into the rear/center position
+        if( colorIsInLeft ){
+            switch(spinServoCurPos) { // spin LEFT back to CENTER
+                case SPIN_P1: spinServoSetPosition(SpindexerState.SPIN_P2); break;
+                case SPIN_P2: spinServoSetPosition(SpindexerState.SPIN_P3); break;
+                case SPIN_P3: spinServoSetPosition(SpindexerState.SPIN_P1); break;
+                default: break;  // unexpected; do nothing
+            } // switch()
+        } // LEFT has our color
+        else if( colorIsInRight ){
+            switch(spinServoCurPos) { // spin RIGHT back to CENTER
+                case SPIN_P1: spinServoSetPosition(SpindexerState.SPIN_P3); break;
+                case SPIN_P2: spinServoSetPosition(SpindexerState.SPIN_P1); break;
+                case SPIN_P3: spinServoSetPosition(SpindexerState.SPIN_P2); break;
+                default: break;  // unexpected; do nothing
+            } // switch()
+        } // RIGHT has our color
+
+        // Engage state machine at the "wait for spindexing" state
+        currentShootCstate = ShootCstate.SHOOTC_SPIN_WAIT;
+
+    } // startColorShootStateMachine
+
+    /*--------------------------------------------------------------------------------------------*/
+    public void processColorShootStateMachine()
+    {
+       switch( currentShootCstate ) {
+           case SHOOTC_IDLE :
+             // nothing to do, waiting for next sequence to begin
+             break;
+           case SHOOTC_SPIN_WAIT :
+             // As soon as the spindexer get to the position, transition to shooting
+             if( spinServoInPos ) {
+                 currentShootCstate = ShootCstate.SHOOTC_INJECT;
+             } else {
+                // still waiting...
+             }
+             break;
+           case SHOOTC_INJECT :
+               // We're now in position; is there anything in this center slot?
+               if( shooterMotorsReady ){
+                   startInjectionStateMachine(); // start the injection cycle
+                   currentShootCstate = ShootCstate.SHOOTC_INJECT_WAIT;
+               }
+             break;
+           case SHOOTC_INJECT_WAIT :
+             if( liftServoBusyU || liftServoBusyD ) {
+                 // still waiting...
+             }
+             else {
+                 // We've finished shooting this spindexer position; where to next?
+                   currentShootCstate = ShootCstate.SHOOTC_DONE;
+             }
+             break;
+           case SHOOTC_DONE :
+               // this is where we'd stop a timer, if we had one...
+               currentShootCstate = ShootCstate.SHOOTC_IDLE;
+               break;
+           default:
+               currentShootCstate = ShootCstate.SHOOTC_IDLE;
+             break;
+       } // switch
+    } // processColorShootStateMachine
+
+    /*--------------------------------------------------------------------------------------------*/
+    public void abortColorShootStateMachine()
+    {
+        // Abort any current color-shoot movement in effect.
+        // Spindexing and Injecting in process will finish their current movements.
+        currentShootCstate = ShootCstate.SHOOTC_IDLE;
+
+    } // abortColorShootStateMachine
 
     /*--------------------------------------------------------------------------------------------*/
     public void startInjectionStateMachine()

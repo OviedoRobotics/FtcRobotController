@@ -2,15 +2,13 @@
  */
 package org.firstinspires.ftc.teamcode;
 
-import static org.firstinspires.ftc.teamcode.BallOrder.*;
-
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
 /**
  */
-@Autonomous(name="Blue Far", group="7592", preselectTeleOp = "Teleop-Blue")
+@Autonomous(name="Blue Far (R)", group="7592", preselectTeleOp = "Teleop-Blue")
 //@Disabled
-public class AutonomousBlueFar extends AutonomousBase {
+public class AutonomousBlueFarR extends AutonomousBase {
 
     // These constants define the desired driving/control characteristics
     // The can/should be tweaked to suite the specific robot drivetrain.
@@ -27,6 +25,12 @@ public class AutonomousBlueFar extends AutonomousBase {
         redAlliance  = false;
         runningAutonomousFar = true;
         blackboard.put("AUTO_WAS_FAR",true);
+
+        // set our defaults for near to assume 12-ball with no delays
+        doCorner3        = false;  // the 3 balls in the corner
+        doSpikeMark1     = false;
+        doSpikeMark2     = false;
+        doSpikeMark3     = false;
 
         robot.limelightPipelineSwitch( 1 );
         robot.limelightStart();  // Start polling for data (skipping this has getLatestResult() return null results)
@@ -152,11 +156,11 @@ public class AutonomousBlueFar extends AutonomousBase {
             scoreThreeBallsFromField(obeliskID);
         }
 
-        // Drive away from the score line for the MOVEMENT points
-        driveToPosition(-30.8, +14.3, 0.0, DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_TO);
+        // Drive away from the score line for the MOVEMENT points but back near the wall out of the way
+        driveToPosition(-60.0, +30.0, 0.0, DRIVE_SPEED_30, TURN_SPEED_30, DRIVE_TO);
 
         // ensure motors are turned off even if we run out of time
         robot.driveTrainMotorsZero();
     } // mainAutonomous
 
-} /* AutonomousBlueFar */
+} /* AutonomousBlueFarR */

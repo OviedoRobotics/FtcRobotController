@@ -320,9 +320,9 @@ public class LimelightCalibration extends LinearOpMode {
                 ((Number) bestSettings.get("sensor_gain")).doubleValue()
         };
 
-        // Bounds: exposure [800, 3300], gain [4, 30]
-        double[] lowerBounds = {800.0, 4.0};
-        double[] upperBounds = {3300.0, 30.0};
+        // Bounds: exposure [800, 3300], gain [2, 30]
+        double[] lowerBounds = {800.0, 2.0};
+        double[] upperBounds = {2400.0, 30.0};
 
         // Objective function - balance stability and latency
         ObjectiveFunction objectiveFunction = new ObjectiveFunction(point -> {

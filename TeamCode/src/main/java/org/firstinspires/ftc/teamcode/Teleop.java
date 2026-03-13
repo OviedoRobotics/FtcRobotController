@@ -43,6 +43,7 @@ public abstract class Teleop extends LinearOpMode {
     final int DRIVER_MODE_DRV_CENTRIC  = 3;
     int       driverMode               = DRIVER_MODE_STANDARD;
     double    driverAngle              = 0.0;  /* for DRIVER_MODE_DRV_CENTRIC */
+    boolean   wasAutoFar;
 
     boolean enableOdometry   = true;
     boolean intakeMotorOnFwd = false;
@@ -99,12 +100,17 @@ public abstract class Teleop extends LinearOpMode {
         // Establish whether this is the RED or BLUE alliance
         setAllianceSpecificBehavior();
         // limelight pipelines 6 & 7 filter for the BLUE and RED goal apriltags
-        robot.limelightPipelineSwitch( (blueAlliance)? 6:7 );
+//      robot.limelightPipelineSwitch( (blueAlliance)? 6:7 );
+        robot.limelightPipelineSwitch( 5 ); // use optimized Limelight exposure/gain settings
 
         // Initialize driver centric angle based on the alliance color
         driverMode  = DRIVER_MODE_DRV_CENTRIC;
-        driverAngle = (blueAlliance)? +90.0 : -90.0;  // assumes auto ended from BLUE-FAR or RED-FAR
-
+        wasAutoFar = (boolean) blackboard.getOrDefault("AUTO_WAS_FAR", true);
+        if(wasAutoFar) {
+            driverAngle = (blueAlliance) ? +90.0 : -90.0;  // assumes auto ended from BLUE-FAR or RED-FAR
+        } else { // both near autonomous start with robot facing toward driver
+            driverAngle = 0.0;                            // assumes auto ended from BLUE-NEAR or RED-NEAR
+        }
         // Wait for the game to start (driver presses PLAY)
         while (!isStarted()) {
             // Send telemetry message to signify robot waiting;
@@ -240,7 +246,7 @@ public abstract class Teleop extends LinearOpMode {
             } else {
                 telemetry.addData("LL Offset","(none - stop near apriltag)");
             }
-            telemetry.addData("Goal", "%s dist: %.2f in, angle: %.2f deg", ((blueAlliance)? "BLUE":"RED"), odoShootDistance, odoShootAngleDeg);
+//          telemetry.addData("Goal", "%s dist: %.2f in, angle: %.2f deg", ((blueAlliance)? "BLUE":"RED"), odoShootDistance, odoShootAngleDeg);
 //          telemetry.addData("Shooter POWER", "%.3f (P1 tri/cross to adjust)", shooterPower);
 //          if(robot.shooterMotorsReady) {
 //              telemetry.addData("Shooter ms to ready ", "%.1f", robot.shooterMotorsTime);
@@ -262,20 +268,19 @@ public abstract class Teleop extends LinearOpMode {
 //          telemetry.addData("Driver Angle", "%.3f deg", driverAngle );
 //          telemetry.addData("IMU Angle", "%.3f deg", robot.headingIMU() );
 //          telemetry.addData("Driver Centric", "%.3f deg", (driverAngle - robot.headingIMU()) );
-            telemetry.addData( "Presence ", "Left: %d Right: %d",
-                    (robot.leftBallIsPresent)? 1:0 ,(robot.rightBallIsPresent)? 1 : 0);
-            telemetry.addData( "Color Hue", "Left: %.1f Right: %.1f",
-                    robot.readColorSensor(robot.leftBallColorSensor) ,robot.readColorSensor(robot.rightBallColorSensor));
-            telemetry.addData("Spinventory", "Spindex: %d SpindexL: %d SpindexR: %d SpindexC:%d",
-                    robot.spindex, robot.spindexerLeft, robot.spindexerRight, robot.spindexerCenter );
-            telemetry.addData("Spinventory", "Hue: %.1f LeftHue: %.1f RightHue: %.1f",
-                    robot.ballHueDetected, robot.leftBallHueDetected, robot.rightBallHueDetected );
-            telemetry.addData("Spinventory", "Left: %s Center: %s Right: %s",
-                robot.getLeftBall(), robot.getCenterBall(), robot.getRightBall() );
+//          telemetry.addData( "Presence ", "Left: %d Right: %d",
+//                  (robot.leftBallIsPresent)? 1:0 ,(robot.rightBallIsPresent)? 1 : 0);
+//          telemetry.addData( "Color Hue", "Left: %.1f Right: %.1f",
+//                  robot.readColorSensor(robot.leftBallColorSensor) ,robot.readColorSensor(robot.rightBallColorSensor));
+//          telemetry.addData("Spinventory", "Spindex: %d SpindexL: %d SpindexR: %d SpindexC:%d",
+//                  robot.spindex, robot.spindexerLeft, robot.spindexerRight, robot.spindexerCenter );
+//          telemetry.addData("Spinventory", "Hue: %.1f LeftHue: %.1f RightHue: %.1f",
+//                  robot.ballHueDetected, robot.leftBallHueDetected, robot.rightBallHueDetected );
+//          telemetry.addData("Spinventory", "Left: %s Center: %s Right: %s",
+//              robot.getLeftBall(), robot.getCenterBall(), robot.getRightBall() );
             telemetry.addLine( (robot.isRobot2)? "Robot2" : "Robot1");
             telemetry.addData("CycleTime", "%.1f msec (%.1f Hz)", cycleTimeElapsed, cycleTimeHz);
-            telemetry.addData("Limelight Rate", "%.1f msec (%.1f Hz)", limelightUpdateElapsed, limelightUpdateHz);
-            telemetry.addData("Battery Level", "%.1f", robot.controlHubV);
+//          telemetry.addData("Limelight Rate", "%.1f msec (%.1f Hz)", limelightUpdateElapsed, limelightUpdateHz);
             telemetry.update();
 
             // Pause for metronome tick.  40 mS each cycle = update 25 times a second.
@@ -292,6 +297,7 @@ public abstract class Teleop extends LinearOpMode {
         robot.processSpindexerMovement();
         robot.processInjectionStateMachine();
         robot.processTripleShotStateMachine();
+        robot.processColorShootStateMachine();
         robot.processColorDetection();
         robot.autoSpindexTeleopIfAppropriate();
         if( enableOdometry ) {
@@ -740,17 +746,18 @@ public abstract class Teleop extends LinearOpMode {
 
     /*---------------------------------------------------------------------------------*/
     void ensureShooterCollectorBothOn() {
+        // Ensure collector is ON
+        if (intakeMotorOnFwd == false){
+            // Turn on collector in FORWARD
+            robot.intakeMotor.setPower( 1.00 );
+            intakeMotorOnFwd = true;
+            intakeMotorOnRev = false;
+//          sleep(50); // allow collector to start up before spindexing!
+        }
        // Ensure shooter is ON
        if (shooterMotorsOn == false){
            robot.shooterMotorsSetPower( shooterPower );
            shooterMotorsOn = true;
-       }
-       // Ensure collector is ON
-       if (intakeMotorOnFwd == false){
-           // Turn on collector in FORWARD
-           robot.intakeMotor.setPower( robot.INTAKE_FWD_COLLECT );
-           intakeMotorOnFwd = true;
-           intakeMotorOnRev = false;
        }
     } // ensureShooterCollectorBothOn
 
@@ -764,6 +771,22 @@ public abstract class Teleop extends LinearOpMode {
         boolean shootPurple = gamepad2.dpadLeftWasPressed();
         boolean shootGreen  = gamepad2.dpadRightWasPressed();
         boolean tryToShoot  = (shootSingle || shootTriple || shootPurple || shootGreen);
+        //------------------------------------------------------------------------------
+        // Is an automated function already underway? (let it finish!)
+        if( robot.currentShoot3state != HardwareSwyftBot.Shoot3state.SHOOT3_IDLE ) {
+           // DPAD DOWN cancels/resets triple-shot
+           if( gamepad2.dpadDownWasPressed() ) {
+               robot.abortTripleShotStateMachine();
+           }
+           return;
+        }
+        if( robot.currentShootCstate != HardwareSwyftBot.ShootCstate.SHOOTC_IDLE ) {
+           // DPAD DOWN cancels/resets color shoot
+           if( gamepad2.dpadDownWasPressed() ) {
+              robot.abortColorShootStateMachine();
+           }
+            return;
+        }
         //------------------------------------------------------------------------------
         // Is the robot too close to the goal to shoot?
         boolean tooCloseToShoot = (odoShootDistance < MIN_SHOOT_DISTANCE_INCHES);
@@ -812,7 +835,7 @@ public abstract class Teleop extends LinearOpMode {
             {
                ensureShooterCollectorBothOn();
                // spindex to PURPLE and shoot
-//             robot.startTripleShotStateMachine();  TODO: finish this!
+               robot.startColorShootStateMachine( HardwareSwyftBot.Ball.Purple );
             }
             else {
                 gamepad2.runRumbleEffect(spindexerRumbleL);
@@ -826,16 +849,11 @@ public abstract class Teleop extends LinearOpMode {
             {
                ensureShooterCollectorBothOn();
                // spindex to GREEN and shoot
-//             robot.startTripleShotStateMachine();  TODO: finish this!
+               robot.startColorShootStateMachine( HardwareSwyftBot.Ball.Green );
             }
             else {
                 gamepad2.runRumbleEffect(spindexerRumbleR);
             }
-        }
-        //------------------------------------------------------------------------------
-        // DPAD DOWN cancels triple-shot
-        else if( gamepad2.dpadDownWasPressed() ) {
-            robot.abortTripleShotStateMachine();
         }
     } // processInjector
 

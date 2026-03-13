@@ -23,7 +23,8 @@ public class AutonomousBlueNear extends AutonomousBase {
         telemetry.update();
         robot.init(hardwareMap,true);
         redAlliance  = false;
-        runningAutonomousFar = false;
+        runningAutonomousFar   = false;
+        blackboard.put("AUTO_WAS_FAR",false);
 
         // set our defaults for near to assume 12-ball with no delays
         doCorner3        = false;  // the 3 balls in the corner
